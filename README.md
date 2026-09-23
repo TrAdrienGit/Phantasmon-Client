@@ -46,10 +46,11 @@ The generated jar is placed in `build/libs/`.
 
 ```text
 phantasmon-client/
-├── src/main/java/           # Mod code
+├── src/main/java/com/mystaria/phantasmon/
+├── src/client/java/com/mystaria/phantasmon/client/
 ├── src/main/resources/
-│   ├── fabric.mod.json      # Manifest (environment: client)
-│   └── lang/                # Translations (fr_fr, en_us)
+│   ├── fabric.mod.json      # id: phantasmon, environment: client
+│   └── assets/phantasmon/
 └── build.gradle
 ```
 

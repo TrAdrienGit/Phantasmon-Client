@@ -1,0 +1,12 @@
+---
+description: Java conventions for Phantasmon client sources.
+globs: "src/**/*.java"
+alwaysApply: false
+---
+
+# Client Java
+
+- Shared constants in `com.mystaria.phantasmon`; client setup in `com.mystaria.phantasmon.client`.
+- Ghost render/spawn is local and driven by backend WebSocket events.
+- Business logic without Minecraft: JUnit. Rendering: manual QA.
+- `GET /version` before auth. JWT in memory. Translate `ERROR_*` codes.

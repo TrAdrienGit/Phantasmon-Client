@@ -15,7 +15,7 @@ loom {
 	splitEnvironmentSourceSets()
 
 	mods {
-		"cobblemon-addon-ghost-pvp-client" {
+		"phantasmon" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}

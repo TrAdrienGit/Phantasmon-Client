@@ -1,10 +1,8 @@
 {
 	"required": true,
-	"package": "com.mystaria.cobblemonaddonghostpvpclient.client.mixin",
+	"package": "com.mystaria.phantasmon.client.mixin",
 	"compatibilityLevel": "JAVA_21",
-	"client": [
-		"ExampleClientMixin"
-	],
+	"client": [],
 	"injectors": {
 		"defaultRequire": 1
 	},

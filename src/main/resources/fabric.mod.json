@@ -1,31 +1,31 @@
 {
 	"schemaVersion": 1,
-	"id": "cobblemon-addon-ghost-pvp-client",
+	"id": "phantasmon",
 	"version": "${version}",
-	"name": "cobblemon-addon-ghost-pvp-client",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Phantasmon",
+	"description": "Client-only Fabric addon for Cobblemon: create, trade, and battle custom ghost Pokémon via an external backend.",
 	"authors": [
-		"Me!"
+		"Mystaria"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/your-account/phantasmon-client",
+		"sources": "https://github.com/your-account/phantasmon-client"
 	},
 	"license": "CC0-1.0",
-	"icon": "assets/cobblemon-addon-ghost-pvp-client/icon.png",
+	"icon": "assets/phantasmon/icon.png",
 	"environment": "client",
 	"entrypoints": {
 		"main": [
-			"com.mystaria.cobblemonaddonghostpvpclient.CobblemonAddonGhostPvpClient"
+			"com.mystaria.phantasmon.Phantasmon"
 		],
 		"client": [
-			"com.mystaria.cobblemonaddonghostpvpclient.client.CobblemonAddonGhostPvpClientClient"
+			"com.mystaria.phantasmon.client.PhantasmonClient"
 		]
 	},
 	"mixins": [
-		"cobblemon-addon-ghost-pvp-client.mixins.json",
+		"phantasmon.mixins.json",
 		{
-			"config": "cobblemon-addon-ghost-pvp-client.client.mixins.json",
+			"config": "phantasmon.client.mixins.json",
 			"environment": "client"
 		}
 	],

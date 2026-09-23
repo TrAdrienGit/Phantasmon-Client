@@ -10,4 +10,4 @@ pluginManagement {
 }
 
 // Should match your modid
-rootProject.name = 'cobblemon-addon-ghost-pvp-client'
+rootProject.name = 'phantasmon-client'

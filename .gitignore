@@ -2,15 +2,23 @@
 .env
 .env.*
 !.env.example
+local.properties
+*.pem
+*.key
 
 # === Gradle ===
 .gradle/
 build/
 out/
+classes/
 !gradle/wrapper/gradle-wrapper.jar
 
 # === Fabric / Minecraft dev run ===
 run/
+runs/
+logs/
+crash-reports/
+remappedSrc/
 *.log
 
 # === IDE ===
@@ -21,16 +29,32 @@ run/
 .vscode/
 !.vscode/extensions.json
 .classpath
+.factorypath
 .project
 .settings/
 bin/
+*.launch
+*.code-workspace
 
 # === OS ===
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# === JVM ===
+hs_err_pid*
+replay_pid*
+*.hprof
+
+# === Cursor local (commit .cursor/skills and .cursor/rules) ===
+.cursorignore.local
 
 # === Divers ===
 *.class
 *.jar
-!gradle-wrapper.jar
-.cursorignore.local
+!gradle/wrapper/gradle-wrapper.jar
+*.war
+*.ear
+*~
+*.swp
+*.swo
