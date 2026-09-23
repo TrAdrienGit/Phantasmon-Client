@@ -1,40 +1,36 @@
-# gradle
+# === Env / secrets ===
+.env
+.env.*
+!.env.example
 
+# === Gradle ===
 .gradle/
 build/
 out/
-classes/
+!gradle/wrapper/gradle-wrapper.jar
 
-# eclipse
+# === Fabric / Minecraft dev run ===
+run/
+*.log
 
-*.launch
-
-# idea
-
+# === IDE ===
 .idea/
 *.iml
 *.ipr
 *.iws
-
-# vscode
-
-.settings/
 .vscode/
-bin/
+!.vscode/extensions.json
 .classpath
 .project
+.settings/
+bin/
 
-# macos
+# === OS ===
+.DS_Store
+Thumbs.db
 
-*.DS_Store
-
-# fabric
-
-run/
-
-# java
-
-hs_err_*.log
-replay_*.log
-*.hprof
-*.jfr
+# === Divers ===
+*.class
+*.jar
+!gradle-wrapper.jar
+.cursorignore.local
