@@ -1,6 +1,6 @@
-# cobblemon_addon_ghost_pvp
+# Phantasmon - Client
 
-Ghost Pokémon est une couche indépendante de Pokémon virtuels permettant à tout joueur possédant l'addon de créer, importer, modifier, stocker et utiliser des équipes Pokémon personnalisées selon le format Pokémon Showdown/Smogon.
+Phantasmon | Ghost Pokémon est une couche indépendante de Pokémon virtuels permettant à tout joueur possédant l'addon de créer, importer, modifier, stocker et utiliser des équipes Pokémon personnalisées selon le format Pokémon Showdown/Smogon.
 
 Les Ghost Pokémon sont indépendants des données Pokémon normales de Cobblemon et sont entièrement gérés par le système Ghost.
 
