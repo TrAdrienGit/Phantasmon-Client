@@ -4,9 +4,9 @@
 
 ## Overview
 
-Phantasmon Client does not modify any Minecraft server. It talks directly to the [Phantasmon Backend](https://github.com/your-account/phantasmon-backend), an independent source of truth, over REST and WebSocket. No server-side installation is required — only players running the mod can create, see, and interact with each other's ghost Pokémon.
+Phantasmon Client does not modify any Minecraft server. It talks directly to the [Phantasmon Backend](https://github.com/TrAdrienGit/Phantasmon-Backend), an independent source of truth, over REST and WebSocket. No server-side installation is required — only players running the mod can create, see, and interact with each other's ghost Pokémon.
 
-See the [full design document](https://github.com/your-account/phantasmon-docs) for the complete architecture, technical decisions, and development plan.
+See the [full design document](https://github.com/TrAdrienGit/Phantasmon-Backend/tree/main/Documentation) for the complete architecture, technical decisions, and development plan.
 
 ## Tech stack
 
