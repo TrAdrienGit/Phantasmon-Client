@@ -15,9 +15,11 @@ Minecraft, indépendamment du backend (voir `Documentation/PHANTASMON_BACKEND_RU
   ```
   Dependency requires at least JVM runtime version 25. This build uses a Java 21 JVM.
   ```
-- Pour **jouer** avec le mod une fois compilé : Minecraft **1.21.1**, Fabric Loader **≥ 0.19.5**, Fabric
-  API **0.116.17+1.21.1** (ou une version compatible plus récente) — ceux-ci tournent normalement sous un
-  Java 21 classique (le runtime de jeu, différent du JDK utilisé pour builder).
+- Pour **jouer** avec le mod une fois compilé : Minecraft **1.21.1**, Fabric Loader **≥ 0.18.1** (plancher
+  volontairement bas pour rester compatible avec les modpacks encore sur cette version — voir
+  `fabric.mod.json`), Fabric API **0.116.17+1.21.1** (ou une version compatible plus récente, qui
+  n'exige elle-même que Fabric Loader ≥ 0.15.11) — ceux-ci tournent normalement sous un Java 21
+  classique (le runtime de jeu, différent du JDK utilisé pour builder).
 
 ### 1.1 Installer un JDK 25 (si absent)
 
