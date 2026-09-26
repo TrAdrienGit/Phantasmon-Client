@@ -83,11 +83,13 @@ en solo comme sur n'importe quel serveur vanilla/Fabric classique.
 
 ---
 
-## 4. Tester la fonctionnalité actuelle
+## 4. Tester les fonctionnalités actuelles
 
-L'unique fonctionnalité présente à ce stade : une fois connecté à un monde/serveur, le mod envoie un
-appel `GET /health` au backend **toutes les secondes** et affiche le résultat dans le chat du joueur
-(préfixe `[Phantasmon]`). Le ping s'arrête automatiquement à la déconnexion.
+### 4.1 Heartbeat backend (Phase 0 groundwork)
+
+Une fois connecté à un monde/serveur, le mod envoie un appel `GET /health` au backend **toutes les
+secondes** et affiche le résultat dans le chat du joueur (préfixe `[Phantasmon]`). Le ping s'arrête
+automatiquement à la déconnexion.
 
 Pour le voir fonctionner :
 
@@ -98,9 +100,32 @@ Pour le voir fonctionner :
    seconde. Si le backend n'est pas joignable, le message affiche `Backend injoignable (...)` à la place
    — c'est le comportement attendu, pas un bug.
 
-**Note** : l'URL du backend est actuellement codée en dur sur `http://localhost:8080/health`
-(`PhantasmonClient.HEALTH_URI`) — le client et le backend doivent tourner sur la même machine pour ce
-test. Ce sera rendu configurable avant toute utilisation réelle multi-machines.
+### 4.2 Connexion (Phase 5)
+
+Taper `/phantasmon login` dans le chat une fois connecté à un monde. Le mod, dans l'ordre :
+
+1. Appelle `GET /version` (avant toute authentification, CAD Partie 3 §E).
+2. Si la version du mod est sous `min_supported_version` : affiche un message d'incompatibilité et
+   s'arrête là (pas de tentative d'auth).
+3. Si compatible mais sous `current_version` : affiche un avertissement non bloquant et continue.
+4. Effectue le flux Mojang `joinServer` (nécessite un **vrai compte Microsoft/Mojang** — les comptes
+   hors-ligne/crackés sont explicitement non supportés et rejetés avant même l'appel réseau) puis
+   `POST /auth/session`.
+5. En cas de succès, le JWT (access + refresh) est conservé **en mémoire uniquement** le temps de la
+   session de jeu (jamais écrit sur disque) et un message de confirmation s'affiche.
+
+Tous les messages (succès, erreurs, avertissements) passent par `lang/fr_fr.json`/`lang/en_us.json` — le
+jeu doit être en français ou en anglais pour voir la traduction correspondante, aucun texte brut n'est
+affiché.
+
+**Notes** :
+- L'URL du backend est actuellement codée en dur sur `http://localhost:8080`
+  (`BackendConfig.BASE_URL`) — le client et le backend doivent tourner sur la même machine pour ce test.
+  Ce sera rendu configurable avant toute utilisation réelle multi-machines.
+- Pour tester le cas "version incompatible", changer temporairement
+  `phantasmon.version.min-supported` côté backend (`application.properties`) à une valeur supérieure à
+  `1.0.0` (version actuelle du mod, `gradle.properties`), relancer le backend, puis réessayer
+  `/phantasmon login`.
 
 ---
 
@@ -112,3 +137,5 @@ test. Ce sera rendu configurable avant toute utilisation réelle multi-machines.
 | Le mod n'apparaît pas dans le jeu | Mauvais dossier `mods/`, Fabric API manquante/incompatible, version Minecraft ≠ 1.21.1 |
 | Toujours `Backend injoignable` dans le chat | Backend non lancé, mauvais port, pare-feu local |
 | Crash au lancement mentionnant un mixin | Ne devrait pas arriver (mixins actuellement vides) — signaler si observé |
+| `/phantasmon login` répond "comptes hors-ligne non supportés" | Compte de lancement en mode hors-ligne/cracké (`User.Type.LEGACY`) — utiliser un vrai compte Microsoft |
+| `/phantasmon login` échoue à la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang temporairement indisponible |

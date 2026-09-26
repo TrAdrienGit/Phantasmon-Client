@@ -1,0 +1,15 @@
+{
+  "phantasmon.auth.checking_version": "[Phantasmon] Checking backend compatibility...",
+  "phantasmon.auth.already_connected": "[Phantasmon] Already connected.",
+  "phantasmon.auth.offline_unsupported": "[Phantasmon] Offline (cracked) accounts are not supported — a Microsoft/Mojang account is required.",
+  "phantasmon.auth.version_incompatible": "[Phantasmon] Your mod version is too old (minimum supported: %s). Please update via Modrinth/CurseForge.",
+  "phantasmon.auth.version_outdated": "[Phantasmon] A newer version is available (%s). Consider updating soon.",
+  "phantasmon.auth.mojang_failed": "[Phantasmon] Mojang session verification failed. Please try again.",
+  "phantasmon.auth.network_error": "[Phantasmon] Could not reach the backend.",
+  "phantasmon.auth.success": "[Phantasmon] Connected successfully.",
+  "phantasmon.auth.session_expired": "[Phantasmon] Your session has expired, please log in again.",
+  "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang could not verify your session.",
+  "phantasmon.auth.error.uuid_mismatch": "[Phantasmon] Account identity mismatch.",
+  "phantasmon.auth.error.invalid_refresh_token": "[Phantasmon] Your session could not be renewed, please log in again.",
+  "phantasmon.error.unknown": "[Phantasmon] An unexpected error occurred."
+}

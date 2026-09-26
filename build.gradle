@@ -9,6 +9,7 @@ repositories {
 	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
+	mavenCentral() // JUnit only — Minecraft/Fabric artifacts still resolve via Loom's own repos.
 }
 
 loom {
@@ -30,6 +31,25 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// JUnit — pure-logic classes only (e.g. VersionCompatibility); rendering/world
+	// interaction stays manual QA (see PHANTASMON_CLIENT conventions).
+	testImplementation platform('org.junit:junit-bom:5.11.3')
+	testImplementation 'org.junit.jupiter:junit-jupiter'
+	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+// The test source set only sees `main` by default; pure-logic classes like
+// VersionCompatibility live in `client` (this mod is client-only), so wire it in.
+sourceSets {
+	test {
+		compileClasspath += sourceSets.client.output
+		runtimeClasspath += sourceSets.client.output
+	}
 }
 
 processResources {
