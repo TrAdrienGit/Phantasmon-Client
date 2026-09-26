@@ -19,6 +19,7 @@ import com.mystaria.phantasmon.client.network.AuthSessionRequestDto;
 import com.mystaria.phantasmon.client.network.AuthSessionResponseDto;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendConfig;
+import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.network.BackendJsonClient;
 import com.mystaria.phantasmon.client.network.RefreshRequestDto;
 import com.mystaria.phantasmon.client.network.VersionResponseDto;

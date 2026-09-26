@@ -137,6 +137,41 @@ affiché.
   connecté plus longtemps que le TTL choisi et vérifier dans les logs backend qu'un `POST /auth/refresh`
   apparaît tout seul, sans relancer `/phantasmon login`. Remettre le TTL par défaut ensuite.
 
+### 4.3 Pokémon — création (import Showdown), PC, édition (Phase 6)
+
+**Approche "tout en commandes" (Adrien, 2026-09-26)** : pas d'écran graphique pour l'instant (PC/éditeur
+visuel), tout passe par `/phantasmon pokemon *`. Nécessite d'être connecté (`/phantasmon login`).
+
+- `/phantasmon pokemon import` — lit le **presse-papiers** (pas un argument de commande, le chat Minecraft
+  ne supporte pas le texte multi-lignes) et y cherche un ou plusieurs sets au format Pokémon Showdown
+  (blocs séparés par une ligne vide). Copier un export Showdown (depuis le site Showdown, un calculateur
+  de dégâts, etc.) presse-papiers, puis taper la commande en jeu.
+- `/phantasmon pokemon list` — liste tous les Pokémon du joueur (espèce, niveau, UUID court cliquable —
+  clic = copie l'UUID complet dans le presse-papiers, à coller dans les commandes suivantes).
+- `/phantasmon pokemon pc <1-16>` — contenu d'une boîte du PC.
+- `/phantasmon pokemon delete <uuid>`
+- `/phantasmon pokemon clone <uuid>`
+- `/phantasmon pokemon edit <uuid> level <1-100>`
+
+**Table de correspondance Showdown → Cobblemon** (`CobblemonIdentifiers`) : plutôt qu'une table figée de
+1000+ entrées, une normalisation algorithmique vérifiée contre les vrais fichiers du repo de référence
+`cobblemon` (2026-09-26) — espèces/formes/attaques : minuscules, tout séparateur supprimé (`"Body Slam"` →
+`bodyslam`, `"Samurott-Hisui"` → espèce `samurott` + forme `hisui`) ; capacités/objets tenus : minuscules
+avec underscore (`"Assault Vest"` → `assault_vest`). Une petite liste d'exceptions couvre les espèces dont
+le nom contient un tiret sans que ce soit un séparateur de forme (Ho-Oh, Porygon-Z, Nidoran-M/F, etc.).
+Couvert par `CobblemonIdentifiersTest`/`ShowdownParserTest`/`ShowdownImportMapperTest`.
+
+**Volontairement absent de cette V1** (à ajouter plus tard si besoin) : écran/bloc PC visuel, édition des
+autres champs qu'un Pokémon (nickname/IVs/EVs/moves/objet tenu — le backend ne permet de toute façon
+patcher que `level`/`teamSlot`/`data` en bloc pour l'instant), assignation/retrait d'un Pokémon de l'équipe
+active (le backend n'a actuellement aucun moyen de *retirer* un `team_slot` via `PATCH`, seulement d'en
+définir un — gap identifié côté backend, pas encore comblé), export Showdown.
+
+**Pour tester** : backend lancé, `/phantasmon login`, copier le bloc d'exemple du CAD (Partie 1 §8,
+`Bichou (Samurott-Hisui) @ Assault Vest / Ability: Torrent / ...`) dans le presse-papiers, puis
+`/phantasmon pokemon import`. Vérifier dans les logs backend un `POST /pokemon -> 201`, puis
+`/phantasmon pokemon list` pour voir le Pokémon créé.
+
 ---
 
 ## 5. Dépannage courant

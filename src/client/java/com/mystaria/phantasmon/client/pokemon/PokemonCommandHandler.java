@@ -1,0 +1,201 @@
+package com.mystaria.phantasmon.client.pokemon;
+
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CompletionException;
+
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.ClickEvent;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+
+import com.mystaria.phantasmon.client.auth.AuthSession;
+import com.mystaria.phantasmon.client.network.BackendApiException;
+import com.mystaria.phantasmon.client.network.BackendErrorMessages;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParseException;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParser;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
+
+/**
+ * Business logic behind {@code /phantasmon pokemon *} (CAD Phase 6) — kept
+ * separate from {@link com.mystaria.phantasmon.client.command.PhantasmonCommands}'s
+ * brigadier wiring, same split as {@link com.mystaria.phantasmon.client.auth.AuthService}.
+ * All-commands approach (Adrien: 2026-09-26) rather than a graphical PC/editor
+ * screen — creation goes exclusively through Showdown import for now, per the
+ * CAD's explicit "V1 minimum: import by command" allowance (Partie 1 §10).
+ */
+public final class PokemonCommandHandler {
+
+	/** Matches Cobblemon's targeted version (see client conventions) — stamped on every Pokémon this client creates. */
+	private static final String COBBLEMON_DATA_VERSION = "1.8.1";
+
+	private final PokemonClient pokemonClient;
+	private final AuthSession session;
+
+	public PokemonCommandHandler(PokemonClient pokemonClient, AuthSession session) {
+		this.pokemonClient = pokemonClient;
+		this.session = session;
+	}
+
+	public void importFromClipboard(FabricClientCommandSource source) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
+		if (clipboard == null || clipboard.isBlank()) {
+			source.sendError(Component.translatable("phantasmon.pokemon.import.clipboard_empty"));
+			return;
+		}
+
+		List<ShowdownPokemon> parsed;
+		try {
+			parsed = ShowdownParser.parseTeam(clipboard);
+		} catch (ShowdownParseException ex) {
+			source.sendError(Component.translatable("phantasmon.pokemon.import.parse_error", ex.getMessage()));
+			return;
+		}
+
+		String bearerToken = session.accessToken();
+		for (ShowdownPokemon set : parsed) {
+			importOne(source, bearerToken, set);
+		}
+	}
+
+	private void importOne(FabricClientCommandSource source, String bearerToken, ShowdownPokemon set) {
+		PokemonCreateRequestDto request;
+		try {
+			request = ShowdownImportMapper.toCreateRequest(set, COBBLEMON_DATA_VERSION);
+		} catch (ShowdownParseException ex) {
+			source.sendError(Component.translatable("phantasmon.pokemon.import.parse_error_for",
+					set.speciesToken(), ex.getMessage()));
+			return;
+		}
+
+		pokemonClient.create(bearerToken, request)
+				.thenAccept(created -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.import.created", created.species(), shortUuid(created.uuid()))))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, set.speciesToken());
+					return null;
+				});
+	}
+
+	public void list(FabricClientCommandSource source) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+				.thenAccept(pokemons -> {
+					if (pokemons.length == 0) {
+						feedback(source, Component.translatable("phantasmon.pokemon.list.empty"));
+						return;
+					}
+					for (PokemonDto pokemon : pokemons) {
+						feedback(source, summaryLine(pokemon));
+					}
+				})
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void pcBox(FabricClientCommandSource source, int box) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.pcBox(session.accessToken(), session.playerUuid(), box)
+				.thenAccept(pokemons -> {
+					feedback(source, Component.translatable("phantasmon.pokemon.pc.header", box));
+					if (pokemons.length == 0) {
+						feedback(source, Component.translatable("phantasmon.pokemon.pc.empty"));
+						return;
+					}
+					for (PokemonDto pokemon : pokemons) {
+						feedback(source, summaryLine(pokemon));
+					}
+				})
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void delete(FabricClientCommandSource source, UUID pokemonUuid) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.delete(session.accessToken(), pokemonUuid)
+				.thenAccept(ignored -> feedback(source, Component.translatable("phantasmon.pokemon.delete.done", shortUuid(pokemonUuid))))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void clone(FabricClientCommandSource source, UUID pokemonUuid) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.clone(session.accessToken(), pokemonUuid)
+				.thenAccept(cloned -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.clone.done", cloned.species(), shortUuid(cloned.uuid()))))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void editLevel(FabricClientCommandSource source, UUID pokemonUuid, int level) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.update(session.accessToken(), pokemonUuid, new PokemonUpdateRequestDto(null, level, null))
+				.thenAccept(updated -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.edit.level_done", shortUuid(updated.uuid()), updated.level())))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	private boolean requireAuthenticated(FabricClientCommandSource source) {
+		if (!session.isAuthenticated()) {
+			source.sendError(Component.translatable("phantasmon.error.not_authenticated"));
+			return false;
+		}
+		return true;
+	}
+
+	private static MutableComponent summaryLine(PokemonDto pokemon) {
+		String label = pokemon.species() + (pokemon.form() != null ? "-" + pokemon.form() : "")
+				+ " (Lv." + pokemon.level() + ")";
+		MutableComponent uuidPart = Component.literal(shortUuid(pokemon.uuid()))
+				.withStyle(ChatFormatting.GRAY, ChatFormatting.UNDERLINE)
+				.withStyle(style -> style.withClickEvent(
+						new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, pokemon.uuid().toString())));
+		return Component.literal(label + " ").append(uuidPart);
+	}
+
+	private static String shortUuid(UUID uuid) {
+		return uuid.toString().substring(0, 8);
+	}
+
+	private static void reportFailure(FabricClientCommandSource source, Throwable throwable, String context) {
+		Throwable cause = throwable instanceof CompletionException ? throwable.getCause() : throwable;
+		String translationKey = cause instanceof BackendApiException apiException
+				? BackendErrorMessages.translationKey(apiException.errorCode())
+				: "phantasmon.error.network";
+		Component message = context == null
+				? Component.translatable(translationKey)
+				: Component.translatable(translationKey).append(" (" + context + ")");
+		Minecraft.getInstance().execute(() -> source.sendError(message));
+	}
+
+	private static void feedback(FabricClientCommandSource source, Component message) {
+		Minecraft.getInstance().execute(() -> source.sendFeedback(message));
+	}
+}

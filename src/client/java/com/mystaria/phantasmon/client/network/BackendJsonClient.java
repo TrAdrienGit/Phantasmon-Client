@@ -14,10 +14,10 @@ import com.google.gson.JsonSyntaxException;
 
 /**
  * Minimal JSON REST helper shared by every backend call (version handshake,
- * auth, and future domains). Field names are converted camelCase <->
- * snake_case automatically, matching the backend's global Jackson
- * {@code SNAKE_CASE} convention — DTOs use plain camelCase Java fields, no
- * per-field annotation needed, same idea as the backend side.
+ * auth, and every authenticated domain since). Field names are converted
+ * camelCase <-> snake_case automatically, matching the backend's global
+ * Jackson {@code SNAKE_CASE} convention — DTOs use plain camelCase Java
+ * fields, no per-field annotation needed, same idea as the backend side.
  */
 public final class BackendJsonClient {
 
@@ -31,37 +31,63 @@ public final class BackendJsonClient {
 			.build();
 
 	public <T> CompletableFuture<T> get(URI uri, Class<T> responseType) {
-		HttpRequest request = HttpRequest.newBuilder(uri)
-				.timeout(TIMEOUT)
-				.header("Accept", "application/json")
-				.GET()
-				.build();
-		return send(request, responseType);
+		return get(uri, null, responseType);
+	}
+
+	public <T> CompletableFuture<T> get(URI uri, String bearerToken, Class<T> responseType) {
+		HttpRequest.Builder builder = baseBuilder(uri).GET();
+		return send(authorize(builder, bearerToken), responseType);
 	}
 
 	public <T> CompletableFuture<T> post(URI uri, Object requestBody, Class<T> responseType) {
-		HttpRequest request = HttpRequest.newBuilder(uri)
-				.timeout(TIMEOUT)
-				.header("Accept", "application/json")
-				.header("Content-Type", "application/json")
-				.POST(HttpRequest.BodyPublishers.ofString(GSON.toJson(requestBody)))
-				.build();
-		return send(request, responseType);
+		return post(uri, requestBody, null, responseType);
 	}
 
 	public <T> CompletableFuture<T> post(URI uri, Object requestBody, String bearerToken, Class<T> responseType) {
-		HttpRequest request = HttpRequest.newBuilder(uri)
-				.timeout(TIMEOUT)
-				.header("Accept", "application/json")
+		HttpRequest.Builder builder = baseBuilder(uri)
 				.header("Content-Type", "application/json")
-				.header("Authorization", "Bearer " + bearerToken)
-				.POST(HttpRequest.BodyPublishers.ofString(GSON.toJson(requestBody)))
-				.build();
-		return send(request, responseType);
+				.POST(HttpRequest.BodyPublishers.ofString(GSON.toJson(requestBody)));
+		return send(authorize(builder, bearerToken), responseType);
 	}
 
-	private <T> CompletableFuture<T> send(HttpRequest request, Class<T> responseType) {
+	/** {@code POST} with no request body (e.g. {@code /pokemon/{uuid}/clone}). */
+	public <T> CompletableFuture<T> postNoBody(URI uri, String bearerToken, Class<T> responseType) {
+		HttpRequest.Builder builder = baseBuilder(uri).POST(HttpRequest.BodyPublishers.noBody());
+		return send(authorize(builder, bearerToken), responseType);
+	}
+
+	public <T> CompletableFuture<T> patch(URI uri, Object requestBody, String bearerToken, Class<T> responseType) {
+		HttpRequest.Builder builder = baseBuilder(uri)
+				.header("Content-Type", "application/json")
+				.method("PATCH", HttpRequest.BodyPublishers.ofString(GSON.toJson(requestBody)));
+		return send(authorize(builder, bearerToken), responseType);
+	}
+
+	/** {@code DELETE} expecting {@code 204 No Content} — no response body to parse. */
+	public CompletableFuture<Void> delete(URI uri, String bearerToken) {
+		HttpRequest.Builder builder = baseBuilder(uri).DELETE();
+		HttpRequest request = authorize(builder, bearerToken).build();
 		return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+				.thenApply(response -> {
+					if (response.statusCode() >= 200 && response.statusCode() < 300) {
+						return null;
+					}
+					throw toApiException(response);
+				});
+	}
+
+	private static HttpRequest.Builder baseBuilder(URI uri) {
+		return HttpRequest.newBuilder(uri)
+				.timeout(TIMEOUT)
+				.header("Accept", "application/json");
+	}
+
+	private static HttpRequest.Builder authorize(HttpRequest.Builder builder, String bearerToken) {
+		return bearerToken == null ? builder : builder.header("Authorization", "Bearer " + bearerToken);
+	}
+
+	private <T> CompletableFuture<T> send(HttpRequest.Builder builder, Class<T> responseType) {
+		return httpClient.sendAsync(builder.build(), HttpResponse.BodyHandlers.ofString())
 				.thenApply(response -> {
 					if (response.statusCode() >= 200 && response.statusCode() < 300) {
 						return GSON.fromJson(response.body(), responseType);
