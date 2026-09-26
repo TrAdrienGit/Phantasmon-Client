@@ -10,6 +10,11 @@ repositories {
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
 	mavenCentral() // JUnit only — Minecraft/Fabric artifacts still resolve via Loom's own repos.
+	maven {
+		name = "Modrinth"
+		url = "https://api.modrinth.com/maven"
+		content { includeGroup "maven.modrinth" }
+	}
 }
 
 loom {
@@ -31,6 +36,13 @@ dependencies {
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+	// Cobblemon (CAD Phase 7: reuse its Pokémon models/animations/renderer for Ghost entities).
+	// Version pinned by Modrinth VERSION ID, not the plain "1.8.1" string: Cobblemon publishes
+	// separate Fabric/NeoForge builds that both use "1.8.1" as their version_number, which collide
+	// on Modrinth's Maven proxy — the version id is what actually resolves the Fabric jar
+	// unambiguously (verified 2026-09-26 against the live Modrinth API/Maven).
+	modImplementation "maven.modrinth:cobblemon:${project.cobblemon_version}"
 
 	// JUnit — pure-logic classes only (e.g. VersionCompatibility); rendering/world
 	// interaction stays manual QA (see PHANTASMON_CLIENT conventions).

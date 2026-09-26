@@ -76,7 +76,7 @@ public final class PokemonCommandHandler {
 
 		pokemonClient.create(bearerToken, request)
 				.thenAccept(created -> feedback(source, Component.translatable(
-						"phantasmon.pokemon.import.created", created.species(), shortUuid(created.uuid()))))
+						"phantasmon.pokemon.import.created", created.species(), created.uuid().toString())))
 				.exceptionally(ex -> {
 					reportFailure(source, ex, set.speciesToken());
 					return null;
@@ -129,7 +129,7 @@ public final class PokemonCommandHandler {
 			return;
 		}
 		pokemonClient.delete(session.accessToken(), pokemonUuid)
-				.thenAccept(ignored -> feedback(source, Component.translatable("phantasmon.pokemon.delete.done", shortUuid(pokemonUuid))))
+				.thenAccept(ignored -> feedback(source, Component.translatable("phantasmon.pokemon.delete.done", pokemonUuid.toString())))
 				.exceptionally(ex -> {
 					reportFailure(source, ex, null);
 					return null;
@@ -142,7 +142,7 @@ public final class PokemonCommandHandler {
 		}
 		pokemonClient.clone(session.accessToken(), pokemonUuid)
 				.thenAccept(cloned -> feedback(source, Component.translatable(
-						"phantasmon.pokemon.clone.done", cloned.species(), shortUuid(cloned.uuid()))))
+						"phantasmon.pokemon.clone.done", cloned.species(), cloned.uuid().toString())))
 				.exceptionally(ex -> {
 					reportFailure(source, ex, null);
 					return null;
@@ -153,9 +153,73 @@ public final class PokemonCommandHandler {
 		if (!requireAuthenticated(source)) {
 			return;
 		}
-		pokemonClient.update(session.accessToken(), pokemonUuid, new PokemonUpdateRequestDto(null, level, null))
+		pokemonClient.update(session.accessToken(), pokemonUuid, PokemonUpdateRequestDto.setLevel(level))
 				.thenAccept(updated -> feedback(source, Component.translatable(
-						"phantasmon.pokemon.edit.level_done", shortUuid(updated.uuid()), updated.level())))
+						"phantasmon.pokemon.edit.level_done", updated.uuid().toString(), updated.level())))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void teamSet(FabricClientCommandSource source, UUID pokemonUuid, int teamSlot) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.update(session.accessToken(), pokemonUuid, PokemonUpdateRequestDto.movingToTeamSlot(teamSlot))
+				.thenAccept(updated -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.team.set_done", updated.species(), teamSlot)))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void teamClear(FabricClientCommandSource source, UUID pokemonUuid, int boxId, int boxSlot) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.update(session.accessToken(), pokemonUuid, PokemonUpdateRequestDto.movingToPcSlot(boxId, boxSlot))
+				.thenAccept(updated -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.team.clear_done", updated.species(), boxId, boxSlot)))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	/** General PC-slot move (PC→PC repositioning, or team→PC — same underlying operation as {@link #teamClear}). */
+	public void pcMove(FabricClientCommandSource source, UUID pokemonUuid, int boxId, int boxSlot) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.update(session.accessToken(), pokemonUuid, PokemonUpdateRequestDto.movingToPcSlot(boxId, boxSlot))
+				.thenAccept(updated -> feedback(source, Component.translatable(
+						"phantasmon.pokemon.pc.move_done", updated.species(), boxId, boxSlot)))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	public void teamView(FabricClientCommandSource source) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+				.thenAccept(pokemons -> {
+					List<PokemonDto> team = java.util.Arrays.stream(pokemons)
+							.filter(pokemon -> pokemon.teamSlot() != null)
+							.sorted(java.util.Comparator.comparingInt(PokemonDto::teamSlot))
+							.toList();
+					if (team.isEmpty()) {
+						feedback(source, Component.translatable("phantasmon.pokemon.team.empty"));
+						return;
+					}
+					for (PokemonDto pokemon : team) {
+						feedback(source, Component.literal("[" + pokemon.teamSlot() + "] ").append(summaryLine(pokemon)));
+					}
+				})
 				.exceptionally(ex -> {
 					reportFailure(source, ex, null);
 					return null;
@@ -170,18 +234,22 @@ public final class PokemonCommandHandler {
 		return true;
 	}
 
+	/**
+	 * Shows the <b>full</b> UUID as plain visible text — commands need the
+	 * complete UUID, not the shortened form this used to show (Adrien hit this:
+	 * typing the truncated text by hand fails Brigadier's UUID parser). Clicking
+	 * it also pre-fills the chat box with the raw UUID (not a full command,
+	 * since we don't know which action the player wants next) as a copy-paste
+	 * shortcut on top of the visible text, not instead of it.
+	 */
 	private static MutableComponent summaryLine(PokemonDto pokemon) {
 		String label = pokemon.species() + (pokemon.form() != null ? "-" + pokemon.form() : "")
-				+ " (Lv." + pokemon.level() + ")";
-		MutableComponent uuidPart = Component.literal(shortUuid(pokemon.uuid()))
+				+ " (Lv." + pokemon.level() + ") ";
+		MutableComponent uuidPart = Component.literal(pokemon.uuid().toString())
 				.withStyle(ChatFormatting.GRAY, ChatFormatting.UNDERLINE)
 				.withStyle(style -> style.withClickEvent(
-						new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, pokemon.uuid().toString())));
-		return Component.literal(label + " ").append(uuidPart);
-	}
-
-	private static String shortUuid(UUID uuid) {
-		return uuid.toString().substring(0, 8);
+						new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, pokemon.uuid().toString())));
+		return Component.literal(label).append(uuidPart);
 	}
 
 	private static void reportFailure(FabricClientCommandSource source, Throwable throwable, String context) {

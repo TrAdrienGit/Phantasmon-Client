@@ -21,6 +21,7 @@ import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendConfig;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.network.BackendJsonClient;
+import com.mystaria.phantasmon.client.network.HealthResponseDto;
 import com.mystaria.phantasmon.client.network.RefreshRequestDto;
 import com.mystaria.phantasmon.client.network.VersionResponseDto;
 import com.mystaria.phantasmon.client.version.VersionCompatibility;
@@ -45,10 +46,17 @@ public final class AuthService {
 
 	private final BackendJsonClient httpClient;
 	private final AuthSession session;
+	private Runnable onAuthenticated = () -> {
+	};
 
 	public AuthService(BackendJsonClient httpClient, AuthSession session) {
 		this.httpClient = httpClient;
 		this.session = session;
+	}
+
+	/** Invoked right after a successful login — e.g. to open the Ghost presence WebSocket, which needs the fresh JWT. */
+	public void setOnAuthenticated(Runnable onAuthenticated) {
+		this.onAuthenticated = onAuthenticated;
 	}
 
 	public void login() {
@@ -68,6 +76,30 @@ public final class AuthService {
 		httpClient.get(BackendConfig.BASE_URL.resolve("/version"), VersionResponseDto.class)
 				.thenComposeAsync(version -> handleVersion(version, user, client))
 				.exceptionally(this::reportFailure);
+	}
+
+	/**
+	 * Auto-login on world/server join (Adrien: 2026-09-26) — a single
+	 * {@code GET /health} check, and only if it comes back fully {@code UP}
+	 * (backend + database) does it proceed to {@link #login()}. Deliberately
+	 * silent otherwise (no chat message): most world joins have nothing to do
+	 * with Phantasmon at all (singleplayer, a server without the backend
+	 * running, the dev backend simply not started), so a fully-automatic
+	 * background check must never nag the player about a backend it was never
+	 * expecting to reach — {@link #login()} itself still reports network
+	 * errors when the player explicitly runs {@code /phantasmon login}.
+	 */
+	public void autoLoginIfBackendHealthy() {
+		if (session.isAuthenticated()) {
+			return;
+		}
+		httpClient.get(BackendConfig.BASE_URL.resolve("/health"), HealthResponseDto.class)
+				.thenAccept(health -> {
+					if (health.isFullyUp()) {
+						login();
+					}
+				})
+				.exceptionally(ex -> null);
 	}
 
 	/**
@@ -108,6 +140,7 @@ public final class AuthService {
 				.thenAccept(response -> {
 					session.update(user.getProfileId(), user.getName(), response);
 					report("phantasmon.auth.success");
+					onAuthenticated.run();
 				});
 	}
 
