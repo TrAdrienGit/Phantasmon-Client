@@ -11,5 +11,8 @@
   "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang could not verify your session.",
   "phantasmon.auth.error.uuid_mismatch": "[Phantasmon] Account identity mismatch.",
   "phantasmon.auth.error.invalid_refresh_token": "[Phantasmon] Your session could not be renewed, please log in again.",
+  "phantasmon.auth.download_link": "[Download the update]",
+  "phantasmon.ping.enabled": "[Phantasmon] Backend heartbeat enabled (every 30s).",
+  "phantasmon.ping.disabled": "[Phantasmon] Backend heartbeat disabled.",
   "phantasmon.error.unknown": "[Phantasmon] An unexpected error occurred."
 }

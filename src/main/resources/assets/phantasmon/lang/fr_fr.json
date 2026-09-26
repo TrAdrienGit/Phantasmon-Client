@@ -11,5 +11,8 @@
   "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang n'a pas pu vérifier votre session.",
   "phantasmon.auth.error.uuid_mismatch": "[Phantasmon] Incohérence d'identité du compte.",
   "phantasmon.auth.error.invalid_refresh_token": "[Phantasmon] Votre session n'a pas pu être renouvelée, merci de vous reconnecter.",
+  "phantasmon.auth.download_link": "[Télécharger la mise à jour]",
+  "phantasmon.ping.enabled": "[Phantasmon] Ping backend activé (toutes les 30s).",
+  "phantasmon.ping.disabled": "[Phantasmon] Ping backend désactivé.",
   "phantasmon.error.unknown": "[Phantasmon] Une erreur inattendue s'est produite."
 }

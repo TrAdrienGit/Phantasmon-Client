@@ -87,18 +87,21 @@ en solo comme sur n'importe quel serveur vanilla/Fabric classique.
 
 ### 4.1 Heartbeat backend (Phase 0 groundwork)
 
-Une fois connecté à un monde/serveur, le mod envoie un appel `GET /health` au backend **toutes les
-secondes** et affiche le résultat dans le chat du joueur (préfixe `[Phantasmon]`). Le ping s'arrête
-automatiquement à la déconnexion.
+**Désactivé par défaut** (Adrien : 2026-09-26, pour ne pas spammer le chat par défaut). Taper
+`/phantasmon toggle-ping` pour l'activer/désactiver pour la session de jeu en cours (pas persisté). Une
+fois activé, le mod envoie un appel `GET /health` au backend **toutes les 30 secondes** et affiche le
+résultat dans le chat du joueur (préfixe `[Phantasmon]`). Le ping s'arrête aussi automatiquement à la
+déconnexion.
 
 Pour le voir fonctionner :
 
 1. Démarrer le backend en local sur le port 8080 (voir `PHANTASMON_BACKEND_RUNNING.md` dans le repo
    backend).
 2. Lancer Minecraft avec le mod installé et rejoindre un monde (solo ou serveur).
-3. Observer le chat : un message `[Phantasmon] Backend 200 {"status":"UP",...}` doit apparaître chaque
-   seconde. Si le backend n'est pas joignable, le message affiche `Backend injoignable (...)` à la place
-   — c'est le comportement attendu, pas un bug.
+3. Taper `/phantasmon toggle-ping` → message de confirmation d'activation.
+4. Observer le chat : un message `[Phantasmon] Backend 200 {"status":"UP",...}` doit apparaître toutes
+   les 30 secondes. Si le backend n'est pas joignable, le message affiche `Backend injoignable (...)` à
+   la place — c'est le comportement attendu, pas un bug.
 
 ### 4.2 Connexion (Phase 5)
 
@@ -125,7 +128,14 @@ affiché.
 - Pour tester le cas "version incompatible", changer temporairement
   `phantasmon.version.min-supported` côté backend (`application.properties`) à une valeur supérieure à
   `1.0.0` (version actuelle du mod, `gradle.properties`), relancer le backend, puis réessayer
-  `/phantasmon login`.
+  `/phantasmon login`. Le message affiche un lien cliquable (actuellement un placeholder
+  `https://modrinth.com/mod/phantasmon`, à remplacer une fois le mod réellement publié).
+- Pour tester le renouvellement automatique du token (`SessionRefreshScheduler`, vérifie toutes les 60s
+  si un renouvellement est nécessaire), baisser temporairement `phantasmon.jwt.access-ttl` côté backend
+  à une valeur courte mais **pas trop courte** (ex. `PT3M` — avec un TTL de 1 min pile, la marge de
+  sécurité de 30s combinée à l'intervalle de vérification de 60s peut faire manquer la fenêtre). Rester
+  connecté plus longtemps que le TTL choisi et vérifier dans les logs backend qu'un `POST /auth/refresh`
+  apparaît tout seul, sans relancer `/phantasmon login`. Remettre le TTL par défaut ensuite.
 
 ---
 

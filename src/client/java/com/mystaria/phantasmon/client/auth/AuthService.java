@@ -8,9 +8,12 @@ import java.util.concurrent.CompletionException;
 import com.mojang.authlib.exceptions.AuthenticationException;
 
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 
 import com.mystaria.phantasmon.client.network.AuthSessionRequestDto;
 import com.mystaria.phantasmon.client.network.AuthSessionResponseDto;
@@ -31,6 +34,13 @@ import com.mystaria.phantasmon.client.version.VersionCompatibility;
 public final class AuthService {
 
 	private static final String MOD_ID = "phantasmon";
+
+	/**
+	 * Placeholder — no real Modrinth/CurseForge listing exists yet (Adrien:
+	 * 2026-09-26). Swap for the real URL once the mod is published (CAD Partie
+	 * 3 §J).
+	 */
+	private static final String DOWNLOAD_URL_PLACEHOLDER = "https://modrinth.com/mod/phantasmon";
 
 	private final BackendJsonClient httpClient;
 	private final AuthSession session;
@@ -83,7 +93,7 @@ public final class AuthService {
 				modVersion(), version.minSupportedVersion(), version.currentVersion());
 
 		if (status == VersionCompatibility.Status.INCOMPATIBLE) {
-			report("phantasmon.auth.version_incompatible", version.minSupportedVersion());
+			reportVersionIncompatible(version.minSupportedVersion());
 			return CompletableFuture.completedFuture(null);
 		}
 		if (status == VersionCompatibility.Status.OUTDATED) {
@@ -132,11 +142,23 @@ public final class AuthService {
 				.orElse("0.0.0");
 	}
 
+	private static void reportVersionIncompatible(String minSupportedVersion) {
+		MutableComponent message = Component.translatable("phantasmon.auth.version_incompatible", minSupportedVersion);
+		MutableComponent link = Component.translatable("phantasmon.auth.download_link")
+				.withStyle(ChatFormatting.AQUA, ChatFormatting.UNDERLINE)
+				.withStyle(style -> style.withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, DOWNLOAD_URL_PLACEHOLDER)));
+		reportComponent(message.append(" ").append(link));
+	}
+
 	private static void report(String translationKey, Object... args) {
+		reportComponent(Component.translatable(translationKey, args));
+	}
+
+	private static void reportComponent(Component component) {
 		Minecraft.getInstance().execute(() -> {
 			Minecraft client = Minecraft.getInstance();
 			if (client.player != null) {
-				client.player.displayClientMessage(Component.translatable(translationKey, args), false);
+				client.player.displayClientMessage(component, false);
 			}
 		});
 	}

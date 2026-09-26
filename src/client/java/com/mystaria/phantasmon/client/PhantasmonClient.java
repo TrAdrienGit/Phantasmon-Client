@@ -10,10 +10,12 @@ import com.mystaria.phantasmon.client.command.PhantasmonCommands;
 import com.mystaria.phantasmon.client.network.BackendConfig;
 import com.mystaria.phantasmon.client.network.BackendHealthPinger;
 import com.mystaria.phantasmon.client.network.BackendJsonClient;
+import com.mystaria.phantasmon.client.network.PingToggle;
 
 public class PhantasmonClient implements ClientModInitializer {
 
 	private final BackendHealthPinger healthPinger = new BackendHealthPinger(BackendConfig.BASE_URL.resolve("/health"));
+	private final PingToggle pingToggle = new PingToggle(healthPinger);
 	private final AuthSession authSession = new AuthSession();
 	private final AuthService authService = new AuthService(new BackendJsonClient(), authSession);
 	private final SessionRefreshScheduler refreshScheduler = new SessionRefreshScheduler(authService);
@@ -21,14 +23,14 @@ public class PhantasmonClient implements ClientModInitializer {
 	@Override
 	public void onInitializeClient() {
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			healthPinger.start();
+			pingToggle.onJoin();
 			refreshScheduler.start();
 		});
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-			healthPinger.stop();
+			pingToggle.onDisconnect();
 			refreshScheduler.stop();
 			authSession.clear();
 		});
-		PhantasmonCommands.register(authService);
+		PhantasmonCommands.register(authService, pingToggle);
 	}
 }

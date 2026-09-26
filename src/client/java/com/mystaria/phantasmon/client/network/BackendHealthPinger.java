@@ -13,11 +13,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 
 /**
- * Minimal client -> backend heartbeat: pings {@code GET /health} once a
- * second while connected to a world and echoes the result into the player's
+ * Minimal client -> backend heartbeat: pings {@code GET /health} every 30
+ * seconds while connected to a world and echoes the result into the player's
  * chat. This is a deliberate first vertical slice proving the client/backend
  * wire end to end before any real Ghost feature is built on top of it
- * (CAD Phase 5 groundwork).
+ * (CAD Phase 5 groundwork). Off by default — see {@link PingToggle}.
  *
  * <p>The backend URL is hardcoded to the local dev backend for now — this is
  * intentional for this MVP slice, not an oversight. It must become
@@ -26,7 +26,7 @@ import net.minecraft.network.chat.Component;
 public final class BackendHealthPinger {
 
 	private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(2);
-	private static final long PING_INTERVAL_SECONDS = 1;
+	private static final long PING_INTERVAL_SECONDS = 30;
 
 	private final URI healthUri;
 	private final HttpClient httpClient = HttpClient.newBuilder()
