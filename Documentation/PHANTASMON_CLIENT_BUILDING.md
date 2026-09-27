@@ -167,8 +167,8 @@ visuel), tout passe par `/phantasmon pokemon *`. Nécessite d'être connecté (`
 - `/phantasmon pokemon edit <uuid> level <1-100>`
 - `/phantasmon pokemon team` — affiche l'équipe active (1 à 6 Pokémon, triés par emplacement).
 - `/phantasmon pokemon team set <uuid> <1-6>` — place un Pokémon à cet emplacement d'équipe.
-- `/phantasmon pokemon team clear <uuid> <box 1-16> <slot 1-36>` — retire un Pokémon de l'équipe vers le PC.
-- `/phantasmon pokemon pc move <uuid> <box 1-16> <slot 1-36>` — déplace un Pokémon (du PC ou de l'équipe)
+- `/phantasmon pokemon team clear <uuid> <box 1-16> <slot 1-30>` — retire un Pokémon de l'équipe vers le PC.
+- `/phantasmon pokemon pc move <uuid> <box 1-16> <slot 1-30>` — déplace un Pokémon (du PC ou de l'équipe)
   vers cet emplacement PC précis — même mécanisme que `team clear`, en plus général (utile aussi pour
   réorganiser le PC lui-même).
 

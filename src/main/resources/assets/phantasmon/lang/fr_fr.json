@@ -33,7 +33,7 @@
   "phantasmon.error.network": "[Phantasmon] Impossible de joindre le backend.",
   "phantasmon.error.ownership_mismatch": "[Phantasmon] Ce Pokémon ne vous appartient pas.",
   "phantasmon.pokemon.error.not_found": "[Phantasmon] Pokémon introuvable.",
-  "phantasmon.pokemon.error.pc_full": "[Phantasmon] Votre PC est plein (576/576).",
+  "phantasmon.pokemon.error.pc_full": "[Phantasmon] Votre PC est plein (480/480).",
   "phantasmon.pokemon.error.slot_occupied": "[Phantasmon] Cet emplacement est déjà occupé.",
   "phantasmon.pokemon.error.legality_iv": "[Phantasmon] IV invalide (doit être entre 0 et 31).",
   "phantasmon.pokemon.error.legality_ev": "[Phantasmon] EV invalide (doit être entre 0 et 252).",

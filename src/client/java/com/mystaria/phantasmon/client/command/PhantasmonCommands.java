@@ -64,7 +64,7 @@ public final class PhantasmonCommands {
 							.then(ClientCommandManager.literal("move")
 									.then(ClientCommandManager.argument("uuid", UuidArgument.uuid())
 											.then(ClientCommandManager.argument("box", IntegerArgumentType.integer(1, 16))
-													.then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 36)).executes(context -> {
+													.then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 30)).executes(context -> {
 														pokemonCommands.pcMove(context.getSource(),
 																context.getArgument("uuid", UUID.class),
 																IntegerArgumentType.getInteger(context, "box"),
@@ -106,7 +106,7 @@ public final class PhantasmonCommands {
 								.then(ClientCommandManager.literal("clear")
 										.then(ClientCommandManager.argument("uuid", UuidArgument.uuid())
 												.then(ClientCommandManager.argument("box", IntegerArgumentType.integer(1, 16))
-														.then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 36)).executes(context -> {
+														.then(ClientCommandManager.argument("slot", IntegerArgumentType.integer(1, 30)).executes(context -> {
 															pokemonCommands.teamClear(context.getSource(),
 																context.getArgument("uuid", UUID.class),
 																IntegerArgumentType.getInteger(context, "box"),
