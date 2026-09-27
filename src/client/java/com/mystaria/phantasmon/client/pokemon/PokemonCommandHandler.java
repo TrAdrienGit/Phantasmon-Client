@@ -12,6 +12,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
+import com.mystaria.phantasmon.client.gui.PhantasmonPcScreen;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
@@ -29,8 +30,8 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  */
 public final class PokemonCommandHandler {
 
-	/** Matches Cobblemon's targeted version (see client conventions) — stamped on every Pokémon this client creates. */
-	private static final String COBBLEMON_DATA_VERSION = "1.8.1";
+	/** Matches Cobblemon's targeted version (see client conventions) — stamped on every Pokémon this client creates. Public: also used by {@link PhantasmonPcScreen}'s own clipboard import. */
+	public static final String COBBLEMON_DATA_VERSION = "1.8.1";
 
 	private final PokemonClient pokemonClient;
 	private final AuthSession session;
@@ -224,6 +225,37 @@ public final class PokemonCommandHandler {
 					reportFailure(source, ex, null);
 					return null;
 				});
+	}
+
+	private volatile boolean pcScreenRequested;
+
+	/**
+	 * Opens the graphical PC screen (Adrien: 2026-09-27, HUD phase 1) — the
+	 * command-based {@code pc <box>}/{@code pc move} above remain available
+	 * alongside it. Deliberately does <b>not</b> call {@code setScreen}
+	 * synchronously here: decompiling {@code ChatScreen.keyPressed} confirms it
+	 * calls {@code handleChatInput(...)} (which dispatches this very command)
+	 * and then <i>unconditionally</i> calls {@code minecraft.setScreen(null)}
+	 * right after, with no check on what screen is current — opening our
+	 * screen synchronously during command dispatch means the chat screen's own
+	 * close would immediately wipe it out again (confirmed live: Adrien saw
+	 * nothing happen even though the screen briefly existed). Instead this just
+	 * raises a flag consumed by {@link #tick()} on the next client tick, by
+	 * which point chat has already finished closing itself.
+	 */
+	public void openPc(FabricClientCommandSource source) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pcScreenRequested = true;
+	}
+
+	/** Called once per client tick (see {@link #openPc}) — opens the PC screen if one was requested. */
+	public void tick() {
+		if (pcScreenRequested) {
+			pcScreenRequested = false;
+			Minecraft.getInstance().setScreen(new PhantasmonPcScreen(pokemonClient, session));
+		}
 	}
 
 	private boolean requireAuthenticated(FabricClientCommandSource source) {

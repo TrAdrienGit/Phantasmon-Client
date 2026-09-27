@@ -25,6 +25,11 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * <p>{@code /phantasmon toggle-ping} switches the {@code GET /health} heartbeat
  * on/off for the current session — off by default (Adrien: 2026-09-26).
  *
+ * <p>{@code /phantasmon pc} opens the graphical PC HUD screen (Adrien:
+ * 2026-09-27, first HUD pass) — see {@link com.mystaria.phantasmon.client.gui.PhantasmonPcScreen}.
+ * The command-based {@code /phantasmon pokemon pc <box>}/{@code pc move} below
+ * remain available alongside it.
+ *
  * <p>{@code /phantasmon pokemon *} (CAD Phase 6, all-commands approach, Adrien:
  * 2026-09-26): {@code import} (reads a Showdown block from the clipboard),
  * {@code list}, {@code pc <box>}, {@code delete <uuid>}, {@code clone <uuid>},
@@ -154,6 +159,10 @@ public final class PhantasmonCommands {
 						boolean enabled = pingToggle.toggle();
 						context.getSource().sendFeedback(Component.translatable(
 								enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));
+						return Command.SINGLE_SUCCESS;
+					}))
+					.then(ClientCommandManager.literal("pc").executes(context -> {
+						pokemonCommands.openPc(context.getSource());
 						return Command.SINGLE_SUCCESS;
 					}))
 					.then(pokemonNode)

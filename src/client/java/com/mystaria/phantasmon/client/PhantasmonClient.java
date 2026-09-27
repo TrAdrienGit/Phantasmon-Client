@@ -46,7 +46,10 @@ public class PhantasmonClient implements ClientModInitializer {
 			ghostSession.stop();
 			authSession.clear();
 		});
-		ClientTickEvents.END_CLIENT_TICK.register(client -> ghostSession.onClientTick());
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			ghostSession.onClientTick();
+			pokemonCommands.tick();
+		});
 
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands);
 	}

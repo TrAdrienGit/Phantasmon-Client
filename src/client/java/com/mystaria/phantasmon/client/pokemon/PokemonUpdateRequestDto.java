@@ -15,18 +15,23 @@ import java.util.Map;
  * drag&drop semantics apply regardless of the PC/team mix on either side — an
  * empty destination is a plain move, an occupied one swaps the two Pokémon.
  */
-public record PokemonUpdateRequestDto(Map<String, Object> data, Integer level, Integer teamSlot,
-		Integer boxId, Integer boxSlot) {
+public record PokemonUpdateRequestDto(Map<String, Object> data, Integer level, String nature, String ability,
+		Boolean isShiny, Integer teamSlot, Integer boxId, Integer boxSlot) {
 
 	public static PokemonUpdateRequestDto setLevel(int level) {
-		return new PokemonUpdateRequestDto(null, level, null, null, null);
+		return new PokemonUpdateRequestDto(null, level, null, null, null, null, null, null);
 	}
 
 	public static PokemonUpdateRequestDto movingToTeamSlot(int teamSlot) {
-		return new PokemonUpdateRequestDto(null, null, teamSlot, null, null);
+		return new PokemonUpdateRequestDto(null, null, null, null, null, teamSlot, null, null);
 	}
 
 	public static PokemonUpdateRequestDto movingToPcSlot(int boxId, int boxSlot) {
-		return new PokemonUpdateRequestDto(null, null, null, boxId, boxSlot);
+		return new PokemonUpdateRequestDto(null, null, null, null, null, null, boxId, boxSlot);
+	}
+
+	/** Full-form edit (HUD editor, 2026-09-27): everything the edit screen can change in one PATCH — never touches location. */
+	public static PokemonUpdateRequestDto editing(Map<String, Object> data, int level, String nature, String ability, boolean isShiny) {
+		return new PokemonUpdateRequestDto(data, level, nature, ability, isShiny, null, null, null);
 	}
 }
