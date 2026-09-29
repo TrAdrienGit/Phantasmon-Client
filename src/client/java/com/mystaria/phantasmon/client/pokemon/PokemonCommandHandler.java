@@ -250,6 +250,61 @@ public final class PokemonCommandHandler {
 		pcScreenRequested = true;
 	}
 
+	/** Same as {@link #openPc(FabricClientCommandSource)}, for the {@code open_pc} keybind (Adrien: 2026-09-29) — a keybind has no command source to report a "not authenticated" error through, so this reports directly to chat instead. */
+	public void openPc() {
+		if (!session.isAuthenticated()) {
+			chatMessage(Component.translatable("phantasmon.error.not_authenticated"));
+			return;
+		}
+		pcScreenRequested = true;
+	}
+
+	/**
+	 * Sends out whichever Pokémon currently occupies **team slot 1** as a Ghost
+	 * (Adrien: 2026-09-29 — {@code /phantasmon sendout} no longer takes a UUID
+	 * argument; typing a UUID by hand every time was the exact "très chiant"
+	 * pain point that motivated this, same as the trade UUID complaint). Shared
+	 * by both that command and the new {@code sendout} keybind — neither needs
+	 * a {@link FabricClientCommandSource} anymore since there's no argument to
+	 * parse, so feedback goes straight to chat like {@link #openPc()}.
+	 * {@code onFound} is only invoked on success (main client thread), letting
+	 * the actual {@code GhostSession.sendOut(UUID)} call stay outside this
+	 * class — {@code pokemon} has no reason to depend on {@code ghost}.
+	 */
+	public void sendOutTeamLead(java.util.function.Consumer<UUID> onFound) {
+		if (!session.isAuthenticated()) {
+			chatMessage(Component.translatable("phantasmon.error.not_authenticated"));
+			return;
+		}
+		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+				.thenAccept(pokemons -> {
+					java.util.Optional<PokemonDto> lead = java.util.Arrays.stream(pokemons)
+							.filter(pokemon -> pokemon.teamSlot() != null && pokemon.teamSlot() == 1)
+							.findFirst();
+					if (lead.isEmpty()) {
+						chatMessage(Component.translatable("phantasmon.ghost.error.no_team_lead"));
+						return;
+					}
+					UUID uuid = lead.get().uuid();
+					Minecraft.getInstance().execute(() -> onFound.accept(uuid));
+				})
+				.exceptionally(ex -> {
+					Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
+					String key = cause instanceof BackendApiException apiException
+							? BackendErrorMessages.translationKey(apiException.errorCode())
+							: "phantasmon.error.network";
+					Minecraft.getInstance().execute(() -> chatMessage(Component.translatable(key)));
+					return null;
+				});
+	}
+
+	private static void chatMessage(Component message) {
+		var player = Minecraft.getInstance().player;
+		if (player != null) {
+			player.displayClientMessage(message, false);
+		}
+	}
+
 	/** Called once per client tick (see {@link #openPc}) — opens the PC screen if one was requested. */
 	public void tick() {
 		if (pcScreenRequested) {

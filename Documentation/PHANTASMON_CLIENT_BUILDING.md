@@ -936,6 +936,123 @@ allers-retours capture d'écran/ajustement de code.
 
 ---
 
+### 4.30 Premier test multijoueur réel : URL du backend pointée sur la machine dev (2026-09-29)
+
+- **Contexte** : premier vrai test à deux clients. Setup actuel (temporaire, pas propre — assumé) :
+  machine dev (`100.116.43.32` en IP Tailscale) fait tourner le backend + Postgres + un client
+  Minecraft (`MystAria_`) ; machine "production-server" (`100.106.248.73`, tunnel SSH/Tailscale, voir
+  `Phantasmon-Backend/Documentation/SERVER_AGENT_BRIEFING.md`) fait tourner un 2e client Minecraft
+  (`TheMashen`) et possède elle aussi les repos + un service NSSM pour le backend, **mais ce backend-là
+  n'est volontairement pas utilisé pour l'instant** — les deux clients doivent parler au même backend
+  (celui de la machine dev) pour partager les mêmes joueurs/échanges/présence.
+- **`BackendConfig.BASE_URL`** changé de `http://localhost:8080` vers `http://100.116.43.32:8080` —
+  sinon le client tournant sur la machine serveur aurait tenté de parler à *son propre* localhost (donc
+  au backend NSSM, avec une base Postgres complètement séparée), rendant tout partage de données
+  impossible entre les deux joueurs. Toujours une seule constante en dur (pas encore configurable côté
+  utilisateur — noté comme limitation connue dans le fichier lui-même), donc à réviser avant tout vrai
+  déploiement.
+- **Connexion entre les deux clients** : pas de serveur dédié buildé exprès (inutile et long à
+  maintenir en synchro avec les ~230 mods du modpack) — un simple **"Ouvrir au LAN"** depuis une partie
+  solo sur le modpack `Cobblemon Academy 2.0` suffit, le serveur intégré tournant déjà avec tous les
+  mods nécessaires. L'autre client se connecte en direct via l'IP Tailscale de l'hôte + le port annoncé
+  dans le chat (la découverte automatique "Parties locales" ne fonctionne **pas** à travers Tailscale,
+  qui ne relaie pas le broadcast UDP du LAN — connexion directe uniquement).
+- **Déploiement** : `scripts/deploy-to-prod-server.sh` build une seule fois puis copie le jar dans les
+  deux dossiers `mods/` (local `Cobblemon Academy 2.0`, serveur `Cobblemon Academy 2.0 - Copie`),
+  nettoyant l'ancien jar à chaque fois. Un redémarrage du jeu déjà lancé est nécessaire pour charger le
+  nouveau jar.
+- **Non testé par Claude** — à confirmer par Adrien : connexion effective entre les deux comptes,
+  visibilité mutuelle des Ghost Pokémon, échanges.
+
+---
+
+### 4.31 Bug réel trouvé au 1er test : le sendout ne se propage pas à l'autre joueur (2026-09-29)
+
+- **Symptôme observé par Adrien** : après `/phantasmon sendout`, le log backend affiche
+  `broadcasting to 0 group member(s) + self` — l'autre joueur, pourtant dans le même monde, ne voit rien.
+- **Cause réelle, confirmée par les logs** : les deux joueurs rejoignent avec un `server_fingerprint`
+  différent. Celui qui héberge la partie (`Minecraft.isLocalServer() == true`, c'est lui qui a fait
+  "Ouvrir au LAN") calcule toujours `"singleplayer"` ; celui qui se connecte en tant qu'invité calcule un
+  hash de l'adresse tapée pour se connecter (`Minecraft.getCurrentServer().ip`, ici l'IP Tailscale de
+  l'hôte). Ces deux valeurs ne peuvent **jamais** coïncider, même si les deux joueurs sont bel et bien
+  dans la même session — `PresenceService` les place donc dans deux groupes différents.
+- **Ce n'est pas un bug de "vraie prod"** : sur un vrai serveur dédié, personne n'est "l'hôte local" —
+  tous les joueurs se connectent de la même façon et calculent donc le même hash. Ce problème est
+  spécifiquement un artefact de la méthode de test choisie ("Ouvrir au LAN" pour éviter de monter un
+  serveur dédié avec les ~230 mods du modpack, jugé trop long).
+- **Solution temporaire de test** : nouvelle commande `/phantasmon debug fingerprint <valeur>` — force
+  manuellement le `server_fingerprint` envoyé au backend à une valeur choisie, identique sur les deux
+  clients, au lieu de la valeur calculée automatiquement. `/phantasmon debug fingerprint` sans argument
+  retire l'override. **Même logique que l'ancienne commande de debug `iconanchor`** (§4.21/§4.22) : un
+  hook temporaire pour débloquer un test, pas une vraie fonctionnalité, à retirer une fois les tests
+  multijoueur terminés.
+- **⚠️ Important pour la suite du test** : l'override ne s'applique qu'au **prochain** envoi de
+  `JoinServerGroup`, qui n'a lieu qu'une fois par connexion. Comme les deux joueurs étaient déjà connectés
+  avec le mauvais fingerprint au moment où ce correctif arrive, il faut, dans l'ordre : 1) chaque joueur
+  tape `/phantasmon debug fingerprint memetest` (la **même** valeur des deux côtés), 2) **quitter le monde
+  et le rejoindre** (pas juste re-taper `/phantasmon login`, qui ne fait rien si déjà connecté) pour
+  déclencher un nouveau cycle de connexion qui enverra le fingerprint forcé.
+- **Non testé par Claude** — correctif écrit et déployé (build+tests verts) suite au retour d'Adrien, mais
+  pas encore confirmé en jeu.
+- **Mise à jour (2026-09-29) — override persisté sur disque** : Adrien a demandé que la valeur forcée
+  s'applique automatiquement après chaque login, sans avoir à retaper la commande à chaque reconnexion.
+  L'override est maintenant écrit dans un simple fichier texte du dossier de config du mod
+  (`config/phantasmon-fingerprint-override.txt`, une valeur brute, pas de JSON — c'est un réglage de test
+  jetable, pas un vrai paramètre utilisateur) et relu au lancement du jeu. Reste **entièrement opt-in** :
+  rien n'est jamais écrit tant que la commande n'a pas été tapée au moins une fois, et
+  `/phantasmon debug fingerprint` sans argument efface à la fois la valeur en mémoire et le fichier,
+  remettant le calcul normal en place pour de bon. Il faut donc toujours taper la commande une première
+  fois sur chaque client (avec la même valeur des deux côtés) — c'est seulement les fois *suivantes*
+  (relance du jeu, reconnexion) qui deviennent automatiques.
+
+---
+
+### 4.32 Raccourcis clavier PC/sendout, et sendout simplifié (2026-09-29)
+
+- **Contexte** : suite au retour d'Adrien sur la lourdeur des UUID en trade, deux améliorations
+  d'ergonomie indépendantes du sujet trade lui-même.
+- **`/phantasmon sendout` ne prend plus d'UUID** — il sort systématiquement le Pokémon actuellement à
+  l'**emplacement 1 de l'équipe** (`PokemonCommandHandler.sendOutTeamLead`). Pour sortir un autre
+  Pokémon, il faut d'abord `/phantasmon pokemon team set <uuid> 1`. Message dédié
+  (`phantasmon.ghost.error.no_team_lead`) si l'emplacement 1 est vide.
+- **Deux nouveaux raccourcis clavier** (`PhantasmonKeybinds`, nouvelle classe) : un pour ouvrir le PC
+  (touche P par défaut), un pour le sendout équipe (touche O par défaut) — les deux apparaissent dans
+  Options > Contrôles sous la catégorie "Phantasmon" et sont librement rebindables. Réutilisent le même
+  code que les commandes chat correspondantes (`PokemonCommandHandler.openPc()`/`sendOutTeamLead(...)`,
+  nouvelles surcharges sans `FabricClientCommandSource` puisqu'un raccourci clavier n'a pas de contexte
+  de commande — le retour se fait directement dans le chat).
+- **Persistance des touches assignées entre sessions et mises à jour du mod** : c'est du comportement
+  Minecraft natif, rien codé spécifiquement — tant que les identifiants (`key.phantasmon.open_pc`,
+  `key.phantasmon.sendout`) ne changent pas d'une version à l'autre, Minecraft retrouve et réapplique
+  tout seul la touche choisie par le joueur via `options.txt`, exactement comme pour n'importe quel autre
+  mod avec des raccourcis.
+- **Piste explorée puis écartée pour le "Ghost Trade" dans la roue Cobblemon (touche R)** : Cobblemon
+  n'expose aucune API pour ajouter une option à sa roue d'interaction joueur — c'est un enum Java fermé
+  (`PlayerInteractOptionsPacket.Options`) rempli côté serveur Cobblemon, jamais extensible par un autre
+  mod. L'ajouter de force nécessiterait un Mixin dans les classes internes de Cobblemon
+  (`InteractWheelGuiFactoryKt`/`InteractWheelGUI`) — techniquement possible (vérifié par décompilation)
+  mais fragile (peut casser silencieusement à chaque mise à jour de Cobblemon) et ce serait le tout
+  premier Mixin de ce mod. **Idée mise de côté, intéressante pour Adrien, mais pas implémentée** — le
+  raccourci clavier dédié ci-dessus est le choix retenu pour l'instant à la place d'une option dans la
+  roue Cobblemon. Le vrai menu "Ghost Trade" (interface où les deux joueurs choisissent leurs Pokémon et
+  valident ensemble) reste à concevoir — c'est une fonctionnalité bien plus grosse qu'un raccourci
+  (négociation en temps réel entre deux clients via WebSocket), pas encore commencée.
+- Build + tests verts, déployé sur les deux machines.
+- **Non testé par Claude** — à confirmer par Adrien en jeu.
+- **Mise à jour (2026-09-29) — sendout devient un toggle** : après test, Adrien a demandé que
+  `/phantasmon sendout` (commande **et** touche) bascule entre sortir et rappeler, plutôt que de
+  toujours sortir. Nouveau `PhantasmonCommands.toggleSendOut(...)` (public static, partagé par la
+  commande et la touche) : si un Ghost est déjà dehors (`GhostSession.hasActiveGhost()`), rappelle ;
+  sinon, sort le Pokémon de l'emplacement 1 comme avant. Aucun changement côté `/phantasmon recall`
+  (reste disponible séparément).
+- **Touche "trade" absente — clarification** : ce n'est pas un oubli/bug, elle n'a jamais été
+  implémentée. Le message précédent mentionnait vouloir « un raccourci clavier indépendant » pour
+  Ghost Trade à la place d'une option dans la roue Cobblemon, mais seuls les raccourcis PC et sendout
+  ont été codés à ce stade — le vrai menu Ghost Trade (choix des Pokémon + validation à deux) n'existe
+  pas encore, donc une touche pour l'ouvrir n'aurait rien à ouvrir pour l'instant.
+
+---
+
 ## 5. Dépannage courant
 
 | Symptôme | Cause probable |

@@ -45,6 +45,7 @@
   "phantasmon.ghost.sendout_confirmed": "[Phantasmon] %s est sorti.",
   "phantasmon.ghost.recall_confirmed": "[Phantasmon] Ghost rappelé.",
   "phantasmon.ghost.error.not_in_team": "[Phantasmon] Seuls les Pokémon présents dans l'équipe active peuvent être sortis (pas ceux du PC).",
+  "phantasmon.ghost.error.no_team_lead": "[Phantasmon] Aucun Pokémon à l'emplacement 1 de l'équipe — utilisez /phantasmon pokemon team set <uuid> 1.",
   "phantasmon.trade.propose.done": "[Phantasmon] Échange proposé (%s).",
   "phantasmon.trade.accept.done": "[Phantasmon] Échange accepté — Pokémon échangés.",
   "phantasmon.trade.cancel.done": "[Phantasmon] Échange annulé.",
@@ -99,5 +100,8 @@
   "phantasmon.pc.edit.save": "Enregistrer",
   "phantasmon.pc.edit.cancel": "Annuler",
   "phantasmon.pc.edit.error_ability_required": "Le talent ne peut pas être vide.",
-  "phantasmon.pc.edit.search_placeholder": "Rechercher..."
+  "phantasmon.pc.edit.search_placeholder": "Rechercher...",
+  "key.categories.phantasmon": "Phantasmon",
+  "key.phantasmon.open_pc": "Ouvrir le PC",
+  "key.phantasmon.sendout": "Sortir/rappeler le Pokémon en tête d'équipe"
 }

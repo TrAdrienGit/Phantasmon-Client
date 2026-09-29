@@ -45,6 +45,7 @@
   "phantasmon.ghost.sendout_confirmed": "[Phantasmon] %s is out.",
   "phantasmon.ghost.recall_confirmed": "[Phantasmon] Ghost recalled.",
   "phantasmon.ghost.error.not_in_team": "[Phantasmon] Only Pokémon in your active team can be sent out (not PC-only ones).",
+  "phantasmon.ghost.error.no_team_lead": "[Phantasmon] No Pokémon in team slot 1 — use /phantasmon pokemon team set <uuid> 1.",
   "phantasmon.trade.propose.done": "[Phantasmon] Trade proposed (%s).",
   "phantasmon.trade.accept.done": "[Phantasmon] Trade accepted — Pokémon swapped.",
   "phantasmon.trade.cancel.done": "[Phantasmon] Trade cancelled.",
@@ -99,5 +100,8 @@
   "phantasmon.pc.edit.save": "Save",
   "phantasmon.pc.edit.cancel": "Cancel",
   "phantasmon.pc.edit.error_ability_required": "Ability cannot be empty.",
-  "phantasmon.pc.edit.search_placeholder": "Search..."
+  "phantasmon.pc.edit.search_placeholder": "Search...",
+  "key.categories.phantasmon": "Phantasmon",
+  "key.phantasmon.open_pc": "Open PC",
+  "key.phantasmon.sendout": "Send out/recall team lead"
 }

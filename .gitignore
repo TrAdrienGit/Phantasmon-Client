@@ -59,3 +59,4 @@ replay_pid*
 *~
 *.swp
 *.swo
+scripts/deploy-to-prod-server.sh

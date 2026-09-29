@@ -1,6 +1,9 @@
 package com.mystaria.phantasmon.client.ghost;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -9,6 +12,8 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+
+import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
@@ -38,6 +43,9 @@ public final class GhostSession {
 	private static final Logger LOG = LoggerFactory.getLogger(GhostSession.class);
 	private static final long TICK_INTERVAL_SECONDS = 1;
 
+	/** The one currently-constructed instance (there's only ever one, see {@link com.mystaria.phantasmon.client.PhantasmonClient}) — kept so the static {@link #setFingerprintOverride(String)} debug hook can force an immediate re-{@code JoinServerGroup} without needing a full reconnect. */
+	private static GhostSession activeInstance;
+
 	private final PhantasmonWebSocketClient webSocketClient;
 	private final GhostEntityManager entityManager;
 	private final AuthSession authSession;
@@ -66,6 +74,7 @@ public final class GhostSession {
 		this.webSocketClient = new PhantasmonWebSocketClient();
 		this.entityManager = new GhostEntityManager();
 		this.authSession = authSession;
+		activeInstance = this;
 	}
 
 	/** Trade notifications (CAD Phase 8) ride the same presence WebSocket this class owns. */
@@ -193,6 +202,27 @@ public final class GhostSession {
 				"dimension", player.level().dimension().location().toString()));
 	}
 
+	/**
+	 * Forces an immediate re-{@code JoinServerGroup} with whatever
+	 * {@link #serverFingerprint()} currently resolves to — used by
+	 * {@link #setFingerprintOverride(String)} so changing the debug fingerprint
+	 * takes effect right away instead of only on the next fresh connection
+	 * (Adrien: 2026-09-29, first attempt required a full world
+	 * quit-and-rejoin since {@link #joinedGroup} only ever sends once per
+	 * connection). {@code PresenceService} on the backend just replaces the
+	 * player's presence entry on a repeat join, so re-sending is always safe.
+	 */
+	private void rejoinGroupNow() {
+		if (!connected) {
+			return;
+		}
+		Player player = Minecraft.getInstance().player;
+		if (player != null) {
+			joinServerGroup(player);
+			joinedGroup = true;
+		}
+	}
+
 	private void handleMessage(String type, Map<String, Object> data) {
 		switch (type) {
 			case "GhostEntitySpawn" -> Minecraft.getInstance().execute(() -> {
@@ -264,7 +294,83 @@ public final class GhostSession {
 		return value instanceof Number number ? number.doubleValue() : 0;
 	}
 
+	/**
+	 * One plain-text file under the mod's config folder holding the override
+	 * value (absent/empty = no override) — deliberately not a JSON config, this
+	 * is a throwaway test knob, not a real user-facing setting.
+	 */
+	private static final Path OVERRIDE_FILE = FabricLoader.getInstance()
+			.getConfigDir().resolve("phantasmon-fingerprint-override.txt");
+
+	/**
+	 * Temporary test-only override for {@link #serverFingerprint()} — see
+	 * {@link #setFingerprintOverride(String)}. {@code null} means "use the real
+	 * computed value" (the default, and the only thing that should ever run in
+	 * production). Loaded once from {@link #OVERRIDE_FILE} on class init so it
+	 * survives a full game relaunch, not just a world rejoin — see
+	 * {@link #loadPersistedOverride()}.
+	 */
+	private static String fingerprintOverride = loadPersistedOverride();
+
+	/**
+	 * Debug hook for {@code /phantasmon debug fingerprint <value>} (Adrien:
+	 * 2026-09-29, first real 2-client test). Real bug found: the LAN host's own
+	 * client always computes {@code "singleplayer"} ({@link Minecraft#isLocalServer()}
+	 * is true for whoever opened the world to LAN), while a guest connecting to
+	 * that same session computes a hash of whatever address it typed to connect
+	 * — the two can never match, even though both are genuinely in the same
+	 * session, so {@code PresenceService} never groups them together. This is
+	 * NOT a production bug: a real dedicated server has no "host" client at all,
+	 * every player computes the same IP-based hash. It's purely an artifact of
+	 * using "Open to LAN" as a stand-in for a dedicated server during testing.
+	 * This override lets both testers manually agree on one literal string
+	 * instead of waiting on a real dedicated server — remove once no longer
+	 * needed for testing, same pattern as the earlier temporary
+	 * {@code iconanchor} debug command.
+	 *
+	 * <p>Persisted to disk (Adrien: 2026-09-29, so it applies automatically on
+	 * every future login/reconnect without retyping the command each time) —
+	 * still fully opt-in: nothing is ever written unless this command is
+	 * explicitly run at least once, and running it with no value both clears
+	 * the in-memory override and deletes the file, restoring normal behavior
+	 * for good.
+	 */
+	public static void setFingerprintOverride(String value) {
+		fingerprintOverride = value == null || value.isBlank() ? null : value;
+		try {
+			if (fingerprintOverride == null) {
+				Files.deleteIfExists(OVERRIDE_FILE);
+			} else {
+				Files.writeString(OVERRIDE_FILE, fingerprintOverride);
+			}
+		} catch (IOException ex) {
+			LOG.warn("Failed to persist fingerprint override to {}", OVERRIDE_FILE, ex);
+		}
+		if (activeInstance != null) {
+			activeInstance.rejoinGroupNow();
+		}
+	}
+
+	public static String getFingerprintOverride() {
+		return fingerprintOverride;
+	}
+
+	private static String loadPersistedOverride() {
+		try {
+			if (Files.exists(OVERRIDE_FILE)) {
+				String value = Files.readString(OVERRIDE_FILE).strip();
+				return value.isEmpty() ? null : value;
+			}
+		} catch (IOException ex) {
+			LOG.warn("Failed to load persisted fingerprint override from {}", OVERRIDE_FILE, ex);
+		}
+		return null;
+	}
+
 	private static String serverFingerprint() {
+		if (fingerprintOverride != null) {
+			return fingerprintOverride;
+		}
 		Minecraft client = Minecraft.getInstance();
 		if (client.isLocalServer()) {
 			return "singleplayer";

@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
@@ -35,9 +36,11 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * {@code list}, {@code pc <box>}, {@code delete <uuid>}, {@code clone <uuid>},
  * {@code edit <uuid> level <n>} — see {@link PokemonCommandHandler}.
  *
- * <p>{@code /phantasmon sendout <uuid>}/{@code recall} (CAD Phase 7) trigger
- * the Ghost Entity spawn/despawn over the presence WebSocket — see
- * {@link GhostSession}.
+ * <p>{@code /phantasmon sendout}/{@code recall} (CAD Phase 7) trigger the
+ * Ghost Entity spawn/despawn over the presence WebSocket — see
+ * {@link GhostSession}. {@code sendout} takes no argument (Adrien:
+ * 2026-09-29): it always sends out whichever Pokémon is in team slot 1, see
+ * {@link PokemonCommandHandler#sendOutTeamLead}.
  *
  * <p>{@code /phantasmon trade *} (CAD Phase 8, same all-commands approach):
  * {@code propose <recipient> <offered> <requested>}, {@code accept <uuid>},
@@ -165,17 +168,46 @@ public final class PhantasmonCommands {
 						pokemonCommands.openPc(context.getSource());
 						return Command.SINGLE_SUCCESS;
 					}))
+					.then(ClientCommandManager.literal("debug")
+							.then(ClientCommandManager.literal("fingerprint")
+									.executes(context -> {
+										GhostSession.setFingerprintOverride(null);
+										context.getSource().sendFeedback(Component.literal(
+												"[Phantasmon] server_fingerprint override retiré, valeur calculée normalement."));
+										return Command.SINGLE_SUCCESS;
+									})
+									.then(ClientCommandManager.argument("value", StringArgumentType.word()).executes(context -> {
+										String value = StringArgumentType.getString(context, "value");
+										GhostSession.setFingerprintOverride(value);
+										context.getSource().sendFeedback(Component.literal(
+												"[Phantasmon] server_fingerprint forcé à \"" + value + "\" (test uniquement)."));
+										return Command.SINGLE_SUCCESS;
+									}))))
 					.then(pokemonNode)
 					.then(tradeNode)
-					.then(ClientCommandManager.literal("sendout")
-							.then(ClientCommandManager.argument("uuid", UuidArgument.uuid()).executes(context -> {
-								ghostSession.sendOut(context.getArgument("uuid", UUID.class));
-								return Command.SINGLE_SUCCESS;
-							})))
+					.then(ClientCommandManager.literal("sendout").executes(context -> {
+						toggleSendOut(pokemonCommands, ghostSession);
+						return Command.SINGLE_SUCCESS;
+					}))
 					.then(ClientCommandManager.literal("recall").executes(context -> {
 						ghostSession.recall();
 						return Command.SINGLE_SUCCESS;
 					})));
 		});
+	}
+
+	/**
+	 * {@code /phantasmon sendout} is a toggle (Adrien: 2026-09-29): sends out the
+	 * team lead if nothing is currently out, recalls otherwise — same behavior
+	 * shared by the {@code sendout} keybind (see
+	 * {@code com.mystaria.phantasmon.client.PhantasmonKeybinds}), hence
+	 * {@code public static} rather than private to this class.
+	 */
+	public static void toggleSendOut(PokemonCommandHandler pokemonCommands, GhostSession ghostSession) {
+		if (ghostSession.hasActiveGhost()) {
+			ghostSession.recall();
+		} else {
+			pokemonCommands.sendOutTeamLead(ghostSession::sendOut);
+		}
 	}
 }
