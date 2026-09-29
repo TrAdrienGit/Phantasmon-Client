@@ -3,6 +3,11 @@ package com.mystaria.phantasmon.client.pokemon;
 import java.util.Locale;
 import java.util.Map;
 
+import com.cobblemon.mod.common.api.pokemon.Natures;
+import com.cobblemon.mod.common.pokemon.Nature;
+
+import net.minecraft.network.chat.Component;
+
 /**
  * The standard Gen 3+ nature stat bonus/malus table. The 5 neutral natures
  * (Hardy, Docile, Serious, Bashful, Quirky) are deliberately absent from the
@@ -43,5 +48,24 @@ public final class NatureModifiers {
 
 	public static Modifier get(String natureId) {
 		return natureId == null ? null : TABLE.get(natureId.toLowerCase(Locale.ROOT));
+	}
+
+	/**
+	 * Localized nature name (e.g. "Adamant"/its translation) via Cobblemon's own
+	 * {@code Natures.getNature(id)} — {@link Nature#getDisplayName()} returns the raw
+	 * translation key (e.g. "cobblemon.nature.adamant"), not resolved text, same as
+	 * {@code AbilityTemplate#getDisplayName()} (Adrien: 2026-09-29, both the read-only
+	 * detail panel and the edit screen's Nature dropdown were still showing the raw
+	 * capitalized id). Falls back to a capitalized id if the lookup fails.
+	 */
+	public static String displayName(String natureId) {
+		if (natureId == null) {
+			return "?";
+		}
+		Nature nature = Natures.getNature(natureId.toLowerCase(Locale.ROOT));
+		if (nature != null) {
+			return Component.translatable(nature.getDisplayName()).getString();
+		}
+		return natureId.isEmpty() ? natureId : natureId.substring(0, 1).toUpperCase(Locale.ROOT) + natureId.substring(1);
 	}
 }

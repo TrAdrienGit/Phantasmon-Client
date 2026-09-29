@@ -93,10 +93,11 @@
   "phantasmon.pc.edit.shiny_off": "Shiny: No",
   "phantasmon.pc.edit.ivs": "IVs (0-31)",
   "phantasmon.pc.edit.evs": "EVs (0-252)",
-  "phantasmon.pc.edit.moves": "Moves (Cobblemon id)",
+  "phantasmon.pc.edit.moves": "Moves",
   "phantasmon.pc.edit.import_clipboard": "Import Showdown (clipboard)",
   "phantasmon.pc.edit.import_done": "Form filled from clipboard — check and Save.",
   "phantasmon.pc.edit.save": "Save",
   "phantasmon.pc.edit.cancel": "Cancel",
-  "phantasmon.pc.edit.error_ability_required": "Ability cannot be empty."
+  "phantasmon.pc.edit.error_ability_required": "Ability cannot be empty.",
+  "phantasmon.pc.edit.search_placeholder": "Search..."
 }

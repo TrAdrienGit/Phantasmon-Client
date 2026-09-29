@@ -93,10 +93,11 @@
   "phantasmon.pc.edit.shiny_off": "Chromatique : Non",
   "phantasmon.pc.edit.ivs": "IVs (0-31)",
   "phantasmon.pc.edit.evs": "EVs (0-252)",
-  "phantasmon.pc.edit.moves": "Capacités (id Cobblemon)",
+  "phantasmon.pc.edit.moves": "Capacités",
   "phantasmon.pc.edit.import_clipboard": "Importer Showdown (presse-papiers)",
   "phantasmon.pc.edit.import_done": "Formulaire rempli depuis le presse-papiers — vérifiez puis Enregistrer.",
   "phantasmon.pc.edit.save": "Enregistrer",
   "phantasmon.pc.edit.cancel": "Annuler",
-  "phantasmon.pc.edit.error_ability_required": "Le talent ne peut pas être vide."
+  "phantasmon.pc.edit.error_ability_required": "Le talent ne peut pas être vide.",
+  "phantasmon.pc.edit.search_placeholder": "Rechercher..."
 }

@@ -43,6 +43,11 @@ dependencies {
 	// on Modrinth's Maven proxy — the version id is what actually resolves the Fabric jar
 	// unambiguously (verified 2026-09-26 against the live Modrinth API/Maven).
 	modImplementation "maven.modrinth:cobblemon:${project.cobblemon_version}"
+	// Cobblemon's own API surface is Kotlin (e.g. AbilityPool implements Iterable<T> via a
+	// Kotlin marker interface); fabric-language-kotlin supplies kotlin-stdlib at runtime
+	// (it's a Cobblemon dependency), but javac still needs the class files on the compile
+	// classpath to resolve that interface hierarchy — compileOnly avoids bundling a second copy.
+	compileOnly "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
 
 	// JUnit — pure-logic classes only (e.g. VersionCompatibility); rendering/world
 	// interaction stays manual QA (see PHANTASMON_CLIENT conventions).

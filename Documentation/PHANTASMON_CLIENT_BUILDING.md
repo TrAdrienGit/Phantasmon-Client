@@ -770,6 +770,172 @@ allers-retours capture d'écran/ajustement de code.
 
 ---
 
+### 4.24 Talent/Objet/Capacités : sélecteurs au lieu de texte libre (2026-09-27)
+
+- **Problème adressé** : un joueur ne connaît pas forcément l'id Cobblemon exact d'un talent, d'un objet ou
+  d'une capacité — les champs `Talent`/`Objet tenu`/`Capacités ×4` de l'écran d'édition étaient de simples
+  `EditBox` en texte libre. Ils deviennent des menus déroulants (même mécanisme que Nature/Type téra déjà en
+  place).
+- **Talent** : liste simple (pas de recherche, un Pokémon a au plus ~4 talents), chargée depuis les vraies
+  données Cobblemon de l'espèce (`Species.getAbilities()` → `AbilityPool`, dédupliquée — le même talent peut
+  apparaître à plusieurs priorités, ex. normal + caché). La valeur actuelle du Pokémon reste toujours
+  sélectionnable même si elle n'apparaît pas dans la liste de l'espèce (mismatch de données).
+- **Objet tenu** : menu déroulant avec **champ de recherche**, liste tous les objets `cobblemon:*` du
+  registre d'objets (`BuiltInRegistries.ITEM`, filtré par namespace — mêmes conventions que la résolution
+  d'icône d'objet du §4.23). Volontairement limité aux objets Cobblemon : le reste du code (stockage,
+  résolution d'icône) suppose déjà qu'un id nu est toujours dans ce namespace.
+- **Capacités (×4)** : menu déroulant avec **champ de recherche** par emplacement, liste toutes les capacités
+  du jeu (`Moves.names()`). Une capacité déjà choisie dans un *autre* des 4 emplacements est automatiquement
+  exclue de la liste de celui en cours d'édition — impossible d'avoir deux fois la même capacité.
+- **Recherche** : pas un vrai `EditBox` — un simple buffer de texte (`searchQuery`) géré via
+  `charTyped`/`keyPressed` (Retour arrière, Échap) pendant qu'un menu ITEM/MOVE est ouvert, pour rester
+  cohérent avec le fait que le menu déroulant est déjà un overlay entièrement dessiné à la main plutôt qu'un
+  vrai widget. Une ligne de recherche supplémentaire s'affiche au-dessus de la liste pour ces deux menus
+  seulement (Talent/Nature/Type téra n'en ont pas besoin).
+- **Changement de build.gradle** : ajout de `compileOnly "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"`. Sans
+  ça, `javac` refuse de compiler `for (PotentialAbility p : species.getAbilities())` avec
+  `cannot access KMappedMarker` — l'API Cobblemon `AbilityPool` implémente `Iterable<T>` via une interface
+  marqueur Kotlin, et `kotlin-stdlib` n'était présent qu'à l'exécution (fourni par `fabric-language-kotlin`,
+  une dépendance de Cobblemon), jamais sur le classpath de compilation de ce projet. Aucun impact runtime :
+  c'est une dépendance de compilation uniquement, `fabric-language-kotlin` reste la seule copie chargée en
+  jeu.
+- **Non testé par Claude** — `./gradlew build` passe (compilation + tests unitaires), mais tout le flux visuel
+  (ouverture des menus, recherche, exclusion des doublons de capacités, sauvegarde) reste à valider en jeu par
+  Adrien.
+
+---
+
+### 4.25 Filtrage des objets « stratégiques » et noms localisés (2026-09-29)
+
+- **Problème 1 — trop d'objets listés** : le menu déroulant « Objet tenu » listait tout objet
+  `cobblemon:*`, y compris des blocs/objets utilitaires du mod (pas des objets de combat). Corrigé en
+  filtrant sur la présence du data component `HeldItemEffectComponent` de Cobblemon
+  (`CobblemonItemComponents.HELD_ITEM_EFFECT`, lu via `Item.components()`) — c'est exactement le
+  composant que le moteur de combat de Cobblemon lit pour savoir qu'un objet a un effet en combat
+  (Leftovers, Choice Band, Vive-Poteau, baies, etc.) ; un bloc/objet utilitaire ne le porte jamais. Cette
+  logique vit dans une nouvelle classe partagée, `CobblemonHeldItems` (paquet `pokemon`, côté client),
+  utilisée à la fois par le sélecteur d'édition et par l'affichage en lecture seule
+  (`PhantasmonPcScreen.resolveHeldItemStack`, qui utilisait auparavant `BuiltInRegistries.ITEM` +
+  namespace `cobblemon:` directement).
+  - Clé de stockage changée : l'id **Showdown** de l'objet (`HeldItemEffectComponent.showdownId`, ex.
+    `leftovers`) plutôt que le chemin d'id d'enregistrement Minecraft de l'objet (qui peut différer, ex.
+    `choice_band` avec underscore) — cohérent avec le format déjà produit par l'import Showdown pour
+    `data.heldItem`.
+- **Problème 2 — ids en anglais peu lisibles** : les menus Talent/Objet/Capacités affichaient l'id brut
+  Cobblemon (ex. `stance-change`, `leftovers`). Ils affichent maintenant le **nom localisé réel** — pour
+  les talents, `AbilityTemplate.getDisplayName()` (capturé une fois par espèce dans `init()` avec l'id,
+  car le talent lui-même n'est pas conservé) ; pour les objets, le nom d'objet vanilla localisé
+  (`Item.getDescription()`, la même API que pour n'importe quel objet Minecraft) ; pour les capacités,
+  `MoveTemplate.getDisplayName()`. Ces trois-là respectent automatiquement la langue du client (repli sur
+  l'anglais si aucune traduction FR n'existe pour cette clé côté Cobblemon) — l'id brut reste stocké/utilisé
+  en interne, seul l'affichage change. La recherche (Objet/Capacités) filtre maintenant sur l'id **ou** le
+  nom affiché, pour retrouver un objet aussi bien en tapant son id anglais que son nom localisé.
+- **Non testé par Claude** — à confirmer par Adrien : que le filtre `HeldItemEffectComponent` exclut bien
+  les objets non-stratégiques attendus sans exclure un vrai objet de combat par erreur, et que les noms
+  affichés sont corrects en jeu.
+- **⚠️ Correction** : les deux points ci-dessus se sont révélés faux à l'usage — voir §4.26.
+
+---
+
+### 4.26 Correctifs suite au test d'Adrien : plus aucun objet trouvé, talents non traduits (2026-09-29)
+
+- **Objets — le filtre `HeldItemEffectComponent` du §4.25 ne renvoyait rien du tout** (testé par Adrien, en
+  français comme en anglais). Ce composant n'est en fait pas posé comme composant par défaut sur les
+  `Item` (`Item.components()` renvoyait toujours `null` pour lui) — mauvaise piste. La vraie source de
+  vérité, trouvée en décompilant le jar Cobblemon : le tag d'objet vanilla **`#cobblemon:held/is_held_item`**
+  — c'est la liste que Cobblemon lui-même maintient pour distinguer un objet de combat réel (Leftovers,
+  Choice Band, baies, etc.) d'un objet utilitaire. `CobblemonHeldItems` (paquet `pokemon`) a été réécrite
+  pour lire ce tag via `Registry.getTagOrEmpty(TagKey<Item>)` plutôt que le data component. Au passage, la
+  clé de stockage revient au chemin d'id Minecraft de l'objet (ex. `choice_band`, avec underscore) — pas un
+  id "Showdown" séparé comme tenté au §4.25, qui n'existait nulle part ailleurs dans le code : c'est
+  exactement le format que `CobblemonIdentifiers.slugUnderscore` produit déjà pour `data.heldItem` à
+  l'import Showdown, donc les deux chemins (import Showdown / sélection manuelle dans l'éditeur) restent
+  cohérents entre eux.
+- **Talents affichés sous forme `cobblemon.ability.<id>`** : `AbilityTemplate.getDisplayName()` ne renvoie
+  pas un nom résolu mais la **clé de traduction brute** (confirmé par décompilation + par ce qu'Adrien a vu
+  à l'écran). Corrigé en enveloppant cette clé dans `Component.translatable(...).getString()` avant de
+  l'afficher — exactement ce que Minecraft fait pour n'importe quelle traduction. Les capacités
+  (`MoveTemplate.getDisplayName()`) n'avaient pas ce problème : cette méthode-là renvoie directement un
+  `Component` déjà traduit, pas une clé brute — d'où le retour d'Adrien confirmant que les capacités
+  fonctionnaient bien dès le premier essai.
+- **Non testé par Claude** — à confirmer par Adrien en jeu : la liste d'objets n'est plus vide et ne contient
+  que des objets de combat réels, et les talents s'affichent maintenant en toutes lettres.
+
+---
+
+### 4.27 Couverture de la liste d'objets + traduction des talents oubliée dans le panneau de détail (2026-09-29)
+
+- **Objets manquants signalés (Énergie Basique, Méga-Gemmes/pierres Méga, Cristaux Z)** : vérifié par
+  décompilation du registre d'objets Cobblemon 1.8.1 — **aucun de ces trois n'existe comme objet dans cette
+  version de Cobblemon** (pas de Méga-Évolution, pas de capacités Z implémentées). Ce n'est donc pas un bug
+  de filtrage de notre côté : le tag `#cobblemon:held/is_held_item` utilisé depuis le §4.26 est la liste
+  exhaustive que Cobblemon lui-même expose. En revanche, les **Gemmes de type** (Gemme Feu, Gemme Eau, etc. —
+  18 objets, `cobblemon:fire_gem` et consorts) existent bel et bien et sont bien listées dans ce tag via une
+  référence imbriquée (`#cobblemon:type_gems`), tout comme les graines de terrain (`#cobblemon:held/terrain_seeds`
+  — Graine Électrique, etc.). Comme le picker était entièrement vide au moment du test précédent (§4.26, avant
+  correction), Adrien n'a pas pu les voir non plus — elles devraient maintenant apparaître avec le reste. Si
+  jamais Cobblemon ajoute la Méga-Évolution/les capacités Z dans une future version, il suffira de mettre à
+  jour la version de Cobblemon utilisée : `CobblemonHeldItems` suit automatiquement ce tag, aucun changement de
+  code nécessaire.
+- **Talent toujours en `cobblemon.ability.<id>` dans le panneau de détail (lecture seule)** : le §4.26 n'avait
+  corrigé la traduction que dans le formulaire d'édition. Le panneau d'affichage du Pokémon sélectionné
+  (`PhantasmonPcScreen`) construisait encore la ligne Talent directement depuis `dto.ability()` brut. Même
+  correctif appliqué ici : nouvelle méthode `abilityLabel(String)` qui résout l'`AbilityTemplate` via
+  `Abilities.get(id)` puis traduit sa clé brute avec `Component.translatable(...)`, à l'identique de ce qui se
+  fait déjà pour les capacités dans ce même panneau (`Moves.INSTANCE.getByName` + `MoveTemplate.getDisplayName()`,
+  qui lui renvoie directement un `Component` déjà traduit).
+- **Non testé par Claude** — à confirmer par Adrien : le talent s'affiche bien traduit sur l'écran de détail, et
+  les Gemmes/graines apparaissent désormais dans le sélecteur d'objet.
+
+---
+
+### 4.28 Recherche Objet/Capacité moins stricte : mots-clés dans n'importe quel ordre (2026-09-29)
+
+- **Problème** : la recherche des menus Objet/Capacités utilisait un simple `String.contains(query)` sur la
+  chaîne entière — il fallait donc taper le nom exact dans le bon ordre. Exemple concret d'Adrien : l'objet
+  s'appelle « Energy Booster » (l'ordre réel du nom anglais), donc taper « Booster Energy » (l'ordre le plus
+  naturel en français) ne trouvait rien.
+- **Correctif** : nouvelle méthode `matchesSearch(id, displayName)` — la requête est découpée en mots
+  (séparés par des espaces), et chaque mot doit apparaître *quelque part* dans « id + nom affiché », dans
+  n'importe quel ordre. Donc « Booster Energy », « Energy Booster » ou juste « Boo » trouvent tous le même
+  objet. S'applique aux deux seuls menus qui ont une recherche (Objet, Capacités) — Talent/Nature/Type téra
+  n'en ont pas besoin (listes courtes).
+- **Non testé par Claude** — à confirmer par Adrien en jeu.
+
+---
+
+### 4.29 Nature/nom/objet non traduits dans le panneau de détail ; confirmation objets manquants (2026-09-29)
+
+- **Nature non traduite** : même bug que les talents (§4.26/§4.27) — `Nature.getDisplayName()` (Cobblemon)
+  renvoie aussi la clé de traduction brute, pas le texte résolu. Corrigé une fois pour toutes dans
+  `NatureModifiers.displayName(String)` (nouvelle méthode partagée, paquet `pokemon`), qui résout la
+  `Nature` via `Natures.getNature(id)` puis traduit sa clé — utilisée à la fois par le panneau de détail
+  (`natureLabel`) et par le menu déroulant Nature de l'éditeur (`natureOptionLabel`), qui avaient chacun leur
+  propre `capitalize(natureId)` avant.
+- **Nom du Pokémon non traduit dans le panneau de détail** : affichait l'id brut capitalisé (ex. "Dialga" ça
+  tombait bien en anglais, mais un nom moins évident resterait faux). Utilise maintenant
+  `Species.getTranslatedName()` (Cobblemon) quand l'espèce se résout, avec repli sur l'id capitalisé sinon.
+  Le suffixe de forme entre parenthèses (ex. « (mega-x) ») reste tel quel — Cobblemon n'expose pas de nom
+  traduit par forme aussi simplement que par espèce.
+- **Nom de l'objet tenu non traduit dans le panneau de détail** : l'icône à côté était déjà la bonne (réelle,
+  résolue), mais le texte à côté restait l'id brut. Corrigé en utilisant `ItemStack.getHoverName()` une fois
+  l'objet résolu (repli sur l'id brut si l'objet ne résout pas).
+- **Méga-Gemmes / Cristaux Z / Energy Booster toujours absents — confirmé, ce n'est pas un bug** : nouvelle
+  vérification par décompilation, cette fois sur la totalité des ~750 champs statiques de `CobblemonItems`
+  (pas seulement ceux de type `CobblemonItem`) : aucune trace de Méga-Pierre, Cristal Z ou Energy Booster,
+  sous quelque nom que ce soit. Point notable : le talent Vigueur (Protosynthesis) existe et sa description
+  mentionne bien l'Energy Booster comme déclencheur possible (texte copié depuis les jeux officiels), mais
+  l'objet lui-même n'a jamais été implémenté dans cette version de Cobblemon (1.8.1, id Modrinth `gBW3vLC7`
+  épinglé dans `gradle.properties`) — c'est une limite connue de Cobblemon (pas de Méga-Évolution ni de
+  capacités Z à ce jour), pas quelque chose que `CobblemonHeldItems`/le tag `is_held_item` filtrerait par
+  erreur. Si une version plus récente de Cobblemon les ajoute un jour, ils apparaîtront automatiquement dans
+  le sélecteur sans changement de code (le tag est suivi dynamiquement) — seule une mise à jour de
+  `cobblemon_version` dans `gradle.properties` serait nécessaire, à discuter avec Adrien le moment venu (ça
+  touche la compatibilité de version Minecraft/Cobblemon globale du mod, pas juste ce menu).
+- **Non testé par Claude** — à confirmer par Adrien en jeu pour les 3 traductions.
+
+---
+
 ## 5. Dépannage courant
 
 | Symptôme | Cause probable |

@@ -15,6 +15,8 @@ import org.joml.Vector3f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.cobblemon.mod.common.api.abilities.AbilityTemplate;
+import com.cobblemon.mod.common.api.abilities.Abilities;
 import com.cobblemon.mod.common.api.moves.MoveTemplate;
 import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
@@ -31,16 +33,15 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
+import com.mystaria.phantasmon.client.pokemon.CobblemonHeldItems;
 import com.mystaria.phantasmon.client.pokemon.HiddenPowerCalculator;
 import com.mystaria.phantasmon.client.pokemon.NatureModifiers;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
@@ -611,10 +612,14 @@ public final class PhantasmonPcScreen extends Screen {
 		Map<String, Object> data = dto.data() != null ? dto.data() : Map.of();
 
 		// ---- Name + type badge(s), above the 3D display ----
-		// Species name always capitalized + bold (Adrien: was raw lowercase Cobblemon
-		// id text like "dialga"); shiny no longer shown as a "*" suffix here, see the
+		// Species name always bold (Adrien: was raw lowercase Cobblemon id text like
+		// "dialga" — now Cobblemon's own localized species name, e.g. "Dialga"/its
+		// translation, via Species.getTranslatedName(); the form suffix, if any,
+		// doesn't have an equivalent per-form translated name API so it stays a
+		// capitalized raw id). Shiny no longer shown as a "*" suffix here, see the
 		// star icon drawn on the screen area below instead.
-		String title = capitalize(dto.species()) + (dto.form() != null && !dto.form().isBlank() ? " (" + dto.form() + ")" : "");
+		String speciesName = species != null ? species.getTranslatedName().getString() : capitalize(dto.species());
+		String title = speciesName + (dto.form() != null && !dto.form().isBlank() ? " (" + dto.form() + ")" : "");
 		Component titleComponent = Component.literal(title).withStyle(ChatFormatting.BOLD);
 		graphics.drawString(font, titleComponent, leftX + 6, nameRowY, 0xFFFFFF);
 		if (species != null) {
@@ -646,8 +651,12 @@ public final class PhantasmonPcScreen extends Screen {
 				screenBoxX + 4, screenBoxY + 4, 0xFFFFFF);
 
 		Object heldItem = data.get("heldItem");
-		String itemText = heldItem != null ? heldItem.toString() : Component.translatable("phantasmon.pc.detail.no_item").getString();
 		ItemStack heldItemStack = heldItem != null ? resolveHeldItemStack(heldItem.toString()) : ItemStack.EMPTY;
+		// Localized item name (e.g. real Minecraft/Cobblemon "Leftovers" text) when the
+		// item resolves; the raw id was shown here before (Adrien: 2026-09-29) even
+		// though the icon right next to it was already the real, localized item.
+		String itemText = !heldItemStack.isEmpty() ? heldItemStack.getHoverName().getString()
+				: heldItem != null ? heldItem.toString() : Component.translatable("phantasmon.pc.detail.no_item").getString();
 		int iconSize = font.lineHeight;
 		int itemTextWidth = font.width(itemText);
 		int groupWidth = itemTextWidth + (heldItemStack.isEmpty() ? 0 : iconSize + 3);
@@ -678,7 +687,7 @@ public final class PhantasmonPcScreen extends Screen {
 		int rowY = mergedBoxY + verticalPad;
 
 		// Ability/Nature/Tera/Hidden Power, in that order, one per line (Adrien: no longer 2-per-row).
-		drawLine(graphics, textX, rowY, "phantasmon.pc.detail.ability", String.valueOf(dto.ability()));
+		drawLine(graphics, textX, rowY, "phantasmon.pc.detail.ability", abilityLabel(dto.ability()));
 		rowY += 10;
 		drawLine(graphics, textX, rowY, "phantasmon.pc.detail.nature", natureLabel(dto.nature()));
 		rowY += 10;
@@ -737,10 +746,19 @@ public final class PhantasmonPcScreen extends Screen {
 		graphics.drawString(font, value, x + font.width(label) + 4, y, valueColor);
 	}
 
+	/** Localized ability name, same reasoning as move names above ({@code move.getDisplayName()}) — {@link AbilityTemplate#getDisplayName()} returns a raw translation key (e.g. "cobblemon.ability.stance_change"), not resolved text, unlike {@code MoveTemplate}'s own version which already returns a translated {@code Component} (Adrien: 2026-09-29, confirmed seeing the raw key on screen here too, in this read-only panel — the edit screen's picker had the same bug, fixed the same way). */
+	private static String abilityLabel(String abilityId) {
+		if (abilityId == null) {
+			return "?";
+		}
+		AbilityTemplate template = Abilities.get(abilityId);
+		return template != null ? Component.translatable(template.getDisplayName()).getString() : capitalize(abilityId);
+	}
+
 	/** e.g. "Adamant (+Atk / -SpA)" — no suffix at all for one of the 5 neutral natures. */
 	private static String natureLabel(String natureId) {
 		NatureModifiers.Modifier modifier = NatureModifiers.get(natureId);
-		String display = natureId == null ? "?" : capitalize(natureId);
+		String display = NatureModifiers.displayName(natureId);
 		return modifier == null ? display : display + " (+" + modifier.boosted() + " / -" + modifier.reduced() + ")";
 	}
 
@@ -894,13 +912,13 @@ public final class PhantasmonPcScreen extends Screen {
 		return top + Math.round(height * ratio);
 	}
 
-	/** Resolves a held item id (e.g. "leftovers") to its real Cobblemon-registered {@link ItemStack} for icon rendering; {@link ItemStack#EMPTY} if unresolvable (matches how species/moves are resolved elsewhere in this class — real Cobblemon data, not a placeholder). */
+	/** Resolves a held item id (e.g. "choice_band") to its real Cobblemon-registered {@link ItemStack} for icon rendering, via {@link CobblemonHeldItems} — the same "has a battle effect" item set the edit screen's picker offers, not just any {@code cobblemon:}-namespaced item; {@link ItemStack#EMPTY} if unresolvable. */
 	private static ItemStack resolveHeldItemStack(String heldItemId) {
 		if (heldItemId == null || heldItemId.isBlank()) {
 			return ItemStack.EMPTY;
 		}
-		Item item = BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("cobblemon", heldItemId.toLowerCase(Locale.ROOT)));
-		return item == Items.AIR ? ItemStack.EMPTY : new ItemStack(item);
+		Item item = CobblemonHeldItems.byId().get(heldItemId.toLowerCase(Locale.ROOT));
+		return item == null ? ItemStack.EMPTY : new ItemStack(item);
 	}
 
 	/** Vanilla item icons always render at a fixed 16×16 — scaled here via pose to match the requested pixel size (Adrien: same height as the item name's own font). */

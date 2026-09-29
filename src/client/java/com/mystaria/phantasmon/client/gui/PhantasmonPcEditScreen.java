@@ -3,13 +3,21 @@ package com.mystaria.phantasmon.client.gui;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.CompletionException;
 
+import org.lwjgl.glfw.GLFW;
+
+import com.cobblemon.mod.common.api.abilities.PotentialAbility;
+import com.cobblemon.mod.common.api.moves.MoveTemplate;
+import com.cobblemon.mod.common.api.moves.Moves;
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
+import com.cobblemon.mod.common.pokemon.Species;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -22,10 +30,12 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
+import com.mystaria.phantasmon.client.pokemon.CobblemonHeldItems;
 import com.mystaria.phantasmon.client.pokemon.NatureModifiers;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
@@ -41,32 +51,44 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  * hit-testing — appropriate here since the form has many small independent
  * fields, unlike {@link PhantasmonPcScreen}'s drag&drop grid.
  *
- * <p><b>Re-skinned to match the PC screen's visual language</b> (Adrien
- * 2026-09-27, after the PC screen's texture pass): the outer panel and every
- * {@link Button} use the same nine-slice sprites as {@link PhantasmonPcScreen}
- * ({@link PhantasmonPcScreen#SPRITE_PANEL}/{@code SPRITE_BUTTON}) via a small
- * {@link SpectralButton} subclass that overrides {@code renderWidget} — vanilla
- * {@link Button} has no public way to swap its texture, so this is the
- * standard way to reskin one. {@link EditBox} keeps its default vanilla look
- * (reskinning it would mean reimplementing text-cursor/selection rendering,
- * out of scope here).
+ * <p><b>Ability/Item/Moves are pickers, not free text</b> (Adrien 2026-09-27:
+ * a player can't be expected to know a raw Cobblemon id like
+ * {@code "stance_change"} or {@code "leftovers"} by heart). Ability lists only
+ * the species' own real learnable abilities
+ * ({@link Species#getAbilities()} — a {@code PotentialAbility} pool, deduped
+ * since the same ability can appear at multiple priorities e.g. normal +
+ * hidden). Item is a searchable picker over only the Cobblemon items that
+ * actually do something in battle — see {@link CobblemonHeldItems} — not every
+ * {@code cobblemon:}-namespaced item (Adrien 2026-09-29: that let non-battle
+ * utility items through). Move is a searchable picker over every move in the
+ * game ({@link Moves#names()}). Every dropdown row shows each entry's real,
+ * localized display name (Cobblemon's own translation keys, same as vanilla
+ * item names — Adrien 2026-09-29: raw English ids aren't practical for
+ * non-English players) while still storing the bare id underneath. A move
+ * already chosen in one of the *other* 3 move slots is excluded from that
+ * slot's own list (no duplicate moves).
  *
- * <p><b>Two-column layout</b> (Adrien's first live-test feedback: the
- * original single-column form overflowed past the bottom of the screen) —
- * left column is identity/behavior fields, right column is IVs/EVs/moves/
- * import. Every single-line field in the left column (nickname/level/
- * ability/item/nature/Tera) now has its label on the <em>same row</em> as its
- * input instead of on the row above (Adrien's second round of feedback); the
- * label column width is measured from the longest translated label so it
- * still lines up correctly in either language.
+ * <p><b>Re-skinned to match the PC screen's visual language</b>: the outer
+ * panel and every {@link Button} use the same nine-slice sprites as
+ * {@link PhantasmonPcScreen} via a small {@link SpectralButton} subclass that
+ * overrides {@code renderWidget} — vanilla {@link Button} has no public way
+ * to swap its texture. {@link EditBox} (nickname/level/IVs/EVs) keeps its
+ * default vanilla look.
  *
- * <p><b>Nature/Tera type use a real dropdown</b>, implemented as a small
- * custom popup list ({@link #openDropdown}) since vanilla Minecraft has no
- * built-in dropdown/combo-box widget. It is always drawn last, strictly after
- * every other panel/label/widget (Adrien: it must render above everything
- * else) — vanilla has no z-order concept, draw order *is* z-order, so
- * {@link #renderDropdown} runs after {@code super.render(...)} in
- * {@link #render}.
+ * <p><b>Two-column layout</b>: left column is identity/behavior fields, right
+ * column is IVs/EVs/moves/import. Every single-line field in the left column
+ * has its label on the same row as its input; the label column width is
+ * measured from the longest translated label.
+ *
+ * <p><b>Dropdowns</b> (Nature/Tera/Ability/Item/Move) are a small custom popup
+ * list ({@link #openDropdown}) since vanilla Minecraft has no built-in
+ * dropdown/combo-box widget. Always drawn last, after every other
+ * panel/label/widget — vanilla has no z-order concept, draw order *is*
+ * z-order. Covered widgets are skipped entirely during their own render pass
+ * (not just painted over) since a plain draw-order + flush() turned out not
+ * to be enough to keep button/field *text* from bleeding through on top of
+ * the dropdown's own text (confirmed live by Adrien, see
+ * {@link #coveredByDropdown}).
  *
  * <p>Saving requires the backend to accept {@code nature}/{@code ability}/
  * {@code is_shiny} on {@code PATCH /pokemon/{uuid}} — see
@@ -89,6 +111,10 @@ public final class PhantasmonPcEditScreen extends Screen {
 			"calm", "gentle", "sassy", "careful", "quirky"
 	};
 	private static final List<ElementalType> TERA_OPTIONS = buildTeraOptions();
+	/** Battle held items only (see {@link CobblemonHeldItems}), sorted once and cached — never every {@code cobblemon:}-namespaced item, which would include non-battle utility items/blocks. */
+	private static List<String> allHeldItemIds;
+	/** Every move in the game ({@link Moves#names()}), sorted once and cached the same way. */
+	private static List<String> allMoveIdsSorted;
 
 	private static final int PANEL_BORDER = 0xFF2FB7C9;
 	private static final int LABEL_COLOR = 0x9FD9E6;
@@ -98,12 +124,16 @@ public final class PhantasmonPcEditScreen extends Screen {
 	private static final int DROPDOWN_ROW_H = 14;
 	private static final int DROPDOWN_MAX_VISIBLE = 8;
 
-	/** Consistent spacing used throughout this form (Adrien: margins/padding must be coherent across every element). */
+	/** Consistent spacing used throughout this form. */
 	private static final int ROW_H = 22;
 	private static final int FIELD_H = 16;
 	private static final int LABEL_GAP = 6;
 
-	private enum DropdownKind { NONE, NATURE, TERA }
+	private enum DropdownKind { NONE, NATURE, TERA, ABILITY, ITEM, MOVE }
+
+	private static boolean isSearchable(DropdownKind kind) {
+		return kind == DropdownKind.ITEM || kind == DropdownKind.MOVE;
+	}
 
 	private final PokemonClient pokemonClient;
 	private final AuthSession session;
@@ -112,23 +142,35 @@ public final class PhantasmonPcEditScreen extends Screen {
 
 	private EditBox nicknameBox;
 	private EditBox levelBox;
-	private EditBox abilityBox;
-	private EditBox itemBox;
 	private final EditBox[] ivBoxes = new EditBox[6];
 	private final EditBox[] evBoxes = new EditBox[6];
-	private final EditBox[] moveBoxes = new EditBox[4];
 
 	private int natureIndex;
 	private ElementalType teraType;
 	private boolean shiny;
+	private String abilityId;
+	/** Empty string = no item (matches the read-only detail panel's "no item" convention). */
+	private String heldItemId = "";
+	/** Empty entry = empty move slot. */
+	private final String[] moveIds = new String[4];
+	/** This species' own real learnable abilities (deduped, current value always included even if species lookup fails). */
+	private List<String> abilityOptions = List.of();
+	/** id → localized display name, built alongside {@link #abilityOptions} in {@link #init()} (the ability's {@code AbilityTemplate} isn't kept around, only its id, so the name is captured once up front). */
+	private final Map<String, String> abilityDisplayNames = new HashMap<>();
 
 	private Button natureValueButton;
 	private Button teraValueButton;
 	private Button shinyButton;
+	private Button abilityValueButton;
+	private Button itemValueButton;
+	private final Button[] moveValueButtons = new Button[4];
 
 	private DropdownKind openDropdown = DropdownKind.NONE;
 	private int dropdownX, dropdownY, dropdownW;
 	private int dropdownScroll;
+	/** Which of the 4 move slots is being edited, only meaningful while {@code openDropdown == MOVE}. */
+	private int activeMoveSlot = -1;
+	private final StringBuilder searchQuery = new StringBuilder();
 
 	private boolean saving;
 	private Component statusMessage = Component.empty();
@@ -137,15 +179,14 @@ public final class PhantasmonPcEditScreen extends Screen {
 	private final List<LabelSpot> labels = new ArrayList<>();
 	/**
 	 * Widgets rendered manually, in this exact order, instead of via
-	 * {@code addRenderableWidget} — Adrien reported the dropdown still painting
-	 * behind button/field text even after a {@code graphics.flush()} call placed
-	 * right before it, meaning something in GuiGraphics's own text-batching
-	 * doesn't respect a simple call-order + flush guarantee here. Registering
-	 * widgets via {@link #addWidget} instead (input/focus/narration only, no
-	 * auto-render) and rendering them ourselves in a single straight-line loop —
-	 * with the dropdown drawn immediately after, in the same loop's continuation —
-	 * removes any dependency on Mojang's internal batch-flush ordering: it's just
-	 * one Java method executing top to bottom.
+	 * {@code addRenderableWidget} — a plain draw-order + {@code flush()} wasn't
+	 * enough to keep the dropdown above button/field *text* specifically (only
+	 * their background sprite correctly got covered). Registering widgets via
+	 * {@link #addWidget} instead (input/focus/narration only, no auto-render)
+	 * and rendering them ourselves lets {@link #coveredByDropdown} skip a
+	 * widget's render call entirely when the open dropdown would cover it —
+	 * neither its background nor its text can possibly appear then, regardless
+	 * of any GuiGraphics batching quirk.
 	 */
 	private final List<Renderable> orderedWidgets = new ArrayList<>();
 
@@ -181,11 +222,42 @@ public final class PhantasmonPcEditScreen extends Screen {
 		labels.clear();
 		orderedWidgets.clear();
 		openDropdown = DropdownKind.NONE;
+		searchQuery.setLength(0);
 		Map<String, Object> data = original.data() != null ? original.data() : Map.of();
 		shiny = original.isShiny();
 		natureIndex = Math.max(0, indexOf(NATURES, original.nature()));
 		Object teraRaw = data.get("teraType");
 		teraType = teraRaw != null ? safeGetType(teraRaw.toString()) : null;
+		abilityId = original.ability();
+		heldItemId = stringOf(data.get("heldItem"));
+		List<Object> initialMoves = asList(data.get("moves"));
+		for (int i = 0; i < 4; i++) {
+			moveIds[i] = i < initialMoves.size() ? String.valueOf(initialMoves.get(i)) : "";
+		}
+
+		// Real learnable abilities for this exact species (not a free-text field
+		// anymore) — deduped since the same ability can appear at more than one
+		// priority (e.g. a normal ability slot and a hidden-ability slot). Display
+		// names are captured here too since AbilityTemplate isn't kept around.
+		Species species = PokemonSpecies.INSTANCE.getByName(original.species());
+		LinkedHashSet<String> abilitySet = new LinkedHashSet<>();
+		abilityDisplayNames.clear();
+		if (species != null) {
+			for (PotentialAbility potential : species.getAbilities()) {
+				String id = potential.getTemplate().getName();
+				abilitySet.add(id);
+				// AbilityTemplate.getDisplayName() returns the raw translation key (e.g.
+				// "cobblemon.ability.stance_change"), not resolved text — confirmed by
+				// Adrien seeing that literal string in the dropdown/button.
+				abilityDisplayNames.put(id, Component.translatable(potential.getTemplate().getDisplayName()).getString());
+			}
+		}
+		if (!abilitySet.contains(abilityId)) {
+			// Always keep the current value selectable even if the species lookup
+			// failed or doesn't (yet) know about it.
+			abilitySet.add(abilityId);
+		}
+		abilityOptions = new ArrayList<>(abilitySet);
 
 		panelW = Math.min(440, this.width - 20);
 		panelX = (this.width - panelW) / 2;
@@ -199,7 +271,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 		int rightX = contentX + colW + colGap;
 		int top = panelY + 24;
 
-		// Label column width measured from the longest of the 6 inline labels, so the
+		// Label column width measured from the longest of the inline labels, so the
 		// fields all start at the same x regardless of which language is active.
 		int labelW = 0;
 		for (String key : new String[] { "phantasmon.pc.edit.nickname", "phantasmon.pc.edit.level",
@@ -208,6 +280,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 		}
 		int fieldX = leftX + labelW + LABEL_GAP;
 		int fieldW = leftX + colW - fieldX;
+		int wideDropdownW = Math.min(panelW - (fieldX - panelX) - 10, 220);
 
 		// ---- Left column: identity & behavior — label and field share one row throughout ----
 		int y = top;
@@ -221,11 +294,17 @@ public final class PhantasmonPcEditScreen extends Screen {
 		y += ROW_H;
 
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.ability"), leftX, y + 4));
-		abilityBox = addField(fieldX, y, fieldW, original.ability());
+		int abilityDropdownY = y + FIELD_H;
+		abilityValueButton = addTracked(new SpectralButton(fieldX, y, fieldW, FIELD_H, Component.empty(),
+				b -> toggleDropdown(DropdownKind.ABILITY, fieldX, abilityDropdownY, fieldW, -1)));
+		updateAbilityLabel();
 		y += ROW_H;
 
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.item"), leftX, y + 4));
-		itemBox = addField(fieldX, y, fieldW, stringOf(data.get("heldItem")));
+		int itemDropdownY = y + FIELD_H;
+		itemValueButton = addTracked(new SpectralButton(fieldX, y, fieldW, FIELD_H, Component.empty(),
+				b -> toggleDropdown(DropdownKind.ITEM, fieldX, itemDropdownY, wideDropdownW, -1)));
+		updateItemLabel();
 		y += ROW_H;
 
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.nature"), leftX, y + 4));
@@ -234,7 +313,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 		// don't fit in the narrow field column, so the dropdown list overhangs it a bit.
 		int natureDropdownW = Math.min(panelW - (fieldX - panelX) - 10, 190);
 		natureValueButton = addTracked(new SpectralButton(fieldX, y, fieldW, FIELD_H, Component.empty(),
-				b -> toggleDropdown(DropdownKind.NATURE, fieldX, natureDropdownY, natureDropdownW)));
+				b -> toggleDropdown(DropdownKind.NATURE, fieldX, natureDropdownY, natureDropdownW, -1)));
 		updateNatureLabel();
 		y += ROW_H;
 
@@ -245,22 +324,18 @@ public final class PhantasmonPcEditScreen extends Screen {
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.tera"), leftX, y + 4));
 		int teraDropdownY = y + FIELD_H;
 		teraValueButton = addTracked(new SpectralButton(fieldX, y, fieldW, FIELD_H, Component.empty(),
-				b -> toggleDropdown(DropdownKind.TERA, fieldX, teraDropdownY, fieldW)));
+				b -> toggleDropdown(DropdownKind.TERA, fieldX, teraDropdownY, fieldW, -1)));
 		updateTeraLabel();
 		y += ROW_H;
 		int leftBottom = y;
 
 		// ---- Right column: IVs / EVs / moves / import ----
 		// Each block's next label is positioned from the *actual* box height (FIELD_H)
-		// rather than a flat ROW_H advance — the two didn't match before, so a label
-		// would start drawing while the previous row's boxes were still a few pixels
-		// tall below it (Adrien: "EVs"/"Capacités" titles ended up under the boxes above).
+		// rather than a flat ROW_H advance, so a label never overlaps the previous
+		// row's boxes regardless of exact spacing constants.
 		int labelToBoxGap = 10;
 		int boxToNextLabelGap = 6;
 		y = top;
-		// "IVs (0-31)" header, then the HP/ATK/.../SPE column labels on their OWN line
-		// below it (Adrien: these were previously drawn at the exact same y as the
-		// header, overlapping it — visible in his screenshot as garbled "IVs"/"HP" text).
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.ivs"), rightX, y));
 		int statLabelY = y + 10;
 		int ivBoxY = statLabelY + labelToBoxGap;
@@ -284,14 +359,19 @@ public final class PhantasmonPcEditScreen extends Screen {
 
 		labels.add(new LabelSpot(Component.translatable("phantasmon.pc.edit.moves"), rightX, y));
 		int moveBoxY = y + labelToBoxGap;
-		List<Object> moves = asList(data.get("moves"));
 		int moveColW = (colW - 6) / 2;
 		int moveRowGap = 4;
+		int moveDropdownW = Math.min(panelW - 20, 240);
 		for (int i = 0; i < 4; i++) {
 			int col = i % 2;
 			int row = i / 2;
-			String value = i < moves.size() ? String.valueOf(moves.get(i)) : "";
-			moveBoxes[i] = addField(rightX + col * (moveColW + 6), moveBoxY + row * (FIELD_H + moveRowGap), moveColW, value);
+			int mx = rightX + col * (moveColW + 6);
+			int my = moveBoxY + row * (FIELD_H + moveRowGap);
+			int slot = i;
+			int moveDropdownY = my + FIELD_H;
+			moveValueButtons[i] = addTracked(new SpectralButton(mx, my, moveColW, FIELD_H, Component.empty(),
+					b -> toggleDropdown(DropdownKind.MOVE, mx, moveDropdownY, moveDropdownW, slot)));
+			updateMoveLabel(i);
 		}
 		y = moveBoxY + 2 * FIELD_H + moveRowGap + boxToNextLabelGap;
 
@@ -318,16 +398,119 @@ public final class PhantasmonPcEditScreen extends Screen {
 		return addTracked(box);
 	}
 
-	private void toggleDropdown(DropdownKind kind, int x, int y, int w) {
-		if (openDropdown == kind) {
+	private void toggleDropdown(DropdownKind kind, int x, int y, int w, int moveSlot) {
+		if (openDropdown == kind && activeMoveSlot == moveSlot) {
 			openDropdown = DropdownKind.NONE;
 			return;
 		}
 		openDropdown = kind;
+		activeMoveSlot = moveSlot;
 		dropdownX = x;
 		dropdownY = y;
 		dropdownW = w;
 		dropdownScroll = 0;
+		searchQuery.setLength(0);
+	}
+
+	/** The underlying ids/values (not display strings) for the currently open dropdown, in display order. Nature/Tera keep their own existing raw sources (a String array / the ElementalType list); this only covers the 3 new pickers. */
+	private List<String> rawOptions() {
+		return switch (openDropdown) {
+			case ABILITY -> abilityOptions;
+			case ITEM -> itemChoices();
+			case MOVE -> moveChoices();
+			case NATURE, TERA, NONE -> List.of();
+		};
+	}
+
+	private List<String> itemChoices() {
+		List<String> result = new ArrayList<>();
+		result.add("");
+		for (String id : allHeldItemIds()) {
+			if (matchesSearch(id, itemDisplayName(id))) {
+				result.add(id);
+			}
+		}
+		return result;
+	}
+
+	private List<String> moveChoices() {
+		List<String> result = new ArrayList<>();
+		result.add("");
+		for (String id : allMoveIdsSorted()) {
+			boolean usedByAnotherSlot = false;
+			for (int i = 0; i < 4; i++) {
+				if (i != activeMoveSlot && id.equalsIgnoreCase(moveIds[i])) {
+					usedByAnotherSlot = true;
+					break;
+				}
+			}
+			if (usedByAnotherSlot) {
+				continue;
+			}
+			if (matchesSearch(id, moveDisplayName(id))) {
+				result.add(id);
+			}
+		}
+		return result;
+	}
+
+	/**
+	 * Matches the current {@link #searchQuery} against an id and its localized display name,
+	 * word-by-word and in any order — e.g. typing "Booster Energy" must still find an item whose
+	 * real name is "Energy Booster" (Adrien: 2026-09-29, a plain whole-string
+	 * {@code String.contains} required typing the name in the exact order it's actually written,
+	 * which isn't how people search). Every whitespace-separated token in the query must appear
+	 * *somewhere* in "id + display name" for the entry to match; an empty query matches everything.
+	 */
+	private boolean matchesSearch(String id, String displayName) {
+		String query = searchQuery.toString().trim();
+		if (query.isEmpty()) {
+			return true;
+		}
+		String haystack = (id + " " + displayName).toLowerCase(Locale.ROOT);
+		for (String token : query.toLowerCase(Locale.ROOT).split("\\s+")) {
+			if (!haystack.contains(token)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/** Battle held items only — see {@link CobblemonHeldItems} for why this isn't every {@code cobblemon:}-namespaced item. */
+	private static List<String> allHeldItemIds() {
+		if (allHeldItemIds == null) {
+			List<String> ids = new ArrayList<>(CobblemonHeldItems.byId().keySet());
+			ids.sort(String::compareTo);
+			allHeldItemIds = ids;
+		}
+		return allHeldItemIds;
+	}
+
+	private static List<String> allMoveIdsSorted() {
+		if (allMoveIdsSorted == null) {
+			List<String> ids = new ArrayList<>(Moves.names());
+			ids.sort(String::compareTo);
+			allMoveIdsSorted = ids;
+		}
+		return allMoveIdsSorted;
+	}
+
+	/** Localized item name (respects the client's own language, falling back to en_us like any other Minecraft item) instead of the raw id — a French player shouldn't have to read "leftovers" (Adrien: 2026-09-29). */
+	private static String itemDisplayName(String id) {
+		if (id.isEmpty()) {
+			return Component.translatable("phantasmon.pc.detail.no_item").getString();
+		}
+		Item item = CobblemonHeldItems.byId().get(id);
+		return item != null ? item.getDescription().getString() : capitalize(id);
+	}
+
+	/** Localized move name via Cobblemon's own {@link com.cobblemon.mod.common.api.moves.MoveTemplate#getDisplayName()} — same localization reasoning as {@link #itemDisplayName}. */
+	private static String moveDisplayName(String moveId) {
+		if (moveId.isEmpty()) {
+			return Component.translatable("phantasmon.pc.empty_slot").getString();
+		}
+		MoveTemplate template = Moves.getByName(moveId);
+		return template != null ? template.getDisplayName().getString() : capitalize(moveId);
 	}
 
 	private List<String> dropdownOptions() {
@@ -336,13 +519,16 @@ public final class PhantasmonPcEditScreen extends Screen {
 			case TERA -> TERA_OPTIONS.stream()
 					.map(t -> t == null ? Component.translatable("phantasmon.pc.edit.tera_none").getString() : t.getDisplayName().getString())
 					.toList();
+			case ABILITY -> rawOptions().stream().map(this::abilityDisplayName).toList();
+			case ITEM -> rawOptions().stream().map(PhantasmonPcEditScreen::itemDisplayName).toList();
+			case MOVE -> rawOptions().stream().map(PhantasmonPcEditScreen::moveDisplayName).toList();
 			case NONE -> List.of();
 		};
 	}
 
 	/** e.g. "Adamant (+Atk / -SpA)" — same +Bonus/-Malus format as the read-only PC detail panel (Adrien: it must show here too, both in the dropdown list and once selected). */
 	private static String natureOptionLabel(String natureId) {
-		String display = capitalize(natureId);
+		String display = NatureModifiers.displayName(natureId);
 		NatureModifiers.Modifier modifier = NatureModifiers.get(natureId);
 		return modifier == null ? display : display + " (+" + modifier.boosted() + " / -" + modifier.reduced() + ")";
 	}
@@ -351,22 +537,59 @@ public final class PhantasmonPcEditScreen extends Screen {
 		return switch (openDropdown) {
 			case NATURE -> natureIndex;
 			case TERA -> TERA_OPTIONS.indexOf(teraType);
+			case ABILITY -> abilityOptions.indexOf(abilityId);
+			case ITEM -> rawOptions().indexOf(heldItemId == null ? "" : heldItemId);
+			case MOVE -> activeMoveSlot < 0 ? -1 : rawOptions().indexOf(moveIds[activeMoveSlot] == null ? "" : moveIds[activeMoveSlot]);
 			case NONE -> -1;
 		};
 	}
 
 	private void selectDropdownOption(int index) {
-		if (openDropdown == DropdownKind.NATURE) {
-			natureIndex = index;
-			updateNatureLabel();
-		} else if (openDropdown == DropdownKind.TERA) {
-			teraType = TERA_OPTIONS.get(index);
-			updateTeraLabel();
+		switch (openDropdown) {
+			case NATURE -> {
+				natureIndex = index;
+				updateNatureLabel();
+			}
+			case TERA -> {
+				teraType = TERA_OPTIONS.get(index);
+				updateTeraLabel();
+			}
+			case ABILITY -> {
+				abilityId = abilityOptions.get(index);
+				updateAbilityLabel();
+			}
+			case ITEM -> {
+				heldItemId = rawOptions().get(index);
+				updateItemLabel();
+			}
+			case MOVE -> {
+				moveIds[activeMoveSlot] = rawOptions().get(index);
+				updateMoveLabel(activeMoveSlot);
+			}
+			case NONE -> {
+			}
 		}
 	}
 
 	private void updateNatureLabel() {
 		natureValueButton.setMessage(Component.literal(natureOptionLabel(NATURES[natureIndex]) + " ▾"));
+	}
+
+	private String abilityDisplayName(String id) {
+		return abilityDisplayNames.getOrDefault(id, capitalize(id));
+	}
+
+	private void updateAbilityLabel() {
+		abilityValueButton.setMessage(Component.literal(abilityDisplayName(abilityId) + " ▾"));
+	}
+
+	private void updateItemLabel() {
+		String label = itemDisplayName(heldItemId == null ? "" : heldItemId);
+		itemValueButton.setMessage(Component.literal(label + " ▾"));
+	}
+
+	private void updateMoveLabel(int index) {
+		moveValueButtons[index].setMessage(Component.literal(moveDisplayName(moveIds[index] == null ? "" : moveIds[index])));
 	}
 
 	private void toggleShiny() {
@@ -394,18 +617,26 @@ public final class PhantasmonPcEditScreen extends Screen {
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		if (openDropdown != DropdownKind.NONE) {
 			List<String> options = dropdownOptions();
+			int searchRowH = isSearchable(openDropdown) ? DROPDOWN_ROW_H : 0;
 			int visible = Math.min(DROPDOWN_MAX_VISIBLE, options.size());
+			int listTop = dropdownY + searchRowH;
 			int listH = visible * DROPDOWN_ROW_H;
-			if (mouseX >= dropdownX && mouseX < dropdownX + dropdownW && mouseY >= dropdownY && mouseY < dropdownY + listH) {
-				int row = (int) ((mouseY - dropdownY) / DROPDOWN_ROW_H) + dropdownScroll;
+			if (mouseX >= dropdownX && mouseX < dropdownX + dropdownW && mouseY >= listTop && mouseY < listTop + listH) {
+				int row = (int) ((mouseY - listTop) / DROPDOWN_ROW_H) + dropdownScroll;
 				if (row >= 0 && row < options.size()) {
 					selectDropdownOption(row);
 				}
+				openDropdown = DropdownKind.NONE;
+				return true;
 			}
-			// Any click while a dropdown is open is consumed by it — either it picked an
-			// option above, or it just dismisses the list; it never also activates
-			// whatever widget happens to be underneath (avoids immediately reopening the
-			// same toggle button that was just clicked to close it).
+			// Clicking the search row itself just keeps the dropdown open (so typing
+			// afterward works) instead of dismissing it on the same click.
+			if (searchRowH > 0 && mouseX >= dropdownX && mouseX < dropdownX + dropdownW && mouseY >= dropdownY && mouseY < listTop) {
+				return true;
+			}
+			// Any other click while a dropdown is open just dismisses it — never also
+			// activates whatever widget happens to be underneath (avoids immediately
+			// reopening the same toggle button that was just clicked to close it).
 			openDropdown = DropdownKind.NONE;
 			return true;
 		}
@@ -420,6 +651,39 @@ public final class PhantasmonPcEditScreen extends Screen {
 			return true;
 		}
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+	}
+
+	@Override
+	public boolean charTyped(char chr, int modifiers) {
+		if (isSearchable(openDropdown)) {
+			if (searchQuery.length() < 30 && chr >= 32 && chr != 127) {
+				searchQuery.append(chr);
+				dropdownScroll = 0;
+			}
+			return true;
+		}
+		return super.charTyped(chr, modifiers);
+	}
+
+	@Override
+	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (isSearchable(openDropdown)) {
+			if (keyCode == GLFW.GLFW_KEY_BACKSPACE) {
+				if (!searchQuery.isEmpty()) {
+					searchQuery.deleteCharAt(searchQuery.length() - 1);
+					dropdownScroll = 0;
+				}
+				return true;
+			}
+			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+				openDropdown = DropdownKind.NONE;
+				return true;
+			}
+			// Swallow everything else while a search dropdown is focused so typing
+			// can't accidentally trigger other screen shortcuts.
+			return true;
+		}
+		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 
 	/**
@@ -446,8 +710,13 @@ public final class PhantasmonPcEditScreen extends Screen {
 
 		var request = ShowdownImportMapper.toCreateRequest(parsed, original.cobblemonDataVersion());
 		nicknameBox.setValue(stringOf(request.data().get("nickname")));
-		itemBox.setValue(stringOf(request.data().get("heldItem")));
-		abilityBox.setValue(request.ability());
+		heldItemId = stringOf(request.data().get("heldItem"));
+		updateItemLabel();
+		abilityId = request.ability();
+		if (!abilityOptions.contains(abilityId)) {
+			abilityOptions.add(abilityId);
+		}
+		updateAbilityLabel();
 		levelBox.setValue(String.valueOf(request.level()));
 		shiny = Boolean.TRUE.equals(request.isShiny());
 		updateShinyLabel();
@@ -465,14 +734,14 @@ public final class PhantasmonPcEditScreen extends Screen {
 		}
 		List<Object> moves = asList(request.data().get("moves"));
 		for (int i = 0; i < 4; i++) {
-			moveBoxes[i].setValue(i < moves.size() ? String.valueOf(moves.get(i)) : "");
+			moveIds[i] = i < moves.size() ? String.valueOf(moves.get(i)) : "";
+			updateMoveLabel(i);
 		}
 		statusMessage = Component.translatable("phantasmon.pc.edit.import_done");
 	}
 
 	private void save() {
-		String ability = abilityBox.getValue().trim();
-		if (ability.isEmpty()) {
+		if (abilityId == null || abilityId.isEmpty()) {
 			statusMessage = Component.translatable("phantasmon.pc.edit.error_ability_required");
 			return;
 		}
@@ -488,10 +757,9 @@ public final class PhantasmonPcEditScreen extends Screen {
 		data.put("evs", evs);
 
 		List<String> moves = new ArrayList<>();
-		for (EditBox box : moveBoxes) {
-			String value = box.getValue().trim().toLowerCase(Locale.ROOT);
-			if (!value.isEmpty()) {
-				moves.add(value);
+		for (String id : moveIds) {
+			if (id != null && !id.isEmpty()) {
+				moves.add(id.toLowerCase(Locale.ROOT));
 			}
 		}
 		data.put("moves", moves);
@@ -503,7 +771,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 			data.put("nickname", nickname);
 		}
 
-		String item = itemBox.getValue().trim().toLowerCase(Locale.ROOT);
+		String item = heldItemId == null ? "" : heldItemId.trim().toLowerCase(Locale.ROOT);
 		if (item.isEmpty()) {
 			data.remove("heldItem");
 		} else {
@@ -521,7 +789,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 
 		saving = true;
 		statusMessage = Component.empty();
-		PokemonUpdateRequestDto request = PokemonUpdateRequestDto.editing(data, level, nature, ability.toLowerCase(Locale.ROOT), shiny);
+		PokemonUpdateRequestDto request = PokemonUpdateRequestDto.editing(data, level, nature, abilityId.toLowerCase(Locale.ROOT), shiny);
 		pokemonClient.update(session.accessToken(), original.uuid(), request)
 				.thenAccept(updated -> Minecraft.getInstance().execute(() -> {
 					parent.refresh();
@@ -554,53 +822,54 @@ public final class PhantasmonPcEditScreen extends Screen {
 
 		super.render(graphics, mouseX, mouseY, partialTick);
 
-		// Widgets are rendered manually here, in this exact loop, rather than via
-		// addRenderableWidget/super.render(). Adrien's screenshot pinpointed the real
-		// bug precisely: the dropdown's *background* correctly covers the buttons
-		// underneath (their sprite is hidden), but the buttons' own *text* still
-		// painted on top of the dropdown's text — text specifically goes through a
-		// separate deferred buffer in GuiGraphics/Font that a plain call-order + flush
-		// didn't reliably beat before. Belt and suspenders this time: any widget whose
-		// bounds the open dropdown would cover is skipped entirely (no render call at
-		// all, so neither its background nor its text can possibly appear), and
-		// flush() still runs afterward for anything not caught by that bounds check.
-		int dropdownListHeight = Math.min(DROPDOWN_MAX_VISIBLE, dropdownOptions().size()) * DROPDOWN_ROW_H;
+		List<String> currentDropdownOptions = dropdownOptions();
+		int searchRowH = isSearchable(openDropdown) ? DROPDOWN_ROW_H : 0;
+		int dropdownTotalHeight = searchRowH + Math.min(DROPDOWN_MAX_VISIBLE, currentDropdownOptions.size()) * DROPDOWN_ROW_H;
 		for (Renderable widget : orderedWidgets) {
-			if (widget instanceof AbstractWidget abstractWidget && coveredByDropdown(abstractWidget, dropdownListHeight)) {
+			if (widget instanceof AbstractWidget abstractWidget && coveredByDropdown(abstractWidget, dropdownTotalHeight)) {
 				continue;
 			}
 			widget.render(graphics, mouseX, mouseY, partialTick);
 		}
 		graphics.flush();
 
-		renderDropdown(graphics, mouseX, mouseY);
+		renderDropdown(graphics, mouseX, mouseY, currentDropdownOptions, searchRowH);
 	}
 
-	private boolean coveredByDropdown(AbstractWidget widget, int dropdownListHeight) {
+	private boolean coveredByDropdown(AbstractWidget widget, int dropdownTotalHeight) {
 		if (openDropdown == DropdownKind.NONE) {
 			return false;
 		}
 		return widget.getX() < dropdownX + dropdownW && widget.getX() + widget.getWidth() > dropdownX
-				&& widget.getY() < dropdownY + dropdownListHeight && widget.getY() + widget.getHeight() > dropdownY;
+				&& widget.getY() < dropdownY + dropdownTotalHeight && widget.getY() + widget.getHeight() > dropdownY;
 	}
 
-	private void renderDropdown(GuiGraphics graphics, int mouseX, int mouseY) {
+	private void renderDropdown(GuiGraphics graphics, int mouseX, int mouseY, List<String> options, int searchRowH) {
 		if (openDropdown == DropdownKind.NONE) {
 			return;
 		}
-		List<String> options = dropdownOptions();
 		int visible = Math.min(DROPDOWN_MAX_VISIBLE, options.size());
 		int listH = visible * DROPDOWN_ROW_H;
+		int totalH = searchRowH + listH;
 		int selected = dropdownSelectedIndex();
 
-		graphics.fill(dropdownX, dropdownY, dropdownX + dropdownW, dropdownY + listH, DROPDOWN_BG);
-		graphics.renderOutline(dropdownX, dropdownY, dropdownW, listH, PANEL_BORDER);
+		graphics.fill(dropdownX, dropdownY, dropdownX + dropdownW, dropdownY + totalH, DROPDOWN_BG);
+		graphics.renderOutline(dropdownX, dropdownY, dropdownW, totalH, PANEL_BORDER);
+
+		if (searchRowH > 0) {
+			boolean empty = searchQuery.isEmpty();
+			String text = empty ? Component.translatable("phantasmon.pc.edit.search_placeholder").getString() : searchQuery.toString();
+			graphics.drawString(font, text + (empty ? "" : "_"), dropdownX + 4, dropdownY + 3, empty ? 0x777777 : 0xFFFFFF);
+			graphics.fill(dropdownX, dropdownY + searchRowH - 1, dropdownX + dropdownW, dropdownY + searchRowH, PANEL_BORDER);
+		}
+
+		int listTop = dropdownY + searchRowH;
 		for (int i = 0; i < visible; i++) {
 			int optionIndex = i + dropdownScroll;
 			if (optionIndex >= options.size()) {
 				break;
 			}
-			int rowY = dropdownY + i * DROPDOWN_ROW_H;
+			int rowY = listTop + i * DROPDOWN_ROW_H;
 			boolean hovered = mouseX >= dropdownX && mouseX < dropdownX + dropdownW && mouseY >= rowY && mouseY < rowY + DROPDOWN_ROW_H;
 			if (hovered) {
 				graphics.fill(dropdownX, rowY, dropdownX + dropdownW, rowY + DROPDOWN_ROW_H, DROPDOWN_ROW_HOVER);
@@ -612,7 +881,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 	}
 
 	private static String capitalize(String value) {
-		return value.isEmpty() ? value : value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
+		return value == null || value.isEmpty() ? String.valueOf(value) : value.substring(0, 1).toUpperCase(Locale.ROOT) + value.substring(1);
 	}
 
 	private static boolean isDigits(String value) {
@@ -681,7 +950,7 @@ public final class PhantasmonPcEditScreen extends Screen {
 		return Component.translatable(key);
 	}
 
-	/** A {@link Button} skinned with the PC screen's own cyan nine-slice sprite instead of vanilla's default button texture, so this form matches the same visual language (Adrien 2026-09-27). */
+	/** A {@link Button} skinned with the PC screen's own cyan nine-slice sprite instead of vanilla's default button texture, so this form matches the same visual language. */
 	private static final class SpectralButton extends Button {
 
 		SpectralButton(int x, int y, int w, int h, Component message, OnPress onPress) {
