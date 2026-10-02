@@ -1,70 +1,83 @@
 # Phantasmon Client
 
-> Client-only Fabric mod for Minecraft 1.21.1 + Cobblemon that lets players create, edit, trade, and battle with fully custom "ghost" Pokémon — visible only to players who have the addon installed.
+> Client-only Fabric mod for Minecraft 1.21.1 + Cobblemon 1.8.1. Players create, edit, trade and send out fully custom **Ghost Pokémon** — visible only to other players who also run the mod.
 
 ## Overview
 
-Phantasmon Client does not modify any Minecraft server. It talks directly to the [Phantasmon Backend](https://github.com/TrAdrienGit/Phantasmon-Backend), an independent source of truth, over REST and WebSocket. No server-side installation is required — only players running the mod can create, see, and interact with each other's ghost Pokémon.
+Phantasmon never touches the Minecraft server: no server mod, no plugin, no server-side entity. The mod talks only to the [Phantasmon Backend](https://github.com/TrAdrienGit/Phantasmon-Backend), the single source of truth, over REST (data) and one WebSocket (presence, Ghosts, live trades). A player without the mod sees nothing at all.
 
-See the [full design document](https://github.com/TrAdrienGit/Phantasmon-Backend/tree/main/Documentation) for the complete architecture, technical decisions, and development plan.
+Design documents (architecture, decisions, delivery plan) live in [`Documentation/`](./Documentation).
+
+## Features
+
+| Feature | How |
+|---|---|
+| **Login** | Automatic on world/server join when the backend is up (Mojang session proof → JWT, kept in memory and auto-refreshed). Manual fallback: `/phantasmon login`. Version handshake first; outdated clients get a download link. |
+| **PC** | `/phantasmon pc` or **P**. Team rail, full Pokémon card (3D model, types, item, nature ±, ability, Tera, Hidden Power, moves with types, IV/EV), 16 boxes × 30 slots. Drag & drop between any slots (move or swap), mouse wheel to change box — also mid-drag. Showdown import from the clipboard. Delete with confirmation. |
+| **Editor** | **ÉDITER** in the PC. Live preview card + form: nickname, level, shiny, ability (species' own), held item (battle items, searchable), nature, Tera type, IVs/EVs (live EV total, Hidden Power), 4 moves (searchable, no duplicates). Showdown paste pre-fills the form. |
+| **Ghost Pokémon** | **O** or `/phantasmon sendout` toggles your team lead out/in. Rendered client-side with Cobblemon's own models, follows you, despawns on recall, death, dimension change or disconnect. |
+| **Live trade** | **G** while looking at a player, or `/phantasmon trade invite <name>`. The other player clicks **[Accept]** in chat; both get the trade screen, pick an offer, flag *ready* — the backend swaps both Pokémon atomically (each takes the other's team slot). |
+| **Async trade (commands)** | `/phantasmon trade propose|accept|cancel|view|list` — offer by UUID, accepted later. |
+| **Commands** | `/phantasmon pokemon import|list|pc|delete|clone|edit|team` for everything the screens do. |
+
+All player-facing text is translated (French and English); backend errors arrive as `ERROR_*` codes and are translated locally. Keybinds are rebindable under *Options → Controls → Phantasmon*.
 
 ## Tech stack
 
 | | |
 |---|---|
-| Minecraft | 1.21.1 |
-| Cobblemon | 1.8.1 |
-| Loader | Fabric |
+| Minecraft | 1.21.1 (official Mojang mappings) |
+| Loader | Fabric Loader ≥ 0.18.1, Fabric API 0.116.17+1.21.1 |
+| Cobblemon | 1.8.1 (Fabric) |
 | Language | Java 21 |
-| Build | Gradle (Fabric Loom) |
+| Build | Gradle + Fabric Loom — **needs a JDK 25 to run Gradle** (compiled bytecode still targets Java 21) |
+| Tests | JUnit 5 |
 
 ## Requirements
 
-- JDK 21
-- A Minecraft 1.21.1 client with [Fabric Loader](https://fabricmc.net) and [Cobblemon 1.8.1](https://modrinth.com/mod/cobblemon) installed
-- A reachable [Phantasmon Backend](https://github.com/your-account/phantasmon-backend) instance (local or remote)
+- **JDK 25** to build (Loom requirement). JDK 21 is enough to *play*.
+- A Minecraft 1.21.1 client with Fabric Loader, Fabric API and Cobblemon 1.8.1.
+- A reachable Phantasmon Backend. Its address is currently a constant in `src/client/java/com/mystaria/phantasmon/client/network/BackendConfig.java`.
+- A premium (Microsoft) Minecraft account — offline accounts are not supported.
 
-## Running in development
-
-```bash
-git clone https://github.com/your-account/phantasmon-client.git
-cd phantasmon-client
-./gradlew runClient
-```
-
-This launches a development Minecraft instance with the mod already loaded.
-
-## Build
+## Build & run
 
 ```bash
-./gradlew build
+./gradlew build        # jar in build/libs/phantasmon-client-<version>.jar
+./gradlew runClient    # development Minecraft instance with the mod loaded
+./gradlew test
 ```
 
-The generated jar is placed in `build/libs/`.
+On a machine whose default Java is 21, point Gradle at a JDK 25 for that command only, e.g.:
+
+```bash
+JAVA_HOME="C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot" ./gradlew build
+```
+
+`scripts/deploy-to-prod-server.sh` builds once and copies the jar to the test instances (local + second machine over SSH). Full build/install/QA notes, including the history of every UI pass: [`Documentation/PHANTASMON_CLIENT_BUILDING.md`](./Documentation/PHANTASMON_CLIENT_BUILDING.md).
 
 ## Project structure
 
 ```text
-phantasmon-client/
-├── src/main/java/com/mystaria/phantasmon/
-├── src/client/java/com/mystaria/phantasmon/client/
-├── src/main/resources/
-│   ├── fabric.mod.json      # id: phantasmon, environment: client
-│   └── assets/phantasmon/
-└── build.gradle
+src/client/java/com/mystaria/phantasmon/client/
+├── auth/        # Mojang join proof, JWT session, auto-refresh
+├── command/     # /phantasmon … (Brigadier, client-side)
+├── ghost/       # presence WebSocket session, client-only Ghost entities
+├── gui/         # PC, editor and trade screens on a shared canvas "design system"
+├── network/     # REST + WebSocket clients, error-code translation
+├── pokemon/     # DTOs, Showdown parser/mapper, natures, Hidden Power, gender
+├── trade/       # live trade state/controller, async trade commands
+└── version/     # client/backend version compatibility
+src/main/resources/assets/phantasmon/
+├── lang/        # fr_fr.json, en_us.json
+└── textures/gui/  # PC sprites + trade/ (generated by scripts/generate_trade_textures.py)
 ```
+
+The three screens extend `gui/PhantasmonCanvasScreen`: a 1600×900 px layout drawn at 80 % of the window, with pixel-snapped lines and text, shared panels, slots, Pokémon card, buttons and modals.
 
 ## Tests
 
-```bash
-./gradlew test
-```
-
-Note: some code (rendering, direct interaction with the Minecraft world) isn't meaningfully unit-testable and is instead covered by manual QA. Business logic decoupled from Minecraft (identifier resolution, validation, state handling) is covered with plain JUnit tests.
-
-## Distribution
-
-Published on [Modrinth](https://modrinth.com) and [CurseForge](https://www.curseforge.com).
+`./gradlew test` covers the logic that doesn't need a running game: Showdown parsing and identifier mapping, natures, Hidden Power, gender resolution, version compatibility, live-trade state, Gson UUID handling. Rendering and world interaction are checked by manual QA (see the building doc).
 
 ## License
 
