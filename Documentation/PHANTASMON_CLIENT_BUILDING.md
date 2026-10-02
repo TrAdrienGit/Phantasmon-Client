@@ -1171,6 +1171,73 @@ l'échange s'exécute quand les deux le sont.
   (valeurs plus grandes = plus bas), à retirer une fois les bonnes valeurs figées dans le code.
 - **Non testé visuellement par Claude.**
 
+### 4.35 PC refait avec la DA de l'écran d'échange (2026-10-02)
+
+Adrien : le PC était bien organisé mais « cheap » à côté de l'écran d'échange. Il est reconstruit sur la
+même base graphique :
+- **Socle commun** `gui/PhantasmonCanvasScreen` : tout ce qui était générique dans l'écran d'échange
+  (canevas 1600×900 à 80 % centré, textures, couleurs, textes à échelle entière, rails, slots, fiche
+  Pokémon complète, boutons, pied de page, fenêtres modales, piège `flush()` avant chaque blit) en a été
+  extrait tel quel. `PhantasmonTradeScreen` en hérite **sans changement de rendu ni de comportement**.
+- **Disposition du PC** : rail **Équipe** à gauche (identique au rail d'échange), **fiche Pokémon** au
+  centre (identique à celle de l'échange, plus le type de Puissance Cachée à côté du Téracristal, déjà
+  présent dans l'ancien PC), **grille 6×5 de la boîte** à droite avec ◀ BOÎTE n / 16 ▶. En-tête : « PC ·
+  joueur » à gauche, **IMPORTER** au centre (à la place d'ÉCHANGER — import Showdown depuis le
+  presse-papiers), compteurs PC/équipe à droite. Pied de page : ligne d'état (chargement, erreurs,
+  confirmation d'import, sinon aide) et **ÉDITER / SUPPRIMER** quand un Pokémon est sélectionné.
+- **Comportement conservé** : clic = sélection, glisser-déposer entre n'importe quels slots (équipe ou PC)
+  = déplacement ou échange de place (règle backend inchangée), ÉDITER ouvre l'éditeur existant.
+- **Ajouts** : la sélection suit le Pokémon (plus le slot) quand on change de boîte ; le modèle 3D suit la
+  souris pendant un glisser-déposer ; molette / flèches ← → / ◀ ▶ changent de boîte, **y compris pendant un
+  glisser-déposer** (on peut donc déposer un Pokémon dans une autre boîte) ; **SUPPRIMER demande
+  confirmation** (fenêtre identique à « Quitter l'échange ? », touche Suppr aussi).
+- Taille des modèles dans la grille : même réglage que les slots d'équipe (centrage confirmé), réduit au
+  prorata de la zone plus petite (`GRID_SLOT`).
+- L'éditeur (`PhantasmonPcEditScreen`) n'a **pas** encore été refait dans cette DA — prochaine étape
+  possible.
+- Build vert. **Non testé visuellement par Claude.**
+- **Retours sur capture (2026-10-02), corrigés dans le socle commun (profite aussi à l'écran d'échange)** :
+  - *Arêtes manquantes / slots mal délimités* : le canevas est rendu à ~0,8-1 pixel écran par pixel de
+    maquette, donc un trait de 1 px tombait parfois entre deux pixels et disparaissait. Tous les traits
+    (cadres, séparateurs, bordures de slots et de badges, lueurs) passent par `outline()`/`hairline()`,
+    qui garantit au moins 1 pixel écran.
+  - *Textes pixelisés* : la taille de police est maintenant calée sur un nombre entier de pixels écran et
+    la position sur la grille de pixels (`snapTextScale`, `drawText`) — les petits textes restent nets.
+  - *Boutons ÉDITER / SUPPRIMER* (et ceux de la confirmation) agrandis, libellés en taille ×2.
+  - *Nature* : « +Spe » (rouge) / « -SpA » (bleu) à la même taille que la valeur.
+  - *Types* : palette **officielle** des jeux actuels (Écarlate/Violet, Pokémon HOME, reprise par
+    Bulbapedia) au lieu des couleurs de Cobblemon, pour les types du Pokémon, des capacités, Téracristal
+    et P. cachée (`OFFICIAL_TYPE_COLORS`). Badges de types du Pokémon et des capacités en taille ×2 ; le
+    type de chaque capacité est sous son nom.
+
+### 4.36 Finitions PC + éditeur refait dans la même DA (2026-10-02)
+
+- **Texte gras qui débordait** (niveau « Nv. 100 » hors de la fiche, texte des badges de type hors de
+  leur cadre) : la police du modpack dessine le gras plus large que ce que Minecraft mesure. Niveau et
+  badges passent en non-gras, et la mesure de tout texte gras garde une marge d'un pixel de police par
+  caractère.
+- **Modèles de la grille PC ×2.**
+- **Éditeur (`PhantasmonPcEditScreen`) reconstruit sur `PhantasmonCanvasScreen`** :
+  - à gauche, **la même fiche Pokémon que le PC, en aperçu en direct** (recalculée à chaque image depuis
+    le formulaire : types, nature colorée, capacités et leurs types, IV/EV, P. cachée) ;
+  - à droite, le formulaire en grandes cases : Surnom, Niveau, Chromatique (clic = bascule), Talent,
+    Objet tenu, Nature (avec +/- colorés), Téracristal (« Type d'origine » = aucun type forcé), tableau
+    IV / EV (un champ par stat, libellés colorés selon la nature, total EV en direct en rouge au-delà de
+    510, Puissance Cachée recalculée en direct) et les 4 capacités (nom + badge de type) ;
+  - listes déroulantes dans le même style (texte ×2, icônes d'objets, badges de types, recherche par
+    mots pour objets et capacités, barre de défilement), dessinées au-dessus de tout ;
+  - en-tête : IMPORTER (export Showdown du presse-papiers → remplit le formulaire, rien n'est enregistré)
+    et indicateur « ● Modifications non enregistrées » ; pied de page : aide/erreurs + ANNULER /
+    ENREGISTRER (vert quand il y a des modifications) ; au retour dans le PC, « Modifications
+    enregistrées. » ;
+  - clavier/souris : Tab / Maj+Tab entre les champs, Entrée = enregistrer, Ctrl+V, Ctrl+Retour arrière,
+    flèches ↑↓ ou molette sur un nombre = ±1 (Maj : ±10), Échap ferme la liste / le champ / l'éditeur,
+    avec **confirmation « Quitter sans enregistrer ? »** s'il y a des modifications ;
+  - plus aucun widget vanilla (ils ne peuvent pas s'afficher dans le canevas mis à l'échelle) : champs et
+    listes sont dessinés par l'écran lui-même. Règles métier inchangées (talents de l'espèce seulement,
+    objets de combat seulement, pas de capacité en double, un seul PATCH à l'enregistrement).
+- Build vert. **Non testé visuellement par Claude.**
+
 ---
 
 ## 5. Dépannage courant
