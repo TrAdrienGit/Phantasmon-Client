@@ -15,6 +15,7 @@ import com.mystaria.phantasmon.client.network.BackendJsonClient;
 import com.mystaria.phantasmon.client.network.PingToggle;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.trade.LiveTradeController;
 import com.mystaria.phantasmon.client.trade.TradeClient;
 import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
 
@@ -29,11 +30,13 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final PokemonCommandHandler pokemonCommands = new PokemonCommandHandler(new PokemonClient(httpClient), authSession);
 	private final GhostSession ghostSession = new GhostSession(authSession);
 	private final TradeCommandHandler tradeCommands = new TradeCommandHandler(new TradeClient(httpClient), authSession);
+	private final LiveTradeController liveTrade = new LiveTradeController(ghostSession, authSession);
 
 	@Override
 	public void onInitializeClient() {
 		authService.setOnAuthenticated(ghostSession::start);
 		ghostSession.setTradeNotificationListener(tradeCommands);
+		ghostSession.setLiveTradeListener(liveTrade);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			pingToggle.onJoin();
@@ -49,10 +52,11 @@ public class PhantasmonClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ghostSession.onClientTick();
 			pokemonCommands.tick();
-			PhantasmonKeybinds.tick(pokemonCommands, ghostSession);
+			liveTrade.tick();
+			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade);
 		});
 
 		PhantasmonKeybinds.register();
-		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands);
+		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade);
 	}
 }

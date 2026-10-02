@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phantasmon — Échange Pokémon</title>
+<style>
+:root{
+  --cyan:#50E6FF; --cyan2:#2FB7C9;
+  --white:#FFF; --muted:#9FD9E6; --dim:#999;
+  --title:#5FE6F2; --text2:#CCC;
+  --iv:#88CCFF; --ev:#FFCC88; --danger:#FF5078;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{
+  background:
+    radial-gradient(circle at 50% 42%,rgba(24,84,112,.22),transparent 43%),
+    linear-gradient(135deg,#02070d,#071523 55%,#02060b);
+  color:var(--white);
+  font-family:"Trebuchet MS",Arial,sans-serif;
+  display:flex;align-items:center;justify-content:center;
+}
+.st{display:none}
+label{cursor:pointer;user-select:none}
+
+/* Panneau racine (max 1080p) */
+.trade-ui{
+  width:min(1600px,100vw);height:min(900px,100vh);
+  max-width:1920px;max-height:1080px;
+  padding:13px;position:relative;
+  background:rgba(8,20,34,.41);
+  border:2px solid rgba(80,230,255,.75);
+  box-shadow:0 0 0 1px rgba(80,230,255,.12) inset,0 0 35px rgba(0,0,0,.7);
+}
+.trade-ui:before,.trade-ui:after{
+  content:"";position:absolute;top:-2px;width:34%;height:4px;
+  background:var(--cyan);box-shadow:0 0 13px var(--cyan)
+}
+.trade-ui:before{left:0}.trade-ui:after{right:0}
+
+/* En-tête */
+.header{height:48px;display:grid;grid-template-columns:1fr 170px 1fr;align-items:center;gap:12px;margin-bottom:9px}
+.player-head{
+  height:100%;display:flex;align-items:center;padding:0 16px;border:1px solid var(--cyan2);
+  background:linear-gradient(110deg,rgba(12,54,80,.92),rgba(3,10,20,.96));
+  box-shadow:inset 0 0 18px rgba(80,230,255,.06)
+}
+.player-head.right{justify-content:flex-end;background:linear-gradient(250deg,rgba(12,54,80,.92),rgba(3,10,20,.96))}
+.player-name{font-weight:800;letter-spacing:1.5px}
+.trade-btn{
+  height:100%;width:100%;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--cyan);color:var(--cyan);
+  background:linear-gradient(#18466b,#0d2a42);font-size:13px;font-weight:900;letter-spacing:2px;
+  box-shadow:0 0 12px rgba(80,230,255,.18);transition:.12s
+}
+.trade-btn:hover{background:linear-gradient(#205c8d,#123859)}
+.trade-btn .t-idle{display:flex;align-items:center;gap:8px}
+.trade-btn .t-ready{display:none}
+.trade-btn .arrows{font-size:20px;line-height:1}
+#trade:checked~.trade-ui .trade-btn{border-color:#76ffb0;box-shadow:0 0 15px rgba(118,255,176,.3);color:#baffd2}
+#trade:checked~.trade-ui .t-idle{display:none}
+#trade:checked~.trade-ui .t-ready{display:inline}
+
+/* Corps */
+.main{height:calc(100% - 112px);display:grid;grid-template-columns:194px minmax(0,1fr) 194px;gap:10px}
+.team-rail{
+  min-width:0;padding:8px;border:1px solid rgba(80,230,255,.48);
+  background:linear-gradient(145deg,rgba(12,32,54,.96),rgba(3,10,20,.98));
+  display:flex;flex-direction:column
+}
+.rail-title{
+  font-size:12px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;
+  padding:5px 4px 8px;border-bottom:1px solid rgba(80,230,255,.25);margin-bottom:8px
+}
+.team{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:7px;flex:1}
+.slot{
+  min-height:112px;position:relative;padding:5px;
+  border:1px solid rgba(80,230,255,.35);background:rgba(14,60,78,.51);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;transition:.12s
+}
+.slot:hover{background:rgba(80,230,255,.35);border-color:var(--cyan)}
+.slot-top{position:absolute;top:4px;left:6px;right:6px;display:flex;justify-content:space-between;font-size:10px;color:#cbeaf0}
+.slot img.mon{width:72px;height:72px;object-fit:contain;filter:drop-shadow(0 7px 7px rgba(0,0,0,.65))}
+.slot-name{font-size:11px;font-weight:800;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+.star-sm{color:#FFDD33}
+.slot-item{position:absolute;bottom:5px;right:5px;width:20px;height:20px;object-fit:contain}
+.rail-foot{
+  margin-top:8px;padding:7px;text-align:center;border:1px solid rgba(80,230,255,.25);
+  color:var(--dim);font-size:11px;background:rgba(0,0,0,.2)
+}
+
+/* Fiches Pokémon */
+.center{min-width:0;min-height:0;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.side{min-width:0;min-height:0;display:grid}
+.pokemon-card{
+  min-width:0;min-height:0;display:none;grid-template-rows:42px 235px 1fr;
+  border:1px solid var(--cyan2);background:linear-gradient(145deg,rgba(12,32,54,.98),rgba(3,10,20,.98));
+  box-shadow:inset 0 0 24px rgba(80,230,255,.04)
+}
+.pokemon-card.left{border-top:3px solid #50bfff}
+.pokemon-card.right{border-top:3px solid #ff6688}
+.card-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 11px;
+  border-bottom:1px solid rgba(80,230,255,.28);background:rgba(2,8,15,.42)
+}
+.card-head .name{font-weight:900;letter-spacing:.6px;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-head .owner-tag{font-size:10px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase}
+.level{font-size:13px;font-weight:800;white-space:nowrap}
+.gender.m{color:#50bfff}.gender.f{color:#ff7594}
+.viewport{
+  position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  background:
+    radial-gradient(circle at 50% 53%,rgba(80,230,255,.08),transparent 38%),
+    radial-gradient(circle at center,transparent 35%,rgba(0,0,0,.43) 100%);
+}
+.viewport:before{
+  content:"";position:absolute;width:210px;height:210px;border-radius:50%;
+  border:1px solid rgba(80,230,255,.09);
+  background:linear-gradient(#50e6ff12 1px,transparent 1px),linear-gradient(90deg,#50e6ff12 1px,transparent 1px);
+  background-size:22px 22px;transform:rotate(45deg)
+}
+.viewport img{
+  width:230px;height:205px;object-fit:contain;position:relative;z-index:1;
+  filter:drop-shadow(0 14px 13px rgba(0,0,0,.85));animation:float 3.5s ease-in-out infinite
+}
+@keyframes float{50%{transform:translateY(-5px) scale(1.015)}}
+.types{position:absolute;top:9px;left:9px;display:flex;gap:4px;z-index:2}
+.type{
+  display:inline-block;padding:3px 8px;border-radius:3px;font-size:10px;font-weight:900;text-transform:uppercase;
+  border:1px solid rgba(0,0,0,.33);letter-spacing:.5px
+}
+.shiny-star{position:absolute;top:8px;right:10px;z-index:2;font-size:18px;color:#FFDD33;
+  text-shadow:-1px 0 #785000,1px 0 #785000,0 -1px #785000,0 1px #785000}
+
+/* Infos */
+.info{min-height:0;display:grid;grid-template-rows:auto 1fr;gap:7px;padding:8px;border-top:1px solid rgba(80,230,255,.2)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.info-box{border:1px solid rgba(80,230,255,.2);background:rgba(0,8,15,.38);padding:6px 8px;min-width:0;min-height:0}
+.label{font-size:10px;text-transform:uppercase;color:var(--title);letter-spacing:1.2px;margin-bottom:4px;font-weight:700}
+.value{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px;min-height:20px}
+.value img{width:20px;height:20px;object-fit:contain;flex:none}
+.moves-stats{display:grid;grid-template-columns:1.1fr .9fr;gap:7px;min-height:0}
+.moves{display:grid;gap:4px;align-content:start}
+.move{padding:6px;text-align:center;font-size:12px;color:var(--text2);border:1px solid rgba(80,230,255,.12);background:#07131f;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row{display:grid;grid-template-columns:1fr 30px 34px;padding:3px;font-size:11px}
+.stats .stat-row:nth-child(even){background:rgba(255,255,255,.03)}
+.stat-row .iv{color:var(--iv);text-align:right}.stat-row .ev{color:var(--ev);text-align:right}
+.stat-head{color:#6c8c96;font-size:10px}
+.stat-head span:nth-child(n+2){text-align:right}
+.stat-total{border-top:1px solid rgba(80,230,255,.2);margin-top:3px;color:var(--dim)}
+
+/* Pied */
+.footer{
+  height:47px;margin-top:9px;display:flex;align-items:center;justify-content:flex-end;
+  padding:0 12px;border:1px solid rgba(80,230,255,.3);background:rgba(3,10,20,.82)
+}
+.danger-btn,.std-btn{display:inline-block;padding:7px 18px;font-size:11px;font-weight:900;letter-spacing:1.5px}
+.danger-btn{border:1px solid var(--danger);background:linear-gradient(#6B182A,#420D18)}
+.danger-btn:hover{background:linear-gradient(#8D2038,#591222)}
+.std-btn{border:1px solid var(--cyan);background:linear-gradient(#18466b,#0d2a42)}
+.std-btn:hover{background:linear-gradient(#205c8d,#123859)}
+
+/* Modales */
+.modal{position:fixed;inset:0;background:rgba(0,5,10,.82);backdrop-filter:blur(5px);display:none;align-items:center;justify-content:center;z-index:50}
+#trade:checked~#modal{display:flex;opacity:0;animation:appear .2s .7s forwards}
+#quit:checked~#quitModal{display:flex}
+@keyframes appear{to{opacity:1}}
+.modal-card{width:520px;padding:25px;border:1px solid var(--cyan);background:linear-gradient(145deg,#0c2036,#030a14);box-shadow:0 0 45px rgba(80,230,255,.18);text-align:center}
+.modal-title{color:var(--title);letter-spacing:2px;font-weight:900;margin-bottom:22px}
+.transfer{height:90px;position:relative;display:flex;align-items:center;justify-content:space-between;padding:0 30px;border:1px solid rgba(80,230,255,.3);overflow:hidden}
+.transfer:before{content:"";position:absolute;left:8%;right:8%;height:3px;background:linear-gradient(90deg,#50e6ff,#fff,#ff5078);box-shadow:0 0 13px #50e6ff}
+.transfer b{position:relative;z-index:1;background:#081422;padding:0 6px}
+.ball{position:relative;z-index:1;font-size:28px;animation:transfer 1.8s linear infinite}
+@keyframes transfer{50%{transform:translateX(180px) rotate(360deg)}}
+.modal p{color:var(--text2)}
+.modal-actions{margin-top:22px;display:flex;justify-content:center;gap:10px}
+#modal [class^="n-"]{display:none}
+
+/* Quitter : masque toute l'interface */
+#quitted:checked~*{display:none!important}
+
+@media(max-width:1100px){.trade-ui{transform:scale(.88);transform-origin:center}}
+
+/* Sélection (générée) */
+#p1-0:checked~.trade-ui label[for="p1-0"],
+#p1-1:checked~.trade-ui label[for="p1-1"],
+#p1-2:checked~.trade-ui label[for="p1-2"],
+#p1-3:checked~.trade-ui label[for="p1-3"],
+#p1-4:checked~.trade-ui label[for="p1-4"],
+#p1-5:checked~.trade-ui label[for="p1-5"],
+#p2-0:checked~.trade-ui label[for="p2-0"],
+#p2-1:checked~.trade-ui label[for="p2-1"],
+#p2-2:checked~.trade-ui label[for="p2-2"],
+#p2-3:checked~.trade-ui label[for="p2-3"],
+#p2-4:checked~.trade-ui label[for="p2-4"],
+#p2-5:checked~.trade-ui label[for="p2-5"]{background:rgba(80,230,255,.45);border-color:#fff;box-shadow:0 0 13px rgba(80,230,255,.35) inset}
+#p1-0:checked~.trade-ui .c-p1-0,
+#p1-1:checked~.trade-ui .c-p1-1,
+#p1-2:checked~.trade-ui .c-p1-2,
+#p1-3:checked~.trade-ui .c-p1-3,
+#p1-4:checked~.trade-ui .c-p1-4,
+#p1-5:checked~.trade-ui .c-p1-5,
+#p2-0:checked~.trade-ui .c-p2-0,
+#p2-1:checked~.trade-ui .c-p2-1,
+#p2-2:checked~.trade-ui .c-p2-2,
+#p2-3:checked~.trade-ui .c-p2-3,
+#p2-4:checked~.trade-ui .c-p2-4,
+#p2-5:checked~.trade-ui .c-p2-5{display:grid}
+#p1-0:checked~#modal .n-p1-0,
+#p1-1:checked~#modal .n-p1-1,
+#p1-2:checked~#modal .n-p1-2,
+#p1-3:checked~#modal .n-p1-3,
+#p1-4:checked~#modal .n-p1-4,
+#p1-5:checked~#modal .n-p1-5,
+#p2-0:checked~#modal .n-p2-0,
+#p2-1:checked~#modal .n-p2-1,
+#p2-2:checked~#modal .n-p2-2,
+#p2-3:checked~#modal .n-p2-3,
+#p2-4:checked~#modal .n-p2-4,
+#p2-5:checked~#modal .n-p2-5{display:inline}
+</style>
+</head>
+<body>
+<!-- États de l'interface (aucun JavaScript) -->
+<input class="st" type="radio" name="p1" id="p1-0" checked>
+<input class="st" type="radio" name="p1" id="p1-1">
+<input class="st" type="radio" name="p1" id="p1-2">
+<input class="st" type="radio" name="p1" id="p1-3">
+<input class="st" type="radio" name="p1" id="p1-4">
+<input class="st" type="radio" name="p1" id="p1-5">
+<input class="st" type="radio" name="p2" id="p2-0">
+<input class="st" type="radio" name="p2" id="p2-1">
+<input class="st" type="radio" name="p2" id="p2-2">
+<input class="st" type="radio" name="p2" id="p2-3" checked>
+<input class="st" type="radio" name="p2" id="p2-4">
+<input class="st" type="radio" name="p2" id="p2-5">
+<input class="st" type="checkbox" id="trade">
+<input class="st" type="checkbox" id="quit">
+<input class="st" type="checkbox" id="quitted">
+
+<div class="trade-ui">
+  <div class="header">
+    <div class="player-head"><span class="player-name">JOUEUR 1</span></div>
+    <label for="trade" class="trade-btn"><span class="t-idle"><span class="arrows">⇄</span>ÉCHANGER</span><span class="t-ready">PRÊT ✓</span></label>
+    <div class="player-head right"><span class="player-name">JASON</span></div>
+  </div>
+
+  <div class="main">
+    <aside class="team-rail">
+      <div class="rail-title">Équipe · Joueur 1</div>
+      <div class="team">
+        <label class="slot" for="p1-0">
+          <div class="slot-top"><span class="gender f">♀</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/227.png" alt="Airmure">
+          <div class="slot-name">Airmure</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png" title="Restes" alt="">
+        </label>
+        <label class="slot" for="p1-1">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/248.png" alt="Tyranocif">
+          <div class="slot-name">Tyranocif</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/assault-vest.png" title="Veste de Combat" alt="">
+        </label>
+        <label class="slot" for="p1-2">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/212.png" alt="Cizayox">
+          <div class="slot-name">Cizayox</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" title="Orbe Vie" alt="">
+        </label>
+        <label class="slot" for="p1-3">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/6.png" alt="Dracaufeu">
+          <div class="slot-name"><span class='star-sm'>★</span> Dracaufeu</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heavy-duty-boots.png" title="Grosses Bottes" alt="">
+        </label>
+        <label class="slot" for="p1-4">
+          <div class="slot-top"><span class="gender f">♀</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/94.png" alt="Ectoplasma">
+          <div class="slot-name">Ectoplasma</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png" title="Mouchoir Choix" alt="">
+        </label>
+        <label class="slot" for="p1-5">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/135.png" alt="Voltali">
+          <div class="slot-name">Voltali</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-specs.png" title="Lunettes Choix" alt="">
+        </label>
+      </div>
+      <div class="rail-foot">Cliquez sur un Pokémon pour l'examiner</div>
+    </aside>
+
+    <section class="center">
+      <div class="side">
+      <div class="pokemon-card left c-p1-0">
+        <div class="card-head">
+          <span class="name">Airmure <span class="gender f">♀</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#B7B7CE;color:#000">Acier</span><span class="type" style="background:#A98FF3;color:#000">Vol</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/227.gif" alt="Airmure">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png" alt="">Restes</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Rigide</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Fermeté</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#6390F0;color:#fff">Eau</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Tête de Fer</div><div class="move">Roc-Boulet</div><div class="move">Atterrissage</div><div class="move">Piège de Roc</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">12</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card left c-p1-1">
+        <div class="card-head">
+          <span class="name">Tyranocif <span class="gender m">♂</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#B6A136;color:#000">Roche</span><span class="type" style="background:#705746;color:#fff">Ténèbres</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/248.gif" alt="Tyranocif">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/assault-vest.png" alt="">Veste de Combat</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Prudent</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Sable Volant</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#D685AD;color:#000">Fée</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Lame de Roc</div><div class="move">Mâchouille</div><div class="move">Séisme</div><div class="move">Poursuite</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">10</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card left c-p1-2">
+        <div class="card-head">
+          <span class="name">Cizayox <span class="gender m">♂</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#A6B91A;color:#000">Insecte</span><span class="type" style="background:#B7B7CE;color:#000">Acier</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/212.gif" alt="Cizayox">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" alt="">Orbe Vie</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Rigide</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Technicien</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#B7B7CE;color:#000">Acier</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Pisto-Poing</div><div class="move">Demi-Tour</div><div class="move">Surpuissance</div><div class="move">Danse Lames</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">248</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">5</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">8</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card left c-p1-3">
+        <div class="card-head">
+          <span class="name">Dracaufeu <span class="gender m">♂</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#EE8130;color:#fff">Feu</span><span class="type" style="background:#A98FF3;color:#000">Vol</span></div>
+          <span class="shiny-star" title="Chromatique">★</span>
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/shiny/6.gif" alt="Dracaufeu">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/heavy-duty-boots.png" alt="">Grosses Bottes</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Timide</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Force Soleil</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#EE8130;color:#fff">Feu</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Déflagration</div><div class="move">Lame d&#x27;Air</div><div class="move">Exploforce</div><div class="move">Atterrissage</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Attaque</span><span class="iv">0</span><span class="ev">0</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card left c-p1-4">
+        <div class="card-head">
+          <span class="name">Ectoplasma <span class="gender f">♀</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#735797;color:#fff">Spectre</span><span class="type" style="background:#A33EA1;color:#fff">Poison</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/94.gif" alt="Ectoplasma">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-scarf.png" alt="">Mouchoir Choix</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Modeste</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Corps Maudit</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#735797;color:#fff">Spectre</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Ball&#x27;Ombre</div><div class="move">Bombe Beurk</div><div class="move">Exploforce</div><div class="move">Tour de Magie</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Attaque</span><span class="iv">0</span><span class="ev">0</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card left c-p1-5">
+        <div class="card-head">
+          <span class="name">Voltali <span class="gender m">♂</span></span>
+          <span class="owner-tag">Joueur 1</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#F7D02C;color:#000">Électrik</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/135.gif" alt="Voltali">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/choice-specs.png" alt="">Lunettes Choix</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Timide</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Absorb-Volt</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#96D9D6;color:#000">Glace</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Tonnerre</div><div class="move">Change-Éclair</div><div class="move">Ball&#x27;Météo</div><div class="move">Puissance Cachée</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Attaque</span><span class="iv">0</span><span class="ev">0</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+      <div class="side">
+      <div class="pokemon-card right c-p2-0">
+        <div class="card-head">
+          <span class="name">Carchacrok <span class="gender m">♂</span></span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#6F35FC;color:#fff">Dragon</span><span class="type" style="background:#E2BF65;color:#000">Sol</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/445.gif" alt="Carchacrok">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" alt="">Orbe Vie</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Jovial</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Peau Dure</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#B7B7CE;color:#000">Acier</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Séisme</div><div class="move">Colère</div><div class="move">Lame de Roc</div><div class="move">Danse Lames</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">0</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card right c-p2-1">
+        <div class="card-head">
+          <span class="name">Rayquaza </span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#6F35FC;color:#fff">Dragon</span><span class="type" style="background:#A98FF3;color:#000">Vol</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/384.gif" alt="Rayquaza">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png" alt="">Baie Sitrus</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Naïf</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Air Lock</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#A8A77A;color:#000">Normal</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Draco-Ascension</div><div class="move">Vitesse Extrême</div><div class="move">Séisme</div><div class="move">Danse Draco</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">4</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card right c-p2-2">
+        <div class="card-head">
+          <span class="name">Léviator <span class="gender m">♂</span></span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#6390F0;color:#fff">Eau</span><span class="type" style="background:#A98FF3;color:#000">Vol</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/130.gif" alt="Léviator">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png" alt="">Restes</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Rigide</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Intimidation</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#E2BF65;color:#000">Sol</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Cascade</div><div class="move">Mâchouille</div><div class="move">Rebond</div><div class="move">Danse Draco</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">88</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">220</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">15</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">200</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card right c-p2-3">
+        <div class="card-head">
+          <span class="name">Ohmassacre <span class="gender m">♂</span></span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#F7D02C;color:#000">Électrik</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/604.gif" alt="Ohmassacre">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png" alt="">Ceinture Force</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Pudique</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Lévitation</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#F7D02C;color:#000">Électrik</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Zénith</div><div class="move">Cage Éclair</div><div class="move">Poing Éclair</div><div class="move">Demi-Tour</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">20</span><span class="ev">3</span></div><div class="stat-row"><span>Attaque</span><span class="iv">30</span><span class="ev">252</span></div><div class="stat-row"><span>Défense</span><span class="iv">8</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">9</span><span class="ev">3</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">26</span><span class="ev">2</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">24</span><span class="ev">250</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">510</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card right c-p2-4">
+        <div class="card-head">
+          <span class="name">Gaulet <span class="gender f">♀</span></span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#7AC74C;color:#000">Plante</span><span class="type" style="background:#A33EA1;color:#fff">Poison</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/591.gif" alt="Gaulet">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-sludge.png" alt="">Boue Noire</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Calme</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Régé-Force</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#6390F0;color:#fff">Eau</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Spore</div><div class="move">Giga-Sangsue</div><div class="move">Bain de Toxines</div><div class="move">Poudre Dodo</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row"><span>Attaque</span><span class="iv">0</span><span class="ev">0</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">180</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">76</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pokemon-card right c-p2-5">
+        <div class="card-head">
+          <span class="name">Simiabraz <span class="gender m">♂</span></span>
+          <span class="owner-tag">Jason</span>
+          <span class="level">Nv. 100</span>
+        </div>
+        <div class="viewport">
+          <div class="types"><span class="type" style="background:#EE8130;color:#fff">Feu</span><span class="type" style="background:#C22E28;color:#fff">Combat</span></div>
+          
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/showdown/392.gif" alt="Simiabraz">
+        </div>
+        <div class="info">
+          <div class="meta-grid">
+            <div class="info-box"><div class="label">Objet tenu</div><div class="value"><img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" alt="">Orbe Vie</div></div>
+            <div class="info-box"><div class="label">Nature</div><div class="value">Naïf</div></div>
+            <div class="info-box"><div class="label">Talent</div><div class="value">Brasier</div></div>
+            <div class="info-box"><div class="label">Téracristal</div><div class="value"><span class="type" style="background:#EE8130;color:#fff">Feu</span></div></div>
+          </div>
+          <div class="moves-stats">
+            <div class="info-box"><div class="label">Capacités</div><div class="moves"><div class="move">Boutefeu</div><div class="move">Close Combat</div><div class="move">Surchauffe</div><div class="move">Demi-Tour</div></div></div>
+            <div class="info-box"><div class="label">IV / EV</div>
+              <div class="stat-row stat-head"><span></span><span>IV</span><span>EV</span></div>
+              <div class="stats"><div class="stat-row"><span>PV</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Attaque</span><span class="iv">31</span><span class="ev">168</span></div><div class="stat-row"><span>Défense</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Atq. Spé.</span><span class="iv">31</span><span class="ev">88</span></div><div class="stat-row"><span>Déf. Spé.</span><span class="iv">31</span><span class="ev">0</span></div><div class="stat-row"><span>Vitesse</span><span class="iv">31</span><span class="ev">252</span></div><div class="stat-row stat-total"><span>Total EV</span><span></span><span class="ev">508</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <aside class="team-rail">
+      <div class="rail-title">Équipe · Jason</div>
+      <div class="team">
+        <label class="slot" for="p2-0">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/445.png" alt="Carchacrok">
+          <div class="slot-name">Carchacrok</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" title="Orbe Vie" alt="">
+        </label>
+        <label class="slot" for="p2-1">
+          <div class="slot-top"><span></span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/384.png" alt="Rayquaza">
+          <div class="slot-name">Rayquaza</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/sitrus-berry.png" title="Baie Sitrus" alt="">
+        </label>
+        <label class="slot" for="p2-2">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/130.png" alt="Léviator">
+          <div class="slot-name">Léviator</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/leftovers.png" title="Restes" alt="">
+        </label>
+        <label class="slot" for="p2-3">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/604.png" alt="Ohmassacre">
+          <div class="slot-name">Ohmassacre</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/focus-sash.png" title="Ceinture Force" alt="">
+        </label>
+        <label class="slot" for="p2-4">
+          <div class="slot-top"><span class="gender f">♀</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/591.png" alt="Gaulet">
+          <div class="slot-name">Gaulet</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/black-sludge.png" title="Boue Noire" alt="">
+        </label>
+        <label class="slot" for="p2-5">
+          <div class="slot-top"><span class="gender m">♂</span><span>N.100</span></div>
+          <img class="mon" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/392.png" alt="Simiabraz">
+          <div class="slot-name">Simiabraz</div>
+          <img class="slot-item" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/life-orb.png" title="Orbe Vie" alt="">
+        </label>
+      </div>
+      <div class="rail-foot">Cliquez sur un Pokémon pour l'examiner</div>
+    </aside>
+  </div>
+
+  <div class="footer">
+    <label for="quit" class="danger-btn">QUITTER</label>
+  </div>
+</div>
+
+<div id="modal" class="modal">
+  <div class="modal-card">
+    <div class="modal-title">ÉCHANGE EN COURS</div>
+    <div class="transfer"><b>J1</b><span class="ball">◉</span><b>JASON</b></div>
+    <p>Échange de <span class="n-p1-0">Airmure</span><span class="n-p1-1">Tyranocif</span><span class="n-p1-2">Cizayox</span><span class="n-p1-3">Dracaufeu</span><span class="n-p1-4">Ectoplasma</span><span class="n-p1-5">Voltali</span> contre <span class="n-p2-0">Carchacrok</span><span class="n-p2-1">Rayquaza</span><span class="n-p2-2">Léviator</span><span class="n-p2-3">Ohmassacre</span><span class="n-p2-4">Gaulet</span><span class="n-p2-5">Simiabraz</span>…</p>
+    <div class="modal-actions"><label for="trade" class="std-btn">FERMER</label></div>
+  </div>
+</div>
+
+<div id="quitModal" class="modal">
+  <div class="modal-card">
+    <div class="modal-title">QUITTER L'ÉCHANGE ?</div>
+    <p>L'échange en cours sera annulé.</p>
+    <div class="modal-actions">
+      <label for="quit" class="std-btn">ANNULER</label>
+      <label for="quitted" class="danger-btn">QUITTER</label>
+    </div>
+  </div>
+</div>
+</body>
+</html>

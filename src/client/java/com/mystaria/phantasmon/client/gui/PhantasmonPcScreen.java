@@ -2,18 +2,11 @@ package com.mystaria.phantasmon.client.gui;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-
-import org.joml.Quaternionf;
-import org.joml.Vector3f;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.cobblemon.mod.common.api.abilities.AbilityTemplate;
 import com.cobblemon.mod.common.api.abilities.Abilities;
@@ -22,12 +15,7 @@ import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
-import com.cobblemon.mod.common.client.gui.PokemonGuiUtilsKt;
-import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState;
-import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.cobblemon.mod.common.pokemon.Species;
-import com.cobblemon.mod.common.util.math.QuaternionUtilsKt;
-import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -35,13 +23,11 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
-import com.mystaria.phantasmon.client.pokemon.CobblemonHeldItems;
 import com.mystaria.phantasmon.client.pokemon.HiddenPowerCalculator;
 import com.mystaria.phantasmon.client.pokemon.NatureModifiers;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
@@ -96,9 +82,6 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  */
 public final class PhantasmonPcScreen extends Screen {
 
-	private static final Logger LOG = LoggerFactory.getLogger(PhantasmonPcScreen.class);
-	private static java.lang.reflect.Method drawProfilePokemonDefaultMethod;
-
 	private static final int BOX_COLUMNS = 6;
 	private static final int BOX_ROWS = 5;
 	private static final int SLOTS_PER_BOX = BOX_COLUMNS * BOX_ROWS;
@@ -135,7 +118,8 @@ public final class PhantasmonPcScreen extends Screen {
 	private static final ResourceLocation SPRITE_STAR = ResourceLocation.fromNamespaceAndPath("phantasmon", "pc/star");
 	/**
 	 * Cobblemon's own {@code StorageSlot.renderSlot} inner scale argument to
-	 * {@code drawProfilePokemon} (decompiled, not guessed) — kept as-is. What we'd
+	 * {@code drawProfilePokemon} (decompiled, not guessed) is kept as-is in
+	 * {@link PokemonGuiRendering} (shared with the trade screen). What we'd
 	 * been missing (found only after two rounds of failed centering attempts,
 	 * Adrien 2026-09-27) is the OUTER pose transform Cobblemon wraps around that
 	 * call: {@code pose.translate(x, y, 0f)} (z=0 — we were using z=100) followed
@@ -146,9 +130,8 @@ public final class PhantasmonPcScreen extends Screen {
 	 * actually fixes it, not any particular anchor point we guessed at. Final
 	 * on-screen size is controlled purely by {@link #SLOT_OUTER_SCALE}/
 	 * {@link #DETAIL_OUTER_SCALE} (a multiplier on top of this same 2.5f base),
-	 * never by changing this constant.
+	 * never by changing the inner one.
 	 */
-	private static final float ICON_INNER_SCALE = 4.5f;
 	private static final float COBBLEMON_OUTER_SCALE = 2.5f;
 	/** Slot/team icon final size = {@link #COBBLEMON_OUTER_SCALE} × this. Adrien asked twice to enlarge further ("3x", then "still a bit more"). */
 	private static final float SLOT_ENLARGE = 2f;
@@ -651,7 +634,7 @@ public final class PhantasmonPcScreen extends Screen {
 				screenBoxX + 4, screenBoxY + 4, 0xFFFFFF);
 
 		Object heldItem = data.get("heldItem");
-		ItemStack heldItemStack = heldItem != null ? resolveHeldItemStack(heldItem.toString()) : ItemStack.EMPTY;
+		ItemStack heldItemStack = heldItem != null ? PokemonGuiRendering.heldItemStack(heldItem.toString()) : ItemStack.EMPTY;
 		// Localized item name (e.g. real Minecraft/Cobblemon "Leftovers" text) when the
 		// item resolves; the raw id was shown here before (Adrien: 2026-09-29) even
 		// though the icon right next to it was already the real, localized item.
@@ -663,7 +646,7 @@ public final class PhantasmonPcScreen extends Screen {
 		int itemY = screenBoxY + screenBoxH - 12;
 		int cursorX = screenBoxX + screenBoxW - 4 - groupWidth;
 		if (!heldItemStack.isEmpty()) {
-			renderItemIcon(graphics, heldItemStack, cursorX, itemY - 1, iconSize);
+			PokemonGuiRendering.renderItemIcon(graphics, heldItemStack, cursorX, itemY - 1, iconSize);
 			cursorX += iconSize + 3;
 		}
 		graphics.drawString(font, itemText, cursorX, itemY, 0xCCCCCC);
@@ -818,15 +801,7 @@ public final class PhantasmonPcScreen extends Screen {
 		int bg = type.getPrimaryColor() | 0xFF000000;
 		graphics.fill(x, y, x + w, y + h, bg);
 		graphics.renderOutline(x, y, w, h, 0x55000000);
-		graphics.drawString(font, label, x + 4, y + 2, readableTextColor(bg), false);
-	}
-
-	private static int readableTextColor(int argbColor) {
-		int r = (argbColor >> 16) & 0xFF;
-		int g = (argbColor >> 8) & 0xFF;
-		int b = argbColor & 0xFF;
-		double luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0;
-		return luminance > 0.6 ? 0x000000 : 0xFFFFFF;
+		graphics.drawString(font, label, x + 4, y + 2, PokemonGuiRendering.readableTextColor(bg), false);
 	}
 
 	private void renderGridPanel(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -892,106 +867,13 @@ public final class PhantasmonPcScreen extends Screen {
 		}
 	}
 
-	/**
-	 * Draws a live 3D miniature via Cobblemon's {@code drawProfilePokemon}. That
-	 * Kotlin function has 9 defaulted parameters (mask {@code 65416}, verified
-	 * by decompiling Cobblemon's own {@code StorageSlot.renderSlot} — see class
-	 * javadoc). The generated {@code drawProfilePokemon$default} bridge that
-	 * lets a caller omit them is marked {@code @JvmSynthetic}, which the Java
-	 * compiler enforces by hiding it from ordinary method calls even though
-	 * it's a public bytecode-level method — so it's invoked here via
-	 * reflection instead, which isn't subject to that source-level filter.
-	 *
-	 * <p>{@code outerScale} replicates Cobblemon's own {@code pose.scale(2.5f,
-	 * 2.5f, 1f)} wrapping call (see {@link #COBBLEMON_OUTER_SCALE} javadoc for
-	 * why this — not the inner {@code drawProfilePokemon} scale argument, and
-	 * not the translate z — turned out to be what actually keeps the model
-	 * centered).
-	 */
+	/** Model anchor for a box — see {@link #SLOT_ICON_ANCHOR_RATIO}; the model itself is drawn by {@link PokemonGuiRendering#renderModel}. */
 	private static int iconAnchorY(int top, int height, float ratio) {
 		return top + Math.round(height * ratio);
 	}
 
-	/** Resolves a held item id (e.g. "choice_band") to its real Cobblemon-registered {@link ItemStack} for icon rendering, via {@link CobblemonHeldItems} — the same "has a battle effect" item set the edit screen's picker offers, not just any {@code cobblemon:}-namespaced item; {@link ItemStack#EMPTY} if unresolvable. */
-	private static ItemStack resolveHeldItemStack(String heldItemId) {
-		if (heldItemId == null || heldItemId.isBlank()) {
-			return ItemStack.EMPTY;
-		}
-		Item item = CobblemonHeldItems.byId().get(heldItemId.toLowerCase(Locale.ROOT));
-		return item == null ? ItemStack.EMPTY : new ItemStack(item);
-	}
-
-	/** Vanilla item icons always render at a fixed 16×16 — scaled here via pose to match the requested pixel size (Adrien: same height as the item name's own font). */
-	private static void renderItemIcon(GuiGraphics graphics, ItemStack stack, int x, int y, int size) {
-		PoseStack poseStack = graphics.pose();
-		poseStack.pushPose();
-		poseStack.translate(x, y, 0);
-		float scale = size / 16f;
-		poseStack.scale(scale, scale, 1f);
-		graphics.renderItem(stack, 0, 0);
-		poseStack.popPose();
-	}
-
 	private static void renderIcon(GuiGraphics graphics, PokemonDto dto, int centerX, int centerY, float outerScale) {
-		Species species = PokemonSpecies.INSTANCE.getByName(dto.species());
-		if (species == null) {
-			return;
-		}
-		Set<String> aspects = new HashSet<>();
-		if (dto.form() != null && !dto.form().isBlank()) {
-			aspects.add(dto.form().toLowerCase(Locale.ROOT));
-		}
-		if (dto.isShiny()) {
-			aspects.add("shiny");
-		}
-		RenderablePokemon renderable = new RenderablePokemon(species, aspects, ItemStack.EMPTY);
-
-		PoseStack poseStack = graphics.pose();
-		poseStack.pushPose();
-		try {
-			poseStack.translate(centerX, centerY, 0);
-			poseStack.scale(outerScale, outerScale, 1f);
-			Quaternionf rotation = QuaternionUtilsKt.fromEulerXYZDegrees(new Quaternionf(), new Vector3f(13.0f, 35.0f, 0f));
-			drawProfilePokemonDefault().invoke(null,
-					renderable,
-					poseStack,
-					rotation,
-					null,
-					new FloatingState(),
-					0f,
-					ICON_INNER_SCALE,
-					null,
-					false,
-					0f, 0f, 0f, 0f, 0f, 0f,
-					0,
-					65416,
-					null);
-		} catch (Exception ex) {
-			// Anything here (reflection failure, a bad argument, a Cobblemon-side
-			// rendering error) must not propagate: an unbalanced pushPose/popPose
-			// would corrupt every remaining draw call for the rest of this frame,
-			// potentially blanking the whole screen instead of just this one icon.
-			LOG.warn("Failed to render Pokémon icon for {} (Cobblemon API mismatch?)", dto.species(), ex);
-		} finally {
-			poseStack.popPose();
-		}
-	}
-
-	private static java.lang.reflect.Method drawProfilePokemonDefault() {
-		java.lang.reflect.Method cached = drawProfilePokemonDefaultMethod;
-		if (cached != null) {
-			return cached;
-		}
-		for (java.lang.reflect.Method candidate : PokemonGuiUtilsKt.class.getMethods()) {
-			if (candidate.getName().equals("drawProfilePokemon$default")
-					&& candidate.getParameterCount() == 18
-					&& candidate.getParameterTypes()[0] == RenderablePokemon.class) {
-				candidate.setAccessible(true);
-				drawProfilePokemonDefaultMethod = candidate;
-				return candidate;
-			}
-		}
-		throw new IllegalStateException("Cobblemon's PokemonGuiUtilsKt.drawProfilePokemon$default not found (API changed?)");
+		PokemonGuiRendering.renderModel(graphics, dto.species(), dto.form(), dto.isShiny(), centerX, centerY, outerScale);
 	}
 
 	private static String statLine(Map<String, Object> stats) {

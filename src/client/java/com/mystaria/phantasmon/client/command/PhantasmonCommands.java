@@ -3,18 +3,22 @@ package com.mystaria.phantasmon.client.command;
 import java.util.UUID;
 
 import com.mojang.brigadier.Command;
+import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.network.chat.Component;
 
 import com.mystaria.phantasmon.client.auth.AuthService;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
+import com.mystaria.phantasmon.client.gui.PhantasmonTradeScreen;
 import com.mystaria.phantasmon.client.network.PingToggle;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.trade.LiveTradeController;
 import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
 
 /**
@@ -46,6 +50,12 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * {@code propose <recipient> <offered> <requested>}, {@code accept <uuid>},
  * {@code cancel <uuid>}, {@code view <uuid>}, {@code list} — see
  * {@link TradeCommandHandler}, which also renders the WS trade notifications.
+ *
+ * <p>Live trade screen (Adrien 2026-10-02): {@code trade invite <player>}
+ * (names suggested from the server's player list — no UUID to type),
+ * {@code trade join}/{@code trade decline} to answer the latest invitation
+ * (also run by the clickable [Accept]/[Decline] chat buttons) — see
+ * {@link LiveTradeController}. Same invitation is also bound to a keybind.
  */
 public final class PhantasmonCommands {
 
@@ -53,7 +63,7 @@ public final class PhantasmonCommands {
 	}
 
 	public static void register(AuthService authService, PingToggle pingToggle, PokemonCommandHandler pokemonCommands,
-			GhostSession ghostSession, TradeCommandHandler tradeCommands) {
+			GhostSession ghostSession, TradeCommandHandler tradeCommands, LiveTradeController liveTrade) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			var pokemonNode = ClientCommandManager.literal("pokemon")
 					.then(ClientCommandManager.literal("import").executes(context -> {
@@ -151,6 +161,21 @@ public final class PhantasmonCommands {
 					.then(ClientCommandManager.literal("list").executes(context -> {
 						tradeCommands.list(context.getSource());
 						return Command.SINGLE_SUCCESS;
+					}))
+					.then(ClientCommandManager.literal("invite")
+							.then(ClientCommandManager.argument("player", StringArgumentType.word())
+									.suggests((context, builder) -> SharedSuggestionProvider.suggest(LiveTradeController.onlinePlayerNames(), builder))
+									.executes(context -> {
+										liveTrade.inviteByName(StringArgumentType.getString(context, "player"));
+										return Command.SINGLE_SUCCESS;
+									})))
+					.then(ClientCommandManager.literal("join").executes(context -> {
+						liveTrade.acceptInvite();
+						return Command.SINGLE_SUCCESS;
+					}))
+					.then(ClientCommandManager.literal("decline").executes(context -> {
+						liveTrade.declineInvite();
+						return Command.SINGLE_SUCCESS;
 					}));
 
 			dispatcher.register(ClientCommandManager.literal("phantasmon")
@@ -169,6 +194,22 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}))
 					.then(ClientCommandManager.literal("debug")
+							// Temporary (Adrien 2026-10-02): live vertical tuning of the trade screen's 3D models, remove once frozen.
+							.then(ClientCommandManager.literal("tradeoffset")
+									.then(ClientCommandManager.literal("slot")
+											.then(ClientCommandManager.argument("px", FloatArgumentType.floatArg(-300, 300)).executes(context -> {
+												float px = FloatArgumentType.getFloat(context, "px");
+												PhantasmonTradeScreen.setModelOffset(false, px);
+												context.getSource().sendFeedback(Component.literal("[Phantasmon] Décalage modèles équipe = " + px + " px"));
+												return Command.SINGLE_SUCCESS;
+											})))
+									.then(ClientCommandManager.literal("card")
+											.then(ClientCommandManager.argument("px", FloatArgumentType.floatArg(-300, 300)).executes(context -> {
+												float px = FloatArgumentType.getFloat(context, "px");
+												PhantasmonTradeScreen.setModelOffset(true, px);
+												context.getSource().sendFeedback(Component.literal("[Phantasmon] Décalage modèle fiche = " + px + " px"));
+												return Command.SINGLE_SUCCESS;
+											}))))
 							.then(ClientCommandManager.literal("fingerprint")
 									.executes(context -> {
 										GhostSession.setFingerprintOverride(null);

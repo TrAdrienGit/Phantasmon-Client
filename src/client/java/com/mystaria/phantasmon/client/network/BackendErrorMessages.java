@@ -26,7 +26,15 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_TRADE_NOT_FOUND", "phantasmon.trade.error.not_found"),
 			Map.entry("ERROR_TRADE_INVALID_RECIPIENT_POKEMON", "phantasmon.trade.error.invalid_recipient_pokemon"),
 			Map.entry("ERROR_TRADE_INVALID_STATE", "phantasmon.trade.error.invalid_state"),
-			Map.entry("ERROR_TRADE_OWNERSHIP_CHANGED", "phantasmon.trade.error.ownership_changed"));
+			Map.entry("ERROR_TRADE_OWNERSHIP_CHANGED", "phantasmon.trade.error.ownership_changed"),
+			Map.entry("ERROR_TRADE_PARTNER_UNAVAILABLE", "phantasmon.trade.error.partner_unavailable"),
+			Map.entry("ERROR_TRADE_PARTNER_BUSY", "phantasmon.trade.error.partner_busy"),
+			Map.entry("ERROR_TRADE_ALREADY_IN_SESSION", "phantasmon.trade.error.already_in_session"),
+			Map.entry("ERROR_TRADE_INVITE_NOT_FOUND", "phantasmon.trade.error.invite_not_found"),
+			Map.entry("ERROR_TRADE_NOT_IN_SESSION", "phantasmon.trade.error.not_in_session"),
+			Map.entry("ERROR_TRADE_OFFER_NOT_IN_TEAM", "phantasmon.trade.error.offer_not_in_team"),
+			Map.entry("ERROR_TRADE_OFFERS_INCOMPLETE", "phantasmon.trade.error.offers_incomplete"),
+			Map.entry("ERROR_POKEMON_IN_PENDING_TRADE", "phantasmon.pokemon.error.in_pending_trade"));
 
 	private BackendErrorMessages() {
 	}

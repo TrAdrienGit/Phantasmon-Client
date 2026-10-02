@@ -28,6 +28,7 @@ import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.network.BackendConfig;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.network.PhantasmonWebSocketClient;
+import com.mystaria.phantasmon.client.trade.LiveTradeListener;
 import com.mystaria.phantasmon.client.trade.TradeNotificationListener;
 
 /**
@@ -70,6 +71,8 @@ public final class GhostSession {
 		}
 	};
 
+	private LiveTradeListener liveTradeListener;
+
 	public GhostSession(AuthSession authSession) {
 		this.webSocketClient = new PhantasmonWebSocketClient();
 		this.entityManager = new GhostEntityManager();
@@ -80,6 +83,29 @@ public final class GhostSession {
 	/** Trade notifications (CAD Phase 8) ride the same presence WebSocket this class owns. */
 	public void setTradeNotificationListener(TradeNotificationListener tradeListener) {
 		this.tradeListener = tradeListener;
+	}
+
+	/** Live trade sessions (the graphical trade screen) also ride this one presence WebSocket — see {@link #send}. */
+	public void setLiveTradeListener(LiveTradeListener liveTradeListener) {
+		this.liveTradeListener = liveTradeListener;
+	}
+
+	/**
+	 * Raw C2S send for features that only borrow this connection (live
+	 * trade). Returns {@code false} without sending anything if the socket
+	 * isn't up, so the caller can tell the player instead of silently
+	 * dropping the action.
+	 */
+	public boolean send(String type, Map<String, Object> data) {
+		if (!connected) {
+			return false;
+		}
+		webSocketClient.send(type, data);
+		return true;
+	}
+
+	public boolean isConnected() {
+		return connected;
 	}
 
 	public synchronized void start() {
@@ -97,6 +123,7 @@ public final class GhostSession {
 			public void onClose() {
 				LOG.info("Ghost presence WebSocket closed");
 				connected = false;
+				notifyLiveTradeConnectionLost();
 			}
 		}).thenRun(() -> {
 			LOG.info("Ghost presence WebSocket connected");
@@ -131,6 +158,7 @@ public final class GhostSession {
 		}
 		webSocketClient.close();
 		entityManager.despawnAll();
+		notifyLiveTradeConnectionLost();
 		lastKnownDimension = null;
 		joinedGroup = false;
 	}
@@ -250,6 +278,10 @@ public final class GhostSession {
 				if (ownerUuid != null) {
 					entityManager.despawn(ownerUuid);
 					if (ownerUuid.equals(authSession.playerUuid())) {
+						// Also reached when the server recalls on its own (the Ghost was just
+						// traded away) — forget it locally too, or the sendout toggle would
+						// believe something is still out.
+						activeGhostPokemonUuid = null;
 						report("phantasmon.ghost.recall_confirmed");
 					}
 				}
@@ -259,8 +291,21 @@ public final class GhostSession {
 			case "TradeAccepted" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeAccepted(data));
 			case "TradeCancelled" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeCancelled(data));
 			default -> {
+				if (type.startsWith("TradeInvite") || type.startsWith("TradeSession")) {
+					LiveTradeListener listener = liveTradeListener;
+					if (listener != null) {
+						Minecraft.getInstance().execute(() -> listener.onLiveTradeMessage(type, data));
+					}
+				}
 				// HeartbeatAck: nothing to do for V1.
 			}
+		}
+	}
+
+	private void notifyLiveTradeConnectionLost() {
+		LiveTradeListener listener = liveTradeListener;
+		if (listener != null) {
+			Minecraft.getInstance().execute(listener::onConnectionLost);
 		}
 	}
 

@@ -260,6 +260,9 @@ déplacer naturellement à côté. Une vraie IA de vagabondage autour du propri�
 
 ### 4.5 Trade — proposer/accepter/annuler (Phase 8)
 
+> Depuis le 2026-10-02, l'échange courant se fait plutôt via l'**écran d'échange en direct** (§4.33 :
+> invitation par pseudo ou touche G, sans aucun UUID). Le flux par commandes ci-dessous reste disponible.
+
 Nécessite deux joueurs connectés (`/phantasmon login`), chacun avec au moins un Pokémon
 (`/phantasmon pokemon list` pour récupérer les UUID — joueur et Pokémon).
 
@@ -1051,6 +1054,123 @@ allers-retours capture d'écran/ajustement de code.
   ont été codés à ce stade — le vrai menu Ghost Trade (choix des Pokémon + validation à deux) n'existe
   pas encore, donc une touche pour l'ouvrir n'aurait rien à ouvrir pour l'instant.
 
+### 4.33 Écran d'échange en direct (2026-10-02)
+
+Recréation de la maquette fournie par Adrien (`Documentation/ecran_echange/` : `SPEC_ECRAN_ECHANGE.md`,
+`phantasmon_trade_ui.html`, captures de référence et `measures.json`), rendue fonctionnelle de bout en
+bout. Les deux joueurs voient l'équipe de l'autre, choisissent chacun leur offre, se déclarent prêts, et
+l'échange s'exécute quand les deux le sont.
+
+**Lancer un échange** (choix d'Adrien : invitation + touche) :
+- `/phantasmon trade invite <pseudo>` — les pseudos sont auto-complétés depuis la liste des joueurs du
+  serveur (plus aucun UUID à taper, c'était le point « très chiant » du test du 2026-09-29) ;
+- ou la touche **G** (« Échanger avec le joueur visé », modifiable dans Options → Commandes → Phantasmon)
+  en visant l'autre joueur ;
+- l'invité reçoit un message avec **[Accepter]** / **[Refuser]** cliquables (équivalents :
+  `/phantasmon trade join` / `/phantasmon trade decline`). L'invitation expire après 60 s.
+- L'écran s'ouvre chez les deux joueurs dès l'acceptation. Le premier Pokémon de l'équipe est proposé
+  par défaut (spec §7.1).
+
+**Dans l'écran** :
+- clic sur un slot du rail **gauche** = changer son offre ; le rail **droit** est en lecture seule
+  (choix d'Adrien) — la fiche droite montre toujours l'offre actuelle du partenaire, mise à jour en
+  direct, et son slot passe en style « sélectionné » ;
+- **⇄ ÉCHANGER** → « PRÊT ✓ » (re-cliquer retire l'accord). Tout changement d'offre, d'un côté ou de
+  l'autre, remet les deux joueurs à « non prêt » (règle appliquée par le backend) ;
+- quand les deux sont prêts, le backend exécute l'échange puis la fenêtre « ÉCHANGE EN COURS » s'ouvre
+  (sur confirmation du serveur, pas en simulation comme dans la maquette) ; **FERMER** ferme l'écran ;
+- **QUITTER** ou **Échap** ouvrent la confirmation « QUITTER L'ÉCHANGE ? » ; confirmer annule l'échange
+  pour les deux (l'autre joueur voit son écran se fermer avec un message dans le chat).
+- Le Pokémon reçu prend **l'emplacement d'équipe** du Pokémon donné (choix d'Adrien, comme un échange
+  Cobblemon). Si l'un des deux était sorti en Ghost, il est rappelé automatiquement.
+
+**Écarts assumés par rapport à la maquette** (fonctionnellement nécessaires dans un vrai échange) :
+- un « PRÊT ✓ » vert apparaît à gauche du nom du partenaire quand il est prêt (la maquette simule le
+  partenaire et n'en a pas besoin) ;
+- le pied de page affiche à gauche, seulement quand c'est utile, une ligne d'état (« En attente de X… »,
+  « X est prêt. », ou l'erreur traduite renvoyée par le backend) ;
+- textes des pieds de rail : « Cliquez sur un Pokémon pour le proposer » à gauche, « Offre de X en
+  surbrillance » à droite (le texte « pour l'examiner » de la maquette ne correspond plus au
+  comportement, le rail droit n'étant pas cliquable) ;
+- la Poké Ball de la fenêtre d'échange fait son aller-retour de 180 px **centré** sur la bande (dans la
+  maquette elle partait du centre et chevauchait le nom de droite).
+
+**Implémentation** :
+- `gui/PhantasmonTradeScreen` dessine tout dans l'espace **1600×900 px de la maquette**, avec les cotes
+  Z01–Z29 de la spec utilisées telles quelles, puis applique une seule échelle `s/2`
+  (`s = min(1, largeur/800, hauteur/450)`, spec §2) : à 1080p en échelle GUI 2, 1 px maquette = 1 pixel
+  écran. Textes en échelle entière (×2 pour les titres 16 px, ×1 sinon) pour rester nets.
+- Textures générées par `scripts/generate_trade_textures.py` (Pillow, valeurs CSS exactes de la maquette)
+  dans `textures/gui/trade/` : fond, rails, fiches, en-têtes joueur, viewport (halo + vignettage +
+  disque quadrillé), fenêtre modale, ombre sous le modèle. Les dégradés sont générés en demi-résolution
+  avec `"blur": true` (filtrage bilinéaire, pas de « dallage » — cf. §4.13). Relancer le script après
+  toute retouche de couleur.
+- **Piège de rendu évité** : en 1.21.1, `fill`/`drawString` sont différés alors que `blit` dessine
+  immédiatement — une texture dessinée après un remplissage finissait *sous* lui. Chaque blit de l'écran
+  fait d'abord un `flush()`, ce qui garantit que l'ordre du code = l'ordre visuel. Les fenêtres modales
+  sont dessinées à z=2000, au-dessus des icônes d'objet et des modèles 3D.
+- Le rendu des modèles 3D (`drawProfilePokemon` par réflexion) et des icônes d'objet a été extrait de
+  `PhantasmonPcScreen` dans `gui/PokemonGuiRendering`, partagé par les deux écrans (aucun changement de
+  comportement pour le PC).
+- `trade/LiveTradeController` (commandes, touche, messages WebSocket, ouverture différée de l'écran au
+  tick suivant — même piège de fermeture du chat que pour le PC, §4.6) et `trade/LiveTradeState`
+  (miroir de l'état envoyé par le serveur, logique pure testée par `LiveTradeStateTest`). Tout passe par
+  le WebSocket de présence existant (`GhostSession`), aucune seconde connexion. Le client n'applique
+  **jamais** un changement d'offre/prêt localement : il attend l'écho du serveur.
+- Sexe affiché : `data.gender` (`M`/`F`, écrit par l'import Showdown), sinon déduit du ratio de l'espèce
+  (espèces asexuées / mono-genre) — jamais deviné pour une espèce mixte (`pokemon/PokemonGender`, testé).
+  Il n'existe pas encore de champ « sexe » dans l'éditeur du PC.
+- Backend : protocole WebSocket `Trade*` documenté dans `PHANTASMON_API_REFERENCE.md` (section
+  « Échange en direct ») ; correction au passage du bug qui rendait impossible la suppression d'un
+  Pokémon déjà échangé (migration `V7`, voir `PHANTASMON_DB_SCHEMA.md` §5.5).
+- Le flux par commandes `/phantasmon trade propose|accept|cancel|view|list` reste disponible tel quel.
+
+**Test manuel (2 comptes, comme le 2026-09-29)** :
+1. Relancer le backend (applique la migration `V7`), déployer le nouveau jar sur les deux machines.
+2. Les deux joueurs se connectent (auto-login) et ont au moins un Pokémon dans l'équipe.
+3. Joueur A : `/phantasmon trade invite <B>` (ou G en visant B) → B clique **[Accepter]**.
+4. Vérifier : les deux écrans s'ouvrent, chaque fiche gauche montre son propre 1er Pokémon, chaque fiche
+   droite celui de l'autre ; changer d'offre côté A met à jour la fiche droite de B.
+5. A clique ÉCHANGER → « PRÊT ✓ » chez A, « PRÊT ✓ » vert à côté du nom de A chez B ; A change d'offre →
+   les deux repassent à « ⇄ ÉCHANGER ».
+6. Les deux prêts → fenêtre « ÉCHANGE EN COURS » chez les deux, puis `/phantasmon pc` : le Pokémon reçu
+   est au même emplacement d'équipe que celui donné.
+7. Nouvel échange puis QUITTER (ou Échap) → confirmation → QUITTER : l'écran de l'autre se ferme avec
+   « A a quitté l'échange ».
+8. Critères visuels de la spec §10 : comparer une capture 1080p / échelle GUI 2 avec
+   `Documentation/ecran_echange/reference/ref_01_ecran.png`, puis essayer les échelles GUI 1 à 4 et une
+   fenêtre 1280×720.
+
+- Build + tests verts (client 40 tests dont 11 nouveaux, backend 110 dont 16 nouveaux).
+- **Non testé visuellement par Claude** (aucun affichage du jeu ici) — à confirmer par Adrien. Points
+  les plus incertains : taille/ancrage des modèles 3D dans les slots et la fiche
+  (`SLOT_MODEL_SCALE`/`CARD_MODEL_SCALE`/`*_MODEL_ANCHOR` en tête de `PhantasmonTradeScreen`, réglages
+  empiriques comme pour le PC), rendu des glyphes ⇄ ♂ ♀ ★ ✓ (police de secours Unicode de Minecraft),
+  et la Poké Ball animée.
+
+### 4.34 Écran d'échange — retours du premier test à deux comptes (2026-10-02)
+
+Échange réussi entre les deux comptes de test. Corrections demandées par Adrien :
+- **Fenêtre « ÉCHANGE EN COURS » infinie** : la Poké Ball fait maintenant 2 allers-retours (3,6 s), la
+  fenêtre passe en « ÉCHANGE TERMINÉ » (« X a été échangé contre Y ! »), puis l'écran se ferme tout seul
+  ~1,8 s plus tard. FERMER / Échap ferment immédiatement.
+- **Menu réduit à 80 %** de sa taille précédente (`MENU_SCALE`), toujours centré ; le jeu (flouté) est
+  visible autour au lieu du fond opaque plein écran.
+- **Lisibilité** : toutes les valeurs de la fiche (objet, nature, talent, capacités, IV/EV, total) passent
+  en taille ×2 (`VALUE_SCALE`), ainsi que le niveau, le bouton ÉCHANGER, la ligne d'état du pied de page
+  et les textes des fenêtres. Les cases sont redistribuées sur toute la hauteur pour occuper l'espace vide
+  sous capacités et IV/EV (lignes de capacités de 68 px, lignes de stats de 36 px).
+- **Type à côté de chaque capacité** (badge Cobblemon à droite du nom). Seuls autres ajouts, jugés utiles
+  et non superflus : le bonus/malus de la nature à côté de son nom (« +Atk / -SpA »), et le libellé de la
+  stat augmentée en rouge / diminuée en bleu dans IV/EV.
+- **Modèles 3D de l'équipe ×1,5** ; nom du Pokémon descendu dans le slot pour leur laisser la place.
+- **Modèles trop hauts** : l'ancre est maintenant calculée depuis le centre de la zone
+  (`modelAnchorY`, reste centré si l'échelle change) + un décalage vers le bas (20 px équipe, 40 px fiche).
+  La capture annoncée n'est pas arrivée dans la conversation, donc ce décalage est estimé :
+  **commande temporaire** `/phantasmon debug tradeoffset slot <px>` / `card <px>` pour l'ajuster en direct
+  (valeurs plus grandes = plus bas), à retirer une fois les bonnes valeurs figées dans le code.
+- **Non testé visuellement par Claude.**
+
 ---
 
 ## 5. Dépannage courant
@@ -1065,4 +1185,6 @@ allers-retours capture d'écran/ajustement de code.
 | `/phantasmon login` échoue à la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang temporairement indisponible |
 | Crash au lancement mentionnant `cobblemon`/Kotlin | Version de Cobblemon absente/incompatible (doit être 1.8.1 pour Fabric 1.21.1) |
 | `UUID non valide à la position N` sur `delete`/`clone`/`edit`/`sendout` | UUID incomplet/tronqué tapé à la main — il faut l'UUID entier (36 caractères), affiché en clair par `/phantasmon pokemon list`/`pc` depuis le correctif du 2026-09-26 |
+| `/phantasmon trade invite` : « Ce joueur n'est pas connecté à Phantasmon » | L'autre joueur n'a pas (encore) de session WebSocket : il n'est pas connecté au backend (auto-login raté, `/phantasmon login`), ou les deux clients ne pointent pas vers le même backend |
+| L'écran d'échange ne s'ouvre pas après [Accepter] | Invitation expirée (60 s) ou l'inviteur a quitté/est déjà en échange — le message d'erreur est dans le chat ; relancer l'invitation |
 | Le Ghost d'un autre joueur n'apparaît jamais | Vérifier les logs client pour `Cannot render Ghost: unresolved species` (espèce/forme non reconnue par Cobblemon côté receveur) ; sinon vérifier que les deux joueurs sont bien dans la même dimension et que le backend tourne |
