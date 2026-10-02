@@ -3,7 +3,6 @@ package com.mystaria.phantasmon.client.command;
 import java.util.UUID;
 
 import com.mojang.brigadier.Command;
-import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 
@@ -15,7 +14,6 @@ import net.minecraft.network.chat.Component;
 
 import com.mystaria.phantasmon.client.auth.AuthService;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
-import com.mystaria.phantasmon.client.gui.PhantasmonTradeScreen;
 import com.mystaria.phantasmon.client.network.PingToggle;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
@@ -194,22 +192,6 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}))
 					.then(ClientCommandManager.literal("debug")
-							// Temporary (Adrien 2026-10-02): live vertical tuning of the trade screen's 3D models, remove once frozen.
-							.then(ClientCommandManager.literal("tradeoffset")
-									.then(ClientCommandManager.literal("slot")
-											.then(ClientCommandManager.argument("px", FloatArgumentType.floatArg(-300, 300)).executes(context -> {
-												float px = FloatArgumentType.getFloat(context, "px");
-												PhantasmonTradeScreen.setModelOffset(false, px);
-												context.getSource().sendFeedback(Component.literal("[Phantasmon] Décalage modèles équipe = " + px + " px"));
-												return Command.SINGLE_SUCCESS;
-											})))
-									.then(ClientCommandManager.literal("card")
-											.then(ClientCommandManager.argument("px", FloatArgumentType.floatArg(-300, 300)).executes(context -> {
-												float px = FloatArgumentType.getFloat(context, "px");
-												PhantasmonTradeScreen.setModelOffset(true, px);
-												context.getSource().sendFeedback(Component.literal("[Phantasmon] Décalage modèle fiche = " + px + " px"));
-												return Command.SINGLE_SUCCESS;
-											}))))
 							.then(ClientCommandManager.literal("fingerprint")
 									.executes(context -> {
 										GhostSession.setFingerprintOverride(null);

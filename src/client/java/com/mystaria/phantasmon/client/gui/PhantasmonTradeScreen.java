@@ -151,14 +151,9 @@ public final class PhantasmonTradeScreen extends Screen {
 	 * so the model stays centered when its scale changes.
 	 */
 	private static final float MODEL_CENTER_K = 7.9f;
-	/**
-	 * Extra downward shift in canvas px — models were drawn too high on the
-	 * first test (Adrien 2026-10-02). Temporarily adjustable live with
-	 * {@code /phantasmon debug tradeoffset slot|card <px>} (same approach as the
-	 * PC's former {@code iconanchor} command), to be frozen here once tuned.
-	 */
-	private static volatile float slotModelOffset = 20f;
-	private static volatile float cardModelOffset = 40f;
+	/** Extra downward shift in canvas px — models were drawn too high on the first test; 20/40 confirmed in game by Adrien (2026-10-02). */
+	private static final float SLOT_MODEL_OFFSET = 20f;
+	private static final float CARD_MODEL_OFFSET = 40f;
 
 	// ---- Animations (spec §8) ----
 	private static final float FLOAT_PERIOD_MS = 3500f;
@@ -192,18 +187,6 @@ public final class PhantasmonTradeScreen extends Screen {
 		originY = (this.height - CANVAS_H * scale) / 2f;
 	}
 
-	/** Debug hook for {@code /phantasmon debug tradeoffset} — see {@link #slotModelOffset}. */
-	public static void setModelOffset(boolean card, float px) {
-		if (card) {
-			cardModelOffset = px;
-		} else {
-			slotModelOffset = px;
-		}
-	}
-
-	public static float modelOffset(boolean card) {
-		return card ? cardModelOffset : slotModelOffset;
-	}
 
 	@Override
 	public boolean isPauseScreen() {
@@ -501,7 +484,7 @@ public final class PhantasmonTradeScreen extends Screen {
 		g.flush();
 		enableCanvasScissor(g, x + 1, modelTop, w - 2, modelHeight);
 		PokemonGuiRendering.renderModel(g, pokemon.species(), pokemon.form(), pokemon.isShiny(),
-				x + w / 2f, modelAnchorY(modelTop + modelHeight / 2f, SLOT_MODEL_SCALE, slotModelOffset), SLOT_MODEL_SCALE);
+				x + w / 2f, modelAnchorY(modelTop + modelHeight / 2f, SLOT_MODEL_SCALE, SLOT_MODEL_OFFSET), SLOT_MODEL_SCALE);
 		g.disableScissor();
 
 		String starPrefix = pokemon.isShiny() ? "★ " : "";
@@ -594,7 +577,7 @@ public final class PhantasmonTradeScreen extends Screen {
 		PoseStack pose = g.pose();
 		pose.pushPose();
 		float centerX = 220 + dx + 575 / 2f;
-		float anchorY = modelAnchorY(117 + 235 / 2f, CARD_MODEL_SCALE, cardModelOffset);
+		float anchorY = modelAnchorY(117 + 235 / 2f, CARD_MODEL_SCALE, CARD_MODEL_OFFSET);
 		pose.translate(centerX, anchorY - 5f * ease, 0);
 		float grow = 1f + 0.015f * ease;
 		pose.scale(grow, grow, 1f);
