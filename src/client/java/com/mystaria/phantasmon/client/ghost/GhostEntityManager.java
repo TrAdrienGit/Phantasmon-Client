@@ -25,6 +25,7 @@ import com.cobblemon.mod.common.pokemon.Species;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
@@ -72,6 +73,10 @@ import com.mystaria.phantasmon.client.gui.PokemonGuiRendering;
  * <p><b>Forms and shiny</b>: the renderer reads the entity's <i>synched</i> {@code ASPECTS}, which Cobblemon's
  * server delegate normally fills in — a client-only entity has none, so the aspects (form aspects + shiny)
  * are written to the entity data by hand, otherwise special forms and shinies render as the base model.
+ *
+ * <p><b>{@code [Ghost]} indicator</b> (CAD Partie 1 §5, §22.1): the Pokémon's nickname is set to
+ * {@code "[Ghost] <nickname or species>"}, so Cobblemon's own label (shown when looking at the Pokémon, with its
+ * level) carries the indicator — same look and behaviour as a normal Pokémon's label otherwise.
  */
 public final class GhostEntityManager {
 
@@ -162,7 +167,8 @@ public final class GhostEntityManager {
 	/** Bumped by {@link #despawnAll}, so timers scheduled before do nothing. */
 	private volatile int generation;
 
-	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, Object storedGender, int level, double x, double y, double z) {
+	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, Object storedGender, int level, String nickname,
+			double x, double y, double z) {
 		ClientLevel clientLevel = Minecraft.getInstance().level;
 		if (clientLevel == null) {
 			return;
@@ -204,6 +210,8 @@ public final class GhostEntityManager {
 		}
 		pokemon.setLevel(Math.max(1, level));
 		pokemon.updateAspects();
+		Component baseName = nickname == null || nickname.isBlank() ? resolvedSpecies.getTranslatedName() : Component.literal(nickname);
+		pokemon.setNickname(Component.translatable("phantasmon.ghost.nameplate", baseName));
 
 		Player owner = clientLevel.getPlayerByUUID(ownerUuid);
 		float anchorYaw = owner != null ? owner.getYRot() : 0f;

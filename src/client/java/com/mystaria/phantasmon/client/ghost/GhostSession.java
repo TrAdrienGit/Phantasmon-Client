@@ -267,7 +267,7 @@ public final class GhostSession {
 				if (ownerUuid != null && position != null && species != null) {
 					entityManager.spawn(ownerUuid, species, (String) data.get("form"),
 							Boolean.TRUE.equals(data.get("is_shiny")), data.get("gender"), (int) number(data.get("level")),
-							position.x, position.y, position.z);
+							(String) data.get("nickname"), position.x, position.y, position.z);
 					if (ownerUuid.equals(authSession.playerUuid())) {
 						report("phantasmon.ghost.sendout_confirmed", species);
 					}

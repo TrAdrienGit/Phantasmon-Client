@@ -75,6 +75,7 @@
 | §4.43 | 2026-10-03 | Éditeur : champ sexe |
 | §4.44 | 2026-10-03 | Le sexe change le modèle 3D |
 | §4.45 | 2026-10-03 | « Échange Ghost » et « Combat Ghost » dans la roue Cobblemon |
+| §4.46 | 2026-10-03 | Corrections BUG-1 à BUG-5 (`fabric.mod.json`, indicateur `[Ghost]`, TTL, échange et PC plein) |
 
 ---
 
@@ -1553,3 +1554,26 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   À vérifier : le jeu démarre, R sur un joueur affiche bien trois sortes d'entrées (Cobblemon + les deux
   Ghost), chaque clic envoie l'invitation, et les textes sont lisibles.
 
+### 4.46 Corrections BUG-1 à BUG-5 (2026-10-03)
+
+- **BUG-1** : `fabric.mod.json` déclare `"license": "GPL-3.0-only"` (au lieu de `CC0-1.0`), aligné sur `LICENSE`.
+- **BUG-2** : `"cobblemon": ">=1.8.1"` ajouté dans `depends` : sans Cobblemon, Fabric Loader affiche un message
+  clair au lieu d'un plantage.
+- **BUG-3, indicateur `[Ghost]`** (CAD Partie 1 §5, §22.1) :
+  - **Backend** : `GhostEntitySpawn` transporte `"nickname"` (`data.nickname`, `null` sans surnom). Test
+    `ghostSpawnCarriesTheNicknameForTheGhostIndicator`.
+  - **Client** : `GhostEntityManager.spawn` donne au `Pokemon` le surnom `[Ghost] <surnom ou nom traduit de
+    l'espèce>` (`phantasmon.ghost.nameplate`). Cobblemon affiche déjà, au-dessus d'un Pokémon regardé, une
+    étiquette nom + niveau tirée du surnom : le Ghost garde donc exactement le comportement d'un Pokémon normal,
+    avec l'indicateur en plus. Aucun Mixin.
+  - Un backend non redémarré n'envoie pas `nickname` : l'étiquette affiche alors `[Ghost] <espèce>`.
+- Non testé en jeu par Claude : compilation et tests backend seulement. À vérifier : en regardant un Ghost sorti
+  (le sien et celui d'un autre joueur), l'étiquette affiche `[Ghost] <nom> Niv. <niveau>`.
+- **BUG-4 (backend)**, confirmé par un test rouge (`PresenceTtlSweepIntegrationTest`) : le Ghost d'un joueur expiré
+  par le TTL restait affiché chez les autres. `PresenceService.findExpired` ne retire plus la présence ;
+  `PhantasmonWebSocketHandler.expire` quitte le groupe comme un `LeaveServerGroup`, puis ferme la session.
+- **BUG-5 (backend)**, confirmé par un test rouge, cause différente du soupçon : pas d'échange partiel, mais une
+  erreur 500 (`UnexpectedRollbackException`) au lieu de `ERROR_POKEMON_PC_FULL`, car le `@Transactional` de
+  `transferOwnership` rendait la transaction rollback-only. `TradeService.requirePcRoom` vérifie la place des deux
+  PC avant tout transfert ; l'échange reste `PENDING`. Suite backend complète : 129 tests verts.
+- Le backend doit être redémarré pour que BUG-3 (`nickname`), BUG-4 et BUG-5 prennent effet.

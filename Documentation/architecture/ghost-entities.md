@@ -39,7 +39,10 @@ serveur renvoie l'événement au propriétaire.
 
 1. Résolution de l'espèce par `PokemonSpecies.getByName`. Espèce inconnue → `WARN Cannot render Ghost: unresolved
    species '…'` dans le log et aucun Ghost (aucune donnée n'est modifiée).
-2. Construction d'un `Pokemon` Cobblemon : espèce, chromatique, sexe, forme, niveau.
+2. Construction d'un `Pokemon` Cobblemon : espèce, chromatique, sexe, forme, niveau, et surnom
+   `[Ghost] <surnom ou espèce>` (`phantasmon.ghost.nameplate`, `data.nickname` de `GhostEntitySpawn`) : l'étiquette
+   native de Cobblemon (nom + niveau, visible quand on regarde le Pokémon) porte ainsi l'indicateur `[Ghost]`
+   (CAD Partie 1 §5).
 3. **Aspects forcés** : le modèle d'une forme (plaques d'Arceus, appareils de Motisma, masques d'Ogerpon…) et la
    variante chromatique ou sexuée sont choisis par les **aspects**. Sur une entité purement cliente, personne ne
    les synchronise : ils sont écrits à la main dans `PokemonEntity.ASPECTS` (forme + `shiny` + `male`/`female`).

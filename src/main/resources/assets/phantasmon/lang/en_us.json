@@ -42,6 +42,7 @@
   "phantasmon.ghost.connection_failed": "[Phantasmon] Could not connect to the Ghost presence service (check the game log for details).",
   "phantasmon.ghost.sendout_sent": "[Phantasmon] Sending out...",
   "phantasmon.ghost.recall_sent": "[Phantasmon] Recalling...",
+  "phantasmon.ghost.nameplate": "[Ghost] %s",
   "phantasmon.ghost.sendout_confirmed": "[Phantasmon] %s is out.",
   "phantasmon.ghost.recall_confirmed": "[Phantasmon] Ghost recalled.",
   "phantasmon.ghost.error.not_in_team": "[Phantasmon] Only Pokémon in your active team can be sent out (not PC-only ones).",
