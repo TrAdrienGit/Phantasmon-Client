@@ -19,6 +19,7 @@ import com.cobblemon.mod.common.entity.pokemon.PokemonEntity;
 import com.cobblemon.mod.common.net.messages.client.animation.PlayPosableAnimationPacket;
 import com.cobblemon.mod.common.net.messages.client.effect.SpawnSnowstormEntityParticlePacket;
 import com.cobblemon.mod.common.pokemon.FormData;
+import com.cobblemon.mod.common.pokemon.Gender;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 
@@ -161,7 +162,7 @@ public final class GhostEntityManager {
 	/** Bumped by {@link #despawnAll}, so timers scheduled before do nothing. */
 	private volatile int generation;
 
-	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, int level, double x, double y, double z) {
+	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, Object storedGender, int level, double x, double y, double z) {
 		ClientLevel clientLevel = Minecraft.getInstance().level;
 		if (clientLevel == null) {
 			return;
@@ -177,6 +178,15 @@ public final class GhostEntityManager {
 		Pokemon pokemon = new Pokemon();
 		pokemon.setSpecies(resolvedSpecies);
 		pokemon.setShiny(shiny);
+		// Models that differ by gender (Meowstic, Pikachu...) read the gender aspect: stored gender, else the species' ratio.
+		String genderAspect = PokemonGuiRendering.genderAspect(resolvedSpecies, form, storedGender);
+		if (genderAspect != null) {
+			pokemon.setGender(switch (genderAspect) {
+				case "male" -> Gender.MALE;
+				case "female" -> Gender.FEMALE;
+				default -> Gender.GENDERLESS;
+			});
+		}
 		FormData formData = form == null ? null : PokemonGuiRendering.resolveForm(resolvedSpecies, form);
 		if (formData != null) {
 			// The form's aspects are what actually select its model (Arceus plates, Rotom appliances, Ogerpon masks...).
@@ -185,6 +195,9 @@ public final class GhostEntityManager {
 			Set<String> forced = new HashSet<>(formData.getAspects());
 			if (shiny) {
 				forced.add("shiny");
+			}
+			if (genderAspect != null) {
+				forced.add(genderAspect);
 			}
 			pokemon.setForm(formData);
 			pokemon.setForcedAspects(forced);
@@ -210,7 +223,7 @@ public final class GhostEntityManager {
 		entity.setYRot(anchorYaw);
 		entity.setYBodyRot(anchorYaw);
 		entity.setYHeadRot(anchorYaw);
-		syncAspects(entity, pokemon, shiny);
+		syncAspects(entity, pokemon, shiny, genderAspect);
 		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), anchorYaw);
 
 		boolean flyer = canFly(entity);
@@ -247,10 +260,13 @@ public final class GhostEntityManager {
 	}
 
 	/** The renderer reads the synched ASPECTS; a client-only entity never gets them from a server delegate. */
-	private static void syncAspects(PokemonEntity entity, Pokemon pokemon, boolean shiny) {
+	private static void syncAspects(PokemonEntity entity, Pokemon pokemon, boolean shiny, String genderAspect) {
 		Set<String> aspects = new HashSet<>(pokemon.getAspects());
 		if (shiny) {
 			aspects.add("shiny");
+		}
+		if (genderAspect != null) {
+			aspects.add(genderAspect);
 		}
 		entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
 	}

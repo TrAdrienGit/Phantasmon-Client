@@ -22,6 +22,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import com.mystaria.phantasmon.client.pokemon.CobblemonHeldItems;
+import com.mystaria.phantasmon.client.pokemon.PokemonDto;
+import com.mystaria.phantasmon.client.pokemon.PokemonGender;
 
 /**
  * Cobblemon model/item drawing shared by every Phantasmon screen (PC, trade).
@@ -56,7 +58,7 @@ public final class PokemonGuiRendering {
 	 * is what keeps the model centered). The model hangs mostly <em>below</em>
 	 * {@code (centerX, anchorY)}.
 	 */
-	public static void renderModel(GuiGraphics graphics, String speciesId, String form, boolean shiny,
+	public static void renderModel(GuiGraphics graphics, String speciesId, String form, boolean shiny, Object storedGender,
 			float centerX, float anchorY, float outerScale) {
 		Species species = PokemonSpecies.INSTANCE.getByName(speciesId);
 		if (species == null) {
@@ -67,6 +69,10 @@ public final class PokemonGuiRendering {
 		Set<String> aspects = new HashSet<>(formAspects(species, form));
 		if (shiny) {
 			aspects.add("shiny");
+		}
+		String genderAspect = genderAspect(species, form, storedGender);
+		if (genderAspect != null) {
+			aspects.add(genderAspect);
 		}
 		RenderablePokemon renderable = new RenderablePokemon(species, aspects, ItemStack.EMPTY);
 
@@ -117,6 +123,28 @@ public final class PokemonGuiRendering {
 			}
 		}
 		return null;
+	}
+
+	/** The raw {@code data.gender} of a Pokémon ("M"/"F"/absent), as {@link #genderAspect} expects it. */
+	public static Object storedGender(PokemonDto pokemon) {
+		return pokemon.data() == null ? null : pokemon.data().get("gender");
+	}
+
+	/**
+	 * Cobblemon's gender aspect ("male"/"female"/"genderless") for models that differ by gender (Meowstic,
+	 * Pikachu...): the stored gender, else whatever the species' ratio settles; {@code null} when both genders
+	 * exist and none is stored (the base model). Renderers that pass explicit aspects (the GUI, the Ghost
+	 * entity) never get Cobblemon's own gender provider, so it has to be added by hand.
+	 */
+	public static String genderAspect(Species species, String formId, Object storedGender) {
+		com.cobblemon.mod.common.pokemon.FormData form = resolveForm(species, formId);
+		float ratio = form != null ? form.getMaleRatio() : species.getMaleRatio();
+		return switch (PokemonGender.resolve(storedGender, ratio)) {
+			case MALE -> "male";
+			case FEMALE -> "female";
+			case GENDERLESS -> "genderless";
+			case UNKNOWN -> null;
+		};
 	}
 
 	/** Aspects that make Cobblemon render {@code formId}; falls back to the raw id (old behavior) if the form is unknown. */

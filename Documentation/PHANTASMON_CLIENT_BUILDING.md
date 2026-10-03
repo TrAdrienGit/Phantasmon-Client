@@ -1508,6 +1508,28 @@ place libérée jusqu'au bord de la colonne (la case Chromatique et le niveau ne
 - **Limite connue** : le sexe n'influence pas encore le modèle 3D (Meowstic, Pikachu femelle…) ni côté PC
   ni côté Ghost sorti — le message `GhostEntitySpawn` ne transporte pas le sexe, seul le combat l'utilise.
 - Non testé par Claude : à vérifier en jeu (espèce mixte, sexe fixe, asexuée, import Showdown avec `(M)`/`(F)`).
+- **Confirmé en jeu par Adrien** : le champ sexe fonctionne.
+
+---
+
+### 4.44 Le sexe change le modèle 3D (2026-10-03)
+
+Les modèles qui diffèrent selon le sexe (Meowstic, Pikachu…) lisent l'aspect Cobblemon `male` / `female` /
+`genderless`. Les rendus qui passent leurs aspects à la main (GUI, entité Ghost) n'ont pas le fournisseur
+d'aspects de Cobblemon : l'aspect est donc ajouté explicitement.
+
+- `PokemonGuiRendering.genderAspect(species, form, storedGender)` : le sexe stocké (`data.gender`), sinon ce
+  que le ratio de l'espèce impose (mâle seul, femelle seule, asexué) ; `null` pour une espèce mixte sans sexe
+  stocké (modèle de base). Utilisé par `renderModel` (cartes PC / échange / éditeur, slot glissé) et par
+  `GhostEntityManager.spawn` (aspects forcés de la forme + aspects synchronisés de l'entité + `setGender`).
+- **Backend** : `GhostEntitySpawn` transporte maintenant `"gender": "M" | "F" | null` (`data.gender` tel que
+  stocké). Test d'intégration ajouté en premier (`ghostSpawnCarriesTheStoredGenderSoTheModelCanBeGenderSpecific`,
+  vu en échec puis au vert), suite complète au vert, `PHANTASMON_API_REFERENCE.md` à jour. **Le backend doit
+  être redémarré** pour que le Ghost d'un autre joueur reçoive le sexe ; sans cela le client retombe
+  simplement sur le ratio de l'espèce (aucune erreur).
+- Le combat n'est pas concerné : il utilisait déjà le sexe (`GhostBattlePokemonFactory`).
+- Non testé par Claude : à vérifier avec un Meowstic ♂ puis ♀ (carte du PC et Ghost sorti, chez soi et chez
+  l'autre joueur).
 
 ---
 
