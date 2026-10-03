@@ -1,93 +1,84 @@
-# Phantasmon Client — Compiler et installer le mod
+# Journal de développement du client
 
-Ce document explique comment compiler le mod Phantasmon en `.jar` et l'installer dans une instance
-Minecraft, indépendamment du backend (voir `Documentation/PHANTASMON_BACKEND_RUNNING.md` dans le repo
-`Phantasmon-Backend` pour le lancer).
+> **Document historique.** Récit chronologique de chaque passe de développement du client, du premier ping au
+> combat Ghost (2026-09-25 → 2026-10-03), avec les bugs rencontrés, leurs causes et les retours de test d'Adrien.
+> Les numéros de section (§4.1 à §4.45) sont **conservés** car cités dans le code, la mémoire de projet et les
+> anciens messages.
+>
+> Ce journal n'est **pas** la référence de l'état actuel : un comportement décrit dans une section peut avoir été
+> modifié par une section suivante, et les mentions « non testé » datent de leur rédaction (la plupart ont été
+> validées depuis, voir [`status.md`](status.md)). Pour l'état actuel : [`../architecture/`](../architecture/),
+> [`../reference/`](../reference/), [`../guides/`](../guides/).
+>
+> À compléter : chaque passe de développement notable ajoute une section `### 4.N Titre (AAAA-MM-JJ)` à la fin.
+>
+> Les entrées citent les **anciens noms de fichiers** de la documentation, réorganisée le 2026-10-03 :
+>
+> | Ancien nom | Nouveau document |
+> |---|---|
+> | `PHANTASMON_CLIENT_BUILDING.md` (§1-3, §5) | `guides/building.md`, `guides/installing.md`, `guides/troubleshooting.md` ; §4 → ce journal |
+> | `PHANTASMON_API_REFERENCE.md` (backend) | `reference/rest-api.md`, `reference/websocket-protocol.md` (backend) |
+> | `PHANTASMON_DB_SCHEMA.md` | `reference/database-schema.md` (backend uniquement) |
+> | `PHANTASMON_BACKEND_RUNNING.md` (backend) | `guides/running.md` (backend) |
+> | `SERVER_AGENT_BRIEFING.md` (backend) | `agents/server-machine-briefing.md` (backend) |
+> | `CONTEXT_CURSOR_CLIENT.md` / `CONTEXT_CURSOR_BACKEND.md` | `agents/client-agent-context.md` / `agents/backend-agent-context.md` |
+> | `CAD_Ghost_Pokemon_Partie_N*.md`, `CAD_Phantasmon_Partie_4*.md` | `specifications/cad-N-*.md` |
+> | `Documentation/ecran_echange/` | `design/trade-screen/` |
+> | `Documentation/prototype_pc.html` | `design/pc-prototype/prototype_pc.html` |
 
----
+## Index
 
-## 1. Prérequis
-
-- **JDK 25** — obligatoire pour exécuter Gradle/Fabric Loom sur ce projet, **même si** le mod compile
-  lui-même en bytecode Java 21 (`sourceCompatibility`/`targetCompatibility` dans `build.gradle`). C'est
-  une exigence de l'outillage de build (Loom 1.18), pas du mod lui-même. Sans JDK 25, `./gradlew build`
-  échoue à l'étape de configuration avec une erreur du type :
-  ```
-  Dependency requires at least JVM runtime version 25. This build uses a Java 21 JVM.
-  ```
-- Pour **jouer** avec le mod une fois compilé : Minecraft **1.21.1**, Fabric Loader **≥ 0.18.1** (plancher
-  volontairement bas pour rester compatible avec les modpacks encore sur cette version — voir
-  `fabric.mod.json`), Fabric API **0.116.17+1.21.1** (ou une version compatible plus récente, qui
-  n'exige elle-même que Fabric Loader ≥ 0.15.11) — ceux-ci tournent normalement sous un Java 21
-  classique (le runtime de jeu, différent du JDK utilisé pour builder).
-- **Depuis la Phase 7** : **Cobblemon 1.8.1** (build Fabric pour 1.21.1) doit aussi être présent dans
-  `mods/` — Phantasmon en dépend pour le rendu des Ghost Pokémon (réutilise les modèles/animations/
-  renderer de Cobblemon). Pas besoin d'ajouter `fabric-language-kotlin` séparément : le jar Cobblemon
-  l'embarque déjà (jar-in-jar, `META-INF/jars/`), Fabric Loader l'extrait automatiquement.
-
-### 1.1 Installer un JDK 25 (si absent)
-
-```powershell
-winget install -e --id Microsoft.OpenJDK.25
-```
-
-Si ce JDK n'est pas votre JDK système par défaut, il n'est pas nécessaire de changer `JAVA_HOME`
-globalement : indiquez-le juste pour la commande de build (voir §2).
-
----
-
-## 2. Compiler le mod
-
-Depuis la racine du repo `Phantasmon-Client` :
-
-```bash
-./gradlew build
-```
-
-Si votre JDK par défaut n'est pas la version 25, précisez-le pour cette seule commande plutôt que de
-changer votre configuration système (exemple avec un JDK Microsoft installé sous Windows, à adapter au
-chemin réel) :
-
-```bash
-JAVA_HOME="C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot" \
-PATH="/c/Program Files/Microsoft/jdk-25.0.4.101-hotspot/bin:$PATH" \
-./gradlew build
-```
-
-```powershell
-$env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
-$env:PATH = "$env:JAVA_HOME\bin;$env:PATH"
-.\gradlew.bat build
-```
-
-### Résultat
-
-Le jar du mod est produit dans `build/libs/` :
-
-```
-build/libs/phantasmon-client-<version>.jar
-```
-
-⚠️ Ignorez `phantasmon-client-<version>-sources.jar` (jar des sources, pas le mod lui-même) — c'est
-`phantasmon-client-<version>.jar` (sans suffixe) qu'il faut installer.
-
----
-
-## 3. Installer le mod dans Minecraft
-
-1. Installer **Fabric Loader** pour Minecraft 1.21.1 (via le launcher officiel Fabric, ou un launcher de
-   modpack compatible comme Modrinth App/CurseForge).
-2. Télécharger et placer **Fabric API** (version `0.116.17+1.21.1` ou compatible) dans le dossier
-   `mods/` de l'instance — Phantasmon en dépend.
-3. Copier `phantasmon-client-<version>.jar` dans ce même dossier `mods/`.
-4. Lancer Minecraft avec le profil Fabric 1.21.1.
-
-Phantasmon est un mod **client-only** : il ne nécessite rien côté serveur Minecraft, et peut être utilisé
-en solo comme sur n'importe quel serveur vanilla/Fabric classique.
+| Section | Date | Sujet |
+|---|---|---|
+| §4.1 | 2026-09-25 | Heartbeat backend (Phase 0 groundwork) |
+| §4.2 | 2026-09-26 | Connexion (Phase 5) — automatique depuis le polissage du 2026-09-26 |
+| §4.3 | 2026-09-26 | Pokémon — création (import Showdown), PC, édition (Phase 6) |
+| §4.4 | 2026-09-26 | Ghost Entity — rendu, envoi/rappel (Phase 7) |
+| §4.5 | 2026-09-26 | Trade — proposer/accepter/annuler (Phase 8) |
+| §4.6 | 2026-09-27 | HUD graphique — écran PC |
+| §4.7 | 2026-09-27 | HUD graphique — éditeur complet + import |
+| §4.8 | 2026-09-27 | Vraies textures pour le menu PC |
+| §4.9 | 2026-09-27 | Refonte du layout — panneau unique + boîte carrée + sous-boîtes |
+| §4.10 | 2026-09-27 | Deuxième round de rectifications détaillées |
+| §4.11 | 2026-09-27 | Troisième round de rectifications détaillées |
+| §4.12 | 2026-09-27 | Quatrième round + fond teinté par type + transparence du panneau racine |
+| §4.13 | 2026-09-27 | Retrait du dégradé, panneau racine uni, recentrage des modèles 3D |
+| §4.14 | 2026-09-27 | Modèles 3D agrandis ×3, refonte visuelle de l'éditeur |
+| §4.15 | 2026-09-27 | Correctifs suite au premier test avec captures |
+| §4.16 | 2026-09-27 | Vraie cause du décentrage 3D trouvée, chevauchement IVs corrigé |
+| §4.17 | 2026-09-27 | Deux bugs persistants, corrigés différemment |
+| §4.18 | 2026-09-27 | Diagnostic précis grâce aux captures d'Adrien |
+| §4.19 | 2026-09-27 | Menu déroulant confirmé résolu ; vraie direction du ratio d'ancrage trouvée |
+| §4.20 | 2026-09-27 | Boîte équipe redimensionnée, panneau racine compacté, nouvel ajustement 3D |
+| §4.21 | 2026-09-27 | Commande de debug temporaire pour le ratio d'ancrage 3D |
+| §4.22 | 2026-09-27 | Ratio final trouvé, commande retirée, finitions du panneau de présentation |
+| §4.23 | 2026-09-27 | Badges à droite, ratio 3D indépendant pour l'écran, icône d'objet réelle |
+| §4.24 | 2026-09-27 | Talent/Objet/Capacités : sélecteurs au lieu de texte libre |
+| §4.25 | 2026-09-29 | Filtrage des objets « stratégiques » et noms localisés |
+| §4.26 | 2026-09-29 | Correctifs suite au test d'Adrien : plus aucun objet trouvé, talents non traduits |
+| §4.27 | 2026-09-29 | Couverture de la liste d'objets + traduction des talents oubliée dans le panneau de détail |
+| §4.28 | 2026-09-29 | Recherche Objet/Capacité moins stricte : mots-clés dans n'importe quel ordre |
+| §4.29 | 2026-09-29 | Nature/nom/objet non traduits dans le panneau de détail ; confirmation objets manquants |
+| §4.30 | 2026-09-29 | Premier test multijoueur réel : URL du backend pointée sur la machine dev |
+| §4.31 | 2026-09-29 | Bug réel trouvé au 1er test : le sendout ne se propage pas à l'autre joueur |
+| §4.32 | 2026-09-29 | Raccourcis clavier PC/sendout, et sendout simplifié |
+| §4.33 | 2026-10-02 | Écran d'échange en direct |
+| §4.34 | 2026-10-02 | Écran d'échange — retours du premier test à deux comptes |
+| §4.35 | 2026-10-02 | PC refait avec la DA de l'écran d'échange |
+| §4.36 | 2026-10-02 | Finitions PC + éditeur refait dans la même DA |
+| §4.37 | 2026-10-03 | Bouton ✕ du PC, modèles 3D des formes |
+| §4.38 | 2026-10-03 | Phase 9 — prototype du moteur de combat local |
+| §4.39 | 2026-10-03 | Phase 9 — combat à deux joueurs |
+| §4.40 | 2026-10-03 | Phase 9 — animations d'attaque identiques à Cobblemon |
+| §4.41 | 2026-10-03 | Ghost : suivi fluide du propriétaire |
+| §4.42 | 2026-10-03 | Ghost : roaming, caméra sans effet, animations de sortie/rappel, formes et shiny |
+| §4.43 | 2026-10-03 | Éditeur : champ sexe |
+| §4.44 | 2026-10-03 | Le sexe change le modèle 3D |
+| §4.45 | 2026-10-03 | « Échange Ghost » et « Combat Ghost » dans la roue Cobblemon |
 
 ---
 
-## 4. Tester les fonctionnalités actuelles
+## Entrées
 
 ### 4.1 Heartbeat backend (Phase 0 groundwork)
 
@@ -1562,22 +1553,3 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   À vérifier : le jeu démarre, R sur un joueur affiche bien trois sortes d'entrées (Cobblemon + les deux
   Ghost), chaque clic envoie l'invitation, et les textes sont lisibles.
 
----
-
-## 5. Dépannage courant
-
-| Symptôme | Cause probable |
-|---|---|
-| `Dependency requires at least JVM runtime version 25` | JDK utilisé pour Gradle < 25 — voir §1.1 |
-| Le mod n'apparaît pas dans le jeu | Mauvais dossier `mods/`, Fabric API manquante/incompatible, version Minecraft ≠ 1.21.1 |
-| Toujours `Backend injoignable` dans le chat | Backend non lancé, mauvais port, pare-feu local |
-| Crash au lancement mentionnant un mixin | Mixin `phantasmon.client.mixins.json` devenu incompatible après une mise à jour de Cobblemon (cible `DistributionUtilsKt.runOnServer`) ou de Minecraft — signaler avec le log |
-| `/phantasmon login` répond "comptes hors-ligne non supportés" | Compte de lancement en mode hors-ligne/cracké (`User.Type.LEGACY`) — utiliser un vrai compte Microsoft |
-| `/phantasmon login` échoue à la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang temporairement indisponible |
-| Crash au lancement mentionnant `cobblemon`/Kotlin | Version de Cobblemon absente/incompatible (doit être 1.8.1 pour Fabric 1.21.1) |
-| `UUID non valide à la position N` sur `delete`/`clone`/`edit`/`sendout` | UUID incomplet/tronqué tapé à la main — il faut l'UUID entier (36 caractères), affiché en clair par `/phantasmon pokemon list`/`pc` depuis le correctif du 2026-09-26 |
-| `/phantasmon trade invite` : « Ce joueur n'est pas connecté à Phantasmon » | L'autre joueur n'a pas (encore) de session WebSocket : il n'est pas connecté au backend (auto-login raté, `/phantasmon login`), ou les deux clients ne pointent pas vers le même backend |
-| L'écran d'échange ne s'ouvre pas après [Accepter] | Invitation expirée (60 s) ou l'inviteur a quitté/est déjà en échange — le message d'erreur est dans le chat ; relancer l'invitation |
-| `/phantasmon battle invite` : « Ce joueur n'est pas connecté à Phantasmon » | Même cause que pour l'échange : l'autre joueur n'a pas de session WebSocket au backend |
-| Le combat ne démarre pas chez l'invité | Regarder les logs de l'hôte pour `Cannot` / `engine` (moteur Showdown non démarré) ; le message « Le moteur de combat n'a pas pu démarrer » s'affiche alors dans le chat |
-| Le Ghost d'un autre joueur n'apparaît jamais | Vérifier les logs client pour `Cannot render Ghost: unresolved species` (espèce/forme non reconnue par Cobblemon côté receveur) ; sinon vérifier que les deux joueurs sont bien dans la même dimension et que le backend tourne |

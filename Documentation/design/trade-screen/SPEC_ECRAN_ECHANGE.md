@@ -1,5 +1,12 @@
 # Spécification — Écran d'échange Phantasmon (portage Minecraft / Cobblemon)
 
+> **Statut (2026-10-03)** : maquette livrée par Adrien et **implémentée** (`gui/PhantasmonTradeScreen`, socle
+> `gui/PhantasmonCanvasScreen`). Document conservé tel que reçu, comme référence visuelle. Réponses aux questions
+> du §1 : Fabric, Minecraft 1.21.1, Cobblemon 1.8.1 ; écran **séparé** (l'échange Cobblemon n'est pas remplacé) ;
+> rail droit **en lecture seule** montrant l'offre du partenaire ; textures générées par
+> `scripts/generate_trade_textures.py` ; Échap ouvre la confirmation de sortie. Écarts assumés :
+> [`architecture/live-trade.md`](../../architecture/live-trade.md).
+
 Ce document décrit précisément l'écran d'échange de Pokémon à recréer en tant que `Screen` client d'un mod Minecraft basé sur Cobblemon. La maquette HTML fournie est la **référence visuelle unique** : en cas de doute, c'est elle qui fait foi, pas l'ancienne interface grise de Cobblemon.
 
 ## 0. Contenu du dossier
