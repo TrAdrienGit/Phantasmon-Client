@@ -16,6 +16,7 @@ import com.cobblemon.mod.common.api.moves.Moves;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.api.types.ElementalType;
 import com.cobblemon.mod.common.api.types.ElementalTypes;
+import com.cobblemon.mod.common.pokemon.FormData;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.mojang.blaze3d.vertex.PoseStack;
 
@@ -34,6 +35,7 @@ import com.mystaria.phantasmon.client.pokemon.HiddenPowerCalculator;
 import com.mystaria.phantasmon.client.pokemon.NatureModifiers;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
+import com.mystaria.phantasmon.client.pokemon.PokemonGender;
 import com.mystaria.phantasmon.client.pokemon.PokemonUpdateRequestDto;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParseException;
@@ -98,6 +100,10 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private static final int COL2_X = 1093;
 	private static final int COL2_W = 480;
 	private static final int BOX_H = 56;
+	/** Row 1: nickname (narrower than a full column), then the gender box up to the column's right edge. */
+	private static final int NICKNAME_W = 320;
+	private static final int GENDER_X = COL1_X + NICKNAME_W + 10;
+	private static final int GENDER_W = COL1_X + COL1_W - GENDER_X;
 	private static final int ROW1_Y = 81;
 	private static final int ROW2_Y = 145;
 	private static final int ROW3_Y = 209;
@@ -138,6 +144,10 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private int natureIndex;
 	private ElementalType teraType;
 	private boolean shiny;
+	/** Stored gender: {@code "M"}, {@code "F"} or {@code ""} (not set — Showdown's "random"). Only editable for mixed-ratio species, see {@link #fixedGender}. */
+	private String gender = "";
+	/** MALE/FEMALE/GENDERLESS when the species' ratio settles it (nothing to choose), UNKNOWN when both genders exist. */
+	private PokemonGender fixedGender = PokemonGender.UNKNOWN;
 	private String abilityId;
 	private String heldItemId = "";
 	private final String[] moveIds = new String[4];
@@ -192,6 +202,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			fields[F_EV + i] = String.valueOf(statOrDefault(evs, STAT_KEYS[i], 0));
 		}
 		shiny = original.isShiny();
+		gender = normalizeGender(data.get("gender"));
 		natureIndex = Math.max(0, indexOf(NATURES, original.nature()));
 		Object teraRaw = data.get("teraType");
 		teraType = teraRaw != null ? Look.safeType(teraRaw.toString()) : null;
@@ -205,6 +216,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		// Real learnable abilities for this exact species, deduped (an ability can sit at
 		// several priorities). AbilityTemplate.getDisplayName() is a raw translation key.
 		Species species = PokemonSpecies.INSTANCE.getByName(original.species());
+		fixedGender = fixedGenderOf(species);
 		LinkedHashSet<String> abilitySet = new LinkedHashSet<>();
 		if (species != null) {
 			for (PotentialAbility potential : species.getAbilities()) {
@@ -297,6 +309,13 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		} else {
 			data.remove("teraType");
 		}
+		if (genderEditable()) {
+			if (gender.isEmpty()) {
+				data.remove("gender");
+			} else {
+				data.put("gender", gender);
+			}
+		}
 		return data;
 	}
 
@@ -377,6 +396,9 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		fields[F_LEVEL] = String.valueOf(request.level());
 		shiny = Boolean.TRUE.equals(request.isShiny());
+		if (genderEditable()) {
+			gender = normalizeGender(request.data().get("gender"));
+		}
 		natureIndex = Math.max(0, indexOf(NATURES, request.nature()));
 		Object tera = request.data().get("teraType");
 		teraType = tera != null ? Look.safeType(tera.toString()) : null;
@@ -616,6 +638,15 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		focusedField = -1;
 
+		if (genderEditable() && inside(x, y, GENDER_X, ROW1_Y, GENDER_W, BOX_H)) {
+			gender = switch (gender) {
+				case "" -> "M";
+				case "M" -> "F";
+				default -> "";
+			};
+			edited();
+			return true;
+		}
 		if (inside(x, y, 1333, ROW1_Y, 240, BOX_H)) {
 			shiny = !shiny;
 			edited();
@@ -842,7 +873,8 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		outline(g, PANEL_X, 72, PANEL_W, 758, RAIL_BORDER);
 
 		// Row 1: nickname, level, shiny
-		renderTextField(g, F_NICKNAME, COL1_X, ROW1_Y, COL1_W, BOX_H, "phantasmon.pc.edit.nickname", mx, my);
+		renderTextField(g, F_NICKNAME, COL1_X, ROW1_Y, NICKNAME_W, BOX_H, "phantasmon.pc.edit.nickname", mx, my);
+		renderGenderField(g, mx, my);
 		renderTextField(g, F_LEVEL, COL2_X, ROW1_Y, 230, BOX_H, "phantasmon.pc.edit.level", mx, my);
 		boolean shinyHovered = inside(mx, my, 1333, ROW1_Y, 240, BOX_H);
 		renderFieldFrame(g, 1333, ROW1_Y, 240, BOX_H, "phantasmon.pc.editor.shiny", false, shinyHovered);
@@ -889,6 +921,55 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 				drawText(g, "_", x + 9 + textWidth(shown, VALUE_SCALE, false, 0f) + 2, y + 26, VALUE_SCALE, CYAN, false, 0f);
 			}
 		}
+	}
+
+	/** Click cycles Aléatoire → ♂ → ♀; species whose ratio settles the gender show it fixed, with no hover. */
+	private void renderGenderField(GuiGraphics g, double mx, double my) {
+		boolean editable = genderEditable();
+		renderFieldFrame(g, GENDER_X, ROW1_Y, GENDER_W, BOX_H, "phantasmon.pc.editor.gender", false,
+				editable && inside(mx, my, GENDER_X, ROW1_Y, GENDER_W, BOX_H));
+		float valueY = ROW1_Y + 26;
+		float textX = GENDER_X + 9;
+		PokemonGender shown = editable ? (gender.equals("M") ? PokemonGender.MALE : gender.equals("F") ? PokemonGender.FEMALE : PokemonGender.UNKNOWN) : fixedGender;
+		switch (shown) {
+			case MALE -> {
+				drawGender(g, PokemonGender.MALE, textX, valueY, VALUE_SCALE);
+				drawText(g, Component.translatable("phantasmon.pc.editor.gender_male").getString(), textX + 22, valueY, VALUE_SCALE, editable ? WHITE : DIM, false, 0f);
+			}
+			case FEMALE -> {
+				drawGender(g, PokemonGender.FEMALE, textX, valueY, VALUE_SCALE);
+				drawText(g, Component.translatable("phantasmon.pc.editor.gender_female").getString(), textX + 22, valueY, VALUE_SCALE, editable ? WHITE : DIM, false, 0f);
+			}
+			case GENDERLESS -> drawText(g, fitText(Component.translatable("phantasmon.pc.editor.gender_none").getString(), GENDER_W - 18, VALUE_SCALE, false, 0f),
+					textX, valueY, VALUE_SCALE, DIM, false, 0f);
+			default -> drawText(g, fitText(Component.translatable("phantasmon.pc.editor.gender_random").getString(), GENDER_W - 18, VALUE_SCALE, false, 0f),
+					textX, valueY, VALUE_SCALE, DIM, false, 0f);
+		}
+	}
+
+	private boolean genderEditable() {
+		return fixedGender == PokemonGender.UNKNOWN;
+	}
+
+	/** Same ratio rule as {@code Look.of}: the form's own ratio when it has one, else the species'. */
+	private PokemonGender fixedGenderOf(Species species) {
+		if (species == null) {
+			return PokemonGender.UNKNOWN;
+		}
+		FormData form = PokemonGuiRendering.resolveForm(species, original.form());
+		float ratio = form != null ? form.getMaleRatio() : species.getMaleRatio();
+		return PokemonGender.resolve(null, ratio);
+	}
+
+	private static String normalizeGender(Object stored) {
+		if (stored == null) {
+			return "";
+		}
+		return switch (stored.toString().trim().toUpperCase(Locale.ROOT)) {
+			case "M", "MALE" -> "M";
+			case "F", "FEMALE" -> "F";
+			default -> "";
+		};
 	}
 
 	private void renderPickerField(GuiGraphics g, Picker picker, int x, int y, int w, String labelKey, double mx, double my) {

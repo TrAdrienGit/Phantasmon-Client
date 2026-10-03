@@ -1485,6 +1485,29 @@ Suite au premier test du suivi fluide (§4.41), tout dans `GhostEntityManager`.
   marge ; les petits/moyens gardent le point d'origine), pour qu'un gros Ghost au repos ne se tienne pas
   dans son propriétaire. Conséquence assumée : le Ghost traverse le joueur s'il marche dessus.
 - Non testé par Claude : à vérifier avec Arceus/Rayquaza en marchant, en sprintant et en faisant demi-tour.
+- **Confirmé en jeu par Adrien** : plus de poussée, comportement parfait.
+
+---
+
+### 4.43 Éditeur : champ sexe (2026-10-03)
+
+Dans `PhantasmonPcEditScreen`, ligne 1 : le surnom passe à 320 px de large et une case **SEXE** occupe la
+place libérée jusqu'au bord de la colonne (la case Chromatique et le niveau ne bougent pas).
+
+- **Valeurs possibles dictées par l'espèce** (même règle que `Look.of` : ratio de la forme si elle en a un,
+  sinon celui de l'espèce, via `PokemonGender.resolve`) :
+  - espèce **mixte** (ex. Pikachu) : la case est cliquable et fait tourner **Aléatoire → ♂ Mâle → ♀
+    Femelle → Aléatoire** ;
+  - espèce **à sexe fixe** (100 % mâle, 100 % femelle) ou **asexuée** : valeur affichée en grisé, case non
+    cliquable, et la sauvegarde ne touche pas à `data.gender`.
+- **Stockage** : `data.gender` = `"M"` ou `"F"` (le format que l'import Showdown écrit déjà et que
+  `GhostBattlePokemonFactory` lit pour le combat) ; « Aléatoire » supprime la clé, comme Showdown quand le
+  sexe n'est pas précisé. Aucun changement backend (`data` est un JSONB libre).
+- L'import Showdown depuis l'éditeur remplit aussi le sexe (si l'espèce le permet) ; l'aperçu de la carte à
+  gauche affiche le ♂/♀ en direct.
+- **Limite connue** : le sexe n'influence pas encore le modèle 3D (Meowstic, Pikachu femelle…) ni côté PC
+  ni côté Ghost sorti — le message `GhostEntitySpawn` ne transporte pas le sexe, seul le combat l'utilise.
+- Non testé par Claude : à vérifier en jeu (espèce mixte, sexe fixe, asexuée, import Showdown avec `(M)`/`(F)`).
 
 ---
 
