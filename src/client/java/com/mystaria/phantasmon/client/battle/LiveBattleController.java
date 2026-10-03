@@ -262,6 +262,11 @@ public final class LiveBattleController implements LiveBattleListener {
 					}
 
 					@Override
+					public void effect(ActionEffectEvent event) {
+						relayEffectToGuest(currentBattle, event);
+					}
+
+					@Override
 					public void failed() {
 						Map<String, Object> result = new HashMap<>();
 						result.put("battle_uuid", currentBattle);
@@ -291,12 +296,22 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
+	/** Host: a move animation for the guest's client, riding the same relay as the Cobblemon packets (keeps the order). */
+	private void relayEffectToGuest(UUID currentBattle, ActionEffectEvent event) {
+		send("BattlePacket", Map.of("battle_uuid", currentBattle, "id", ActionEffectEvent.PACKET_ID,
+				"payload", Base64.getEncoder().encodeToString(event.toBytes())));
+	}
+
 	/** Guest: a packet from the host's engine, played into this client's Cobblemon UI. */
 	private void onRelayedPacket(Map<String, Object> data) {
 		if (host || battleUuid == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
 			return;
 		}
 		try {
+			if (ActionEffectEvent.PACKET_ID.equals(data.get("id"))) {
+				ActionEffectPlayer.play(ActionEffectEvent.fromBytes(Base64.getDecoder().decode(string(data.get("payload")))), null);
+				return;
+			}
 			NetworkPacket<?> packet = CobblemonPackets.decode(new CobblemonPackets.Encoded(string(data.get("id")),
 					Base64.getDecoder().decode(string(data.get("payload")))));
 			if (packet instanceof BattleInitializePacket init) {

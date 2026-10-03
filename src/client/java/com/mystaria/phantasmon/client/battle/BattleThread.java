@@ -95,6 +95,8 @@ public final class BattleThread {
 		service.sendRegistryData(jarScripts("data/cobblemon/held_items"), "heldItem");
 		service.sendRegistryData(showdownSpecies(), "species");
 		service.indicateSpeciesInitialized();
+		// Move animations, boosts, statuses: server datapack data the engine needs too (BoostInstruction).
+		ClientActionEffects.ensureLoaded();
 		showdownBooted = true;
 		LOG.info("Showdown booted on the client for Ghost battles in {} ms", System.currentTimeMillis() - start);
 	}

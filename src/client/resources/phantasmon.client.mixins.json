@@ -4,7 +4,10 @@
 	"compatibilityLevel": "JAVA_21",
 	"client": [
 		"ClientCommonPacketListenerImplMixin",
-		"DistributionUtilsMixin"
+		"DistributionUtilsMixin",
+		"ActionEffectTimelineMixin",
+		"ActionEffectInstructionsMixin",
+		"MoveInstructionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

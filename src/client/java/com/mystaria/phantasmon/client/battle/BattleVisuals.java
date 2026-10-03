@@ -126,6 +126,17 @@ public final class BattleVisuals {
 		}
 	}
 
+	/** The client-side entity standing at a battle position ({@code p1a}...), if any — for {@link ActionEffectPlayer}. */
+	public static PokemonEntity entityAt(String pnx) {
+		PokemonEntity entity = entities.get(pnx);
+		return entity == null || entity.isRemoved() ? null : entity;
+	}
+
+	/** Changes whenever the scene is cleared: lets delayed work notice it belongs to a finished battle. */
+	public static int generation() {
+		return generation;
+	}
+
 	/** World left / connection lost: drop everything at once, no animation. */
 	public static void clear() {
 		generation++;

@@ -216,11 +216,6 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}))
 					.then(ClientCommandManager.literal("debug")
-							// Phase 9 prototype: local Ghost battle against Cobblemon's AI (remove once real battles ship).
-							.then(ClientCommandManager.literal("battle").executes(context -> {
-								pokemonCommands.startDebugBattle();
-								return Command.SINGLE_SUCCESS;
-							}))
 							.then(ClientCommandManager.literal("fingerprint")
 									.executes(context -> {
 										GhostSession.setFingerprintOverride(null);

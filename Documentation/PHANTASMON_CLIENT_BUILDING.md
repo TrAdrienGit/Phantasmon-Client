@@ -1367,8 +1367,57 @@ Bruit connu dans le log de l'hôte : `NoSuchElementException: List is empty` dan
 `EntityParticlesActionEffectKeyframe`. Les animations d'attaque côté serveur cherchent des entités qui
 n'existent pas. C'est sans effet sur le combat, et ce sera traité par l'étape des animations d'attaque.
 
-`/phantasmon debug battle` (combat contre l'IA, §4.38) reste disponible pour l'instant. Il sera retiré
-après la phase des animations d'attaque.
+`/phantasmon debug battle` (combat contre l'IA, §4.38) a été retiré le 2026-10-03, après validation des
+animations d'attaque par Adrien (« c'est vraiment propre »). `GhostAiBattleActor` et l'aller-retour
+encode/decode de test ont été supprimés avec lui. `/phantasmon debug fingerprint` reste.
+
+### 4.40 Phase 9 — animations d'attaque identiques à Cobblemon (2026-10-03)
+
+Adrien a validé les deux sens du combat à deux joueurs (hôte LAN et hôte client pur). Étape suivante :
+les animations d'attaque.
+
+**Comment Cobblemon fait :** chaque attaque (et boost, statut, dégâts de statut...) a une « action
+effect » : une timeline JSON (`data/<ns>/action_effects/**.json`, ~150 fichiers dans Cobblemon) de
+keyframes `animation`, `entity_particles`, `entity_sound`, `entity_molang`, `pause`, `add_holds`/
+`remove_holds`, `sequence`, `parallel`... Le **serveur** la joue contre les entités serveur des Pokémon
+et envoie des paquets aux joueurs proches. Un combat Ghost n'a pas d'entités serveur : chaque client a
+les siennes (`BattleVisuals`). C'est la cause des erreurs `List is empty` vues dans le log de l'hôte.
+
+**Ce qu'on fait (`client/battle/`) :**
+- `mixin/ActionEffectTimelineMixin` : sur l'hôte, pour un combat Ghost hébergé ici
+  (`GhostBattles.effectRoute`), `ActionEffectTimeline.run` ne joue plus côté serveur et confie l'effet
+  à `GhostActionEffects.intercept`. Un combat Cobblemon normal sur le serveur intégré n'est pas touché.
+- `mixin/ActionEffectInstructionsMixin` : les 7 instructions qui lancent un effet (Move, Damage, Boost,
+  Activate, Cant, Prepare, Start) font toutes `this.future = effect.run(context)`. L'injection sur
+  `setFuture` relie l'effet à son instruction : qui attaque, qui est visé, cibles ratées/touchées, nombre
+  de coups.
+- `ActionEffectEvent` : id de la timeline + positions Showdown (`p1a`, `p2a`) + ces infos. Il est relayé
+  à l'invité dans un `BattlePacket` d'id `phantasmon:action_effect`, sur le même canal que les paquets
+  Cobblemon, donc dans le bon ordre.
+- `ActionEffectPlayer` : un lecteur de timeline côté client, qui joue les mêmes fichiers JSON (parsés par
+  Cobblemon) avec la même sémantique et les mêmes requêtes MoLang (`q.move.*`, `q.missed(q.entity.uuid)`,
+  `q.entity.is_user`...). Au lieu d'envoyer des paquets aux joueurs, il les joue directement dans le
+  client contre les entités de `BattleVisuals`. `move_to_target`/`return_to_position` deviennent un
+  glissement en ligne droite, puisque les entités client n'ont pas d'IA.
+- Rythme du combat : comme dans Cobblemon, le moteur attend le hold `effects` (les PV ne bougent qu'à
+  l'impact) et la fin de l'effet (l'attaque suivante attend l'animation précédente). Ces deux signaux
+  suivent maintenant la lecture **sur le client hôte**, recopiée dans le contexte du moteur. Une sécurité
+  libère le combat au bout de 20 s si une lecture ne se termine jamais.
+- `ClientActionEffects` : les action effects sont des données de datapack serveur, jamais synchronisées.
+  Sur un client pur, le registre est rempli depuis les jars des mods (Cobblemon et addons), avec le parser
+  de Cobblemon et les mêmes ids (namespace + nom de fichier). C'est nécessaire au lecteur, mais aussi au
+  moteur de l'hôte : `BoostInstruction` déréférence `boost` avec `!!`, ce qui aurait planté au premier boost
+  dans un combat hébergé par un client pur.
+
+**Retour du premier test (2026-10-03)** : boosts, statuts et rythme OK, mais aucune animation d'attaque.
+`MoveInstruction` (classe Kotlin finale) écrit `future = effect.run(context)` directement dans son champ,
+sans passer par `setFuture`. L'effet n'était donc jamais relié à son instruction et se jouait sans
+attaquant ni cible. `mixin/MoveInstructionMixin` redirige cette écriture (le `PUTFIELD` dans
+`invoke$lambda$1`, nom propre à Cobblemon 1.8.1) vers `setFuture`. Un effet non relié laisse désormais un
+`WARN` dans le log (« was not claimed by any instruction »).
+
+Limite connue : les datapacks du monde (pas ceux des mods) ne sont pas lus sur un client pur. Chez un hôte
+LAN, le vrai registre du serveur intégré est utilisé.
 
 ---
 

@@ -24,9 +24,7 @@ import com.cobblemon.mod.common.net.messages.client.battle.BattleQueueRequestPac
 import com.cobblemon.mod.common.net.messages.server.battle.BattleSelectActionsPacket;
 import com.cobblemon.mod.common.pokemon.Pokemon;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
 
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 
@@ -50,6 +48,12 @@ public final class GhostBattles {
 	 */
 	private static final Map<UUID, Consumer<BattleSelectActionsPacket>> ROUTES = new ConcurrentHashMap<>();
 
+	/**
+	 * Battles whose engine runs here, and where their action effects go besides this client's own playback:
+	 * the backend relay to the guest. See {@link GhostActionEffects}.
+	 */
+	private static final Map<UUID, Consumer<ActionEffectEvent>> EFFECT_ROUTES = new ConcurrentHashMap<>();
+
 	private GhostBattles() {
 	}
 
@@ -64,6 +68,11 @@ public final class GhostBattles {
 
 	public static void unroute(UUID battleId) {
 		ROUTES.remove(battleId);
+	}
+
+	/** Null when this client does not host that battle (Cobblemon then plays its effects normally). */
+	public static Consumer<ActionEffectEvent> effectRoute(UUID battleId) {
+		return EFFECT_ROUTES.get(battleId);
 	}
 
 	/** A choice made in Cobblemon's UI by the local player, for a battle hosted here. */
@@ -112,46 +121,6 @@ public final class GhostBattles {
 		});
 	}
 
-	/**
-	 * {@code /phantasmon debug battle}: the local player's team against a copy
-	 * of itself played by Cobblemon's random AI. Every packet for the player
-	 * goes through a full encode → decode round trip before reaching the UI,
-	 * to also prove the remote relay path.
-	 */
-	public static void startDebugBattle(List<PokemonDto> team) {
-		Minecraft client = Minecraft.getInstance();
-		if (client.player == null) {
-			return;
-		}
-		UUID playerUuid = client.player.getUUID();
-		String playerName = client.player.getGameProfile().getName();
-		chat(Component.literal("[Phantasmon] Démarrage du moteur de combat…").withStyle(ChatFormatting.GRAY));
-		BattleThread.get().submit(() -> {
-			BattleThread.get().ensureShowdown();
-			List<BattlePokemon> playerTeam = battleTeam(team);
-			List<BattlePokemon> aiTeam = battleTeam(team);
-			if (playerTeam.isEmpty()) {
-				chat(Component.literal("[Phantasmon] Équipe vide ou espèces inconnues.").withStyle(ChatFormatting.RED));
-				return;
-			}
-			GhostBattleActor player = new GhostBattleActor(playerUuid, playerName, playerTeam, GhostBattles::roundTripToLocalUi);
-			GhostAiBattleActor ai = new GhostAiBattleActor(aiTeam);
-			BattleStartResult result = BattleRegistry.startBattle(BattleFormat.Companion.getGEN_9_SINGLES(),
-					new BattleSide(player), new BattleSide(ai), false);
-			if (result instanceof SuccessfulBattleStart success) {
-				PokemonBattle battle = success.getBattle();
-				route(battle.getBattleId(), choice -> applyChoice(choice, playerUuid));
-				battle.getOnEndHandlers().add(ended -> {
-					unroute(ended.getBattleId());
-					return kotlin.Unit.INSTANCE;
-				});
-				LOG.info("Debug Ghost battle {} started", battle.getBattleId());
-			} else {
-				chat(Component.literal("[Phantasmon] Le combat n'a pas pu démarrer.").withStyle(ChatFormatting.RED));
-			}
-		});
-	}
-
 	/** What a hosted live battle reports back to its controller. */
 	public interface HostCallbacks {
 		/** The engine's battle exists; {@code cobblemonBattleId} is the id both UIs know it by. */
@@ -161,6 +130,10 @@ public final class GhostBattles {
 		void finished(UUID winnerUuid);
 
 		void failed();
+
+		/** An action effect to relay to the guest (this client plays it itself). Called on the battle thread. */
+		default void effect(ActionEffectEvent event) {
+		}
 	}
 
 	private static final java.util.Set<UUID> STOPPED = ConcurrentHashMap.newKeySet();
@@ -192,8 +165,10 @@ public final class GhostBattles {
 				}
 				PokemonBattle battle = success.getBattle();
 				route(battle.getBattleId(), choice -> applyChoice(choice, hostUuid));
+				EFFECT_ROUTES.put(battle.getBattleId(), callbacks::effect);
 				battle.getOnEndHandlers().add(ended -> {
 					unroute(ended.getBattleId());
+					EFFECT_ROUTES.remove(ended.getBattleId());
 					if (!STOPPED.remove(ended.getBattleId())) {
 						UUID winner = null;
 						for (BattleActor actor : ended.getWinners()) {
@@ -269,23 +244,5 @@ public final class GhostBattles {
 			}
 		}
 		return result;
-	}
-
-	private static void roundTripToLocalUi(NetworkPacket<?> packet) {
-		NetworkPacket<?> delivered = packet;
-		try {
-			delivered = CobblemonPackets.decode(CobblemonPackets.encode(packet));
-		} catch (Exception ex) {
-			LOG.error("Battle packet {} failed its encode/decode round trip — delivering the original", packet.getId(), ex);
-		}
-		CobblemonPackets.dispatchLocally(delivered);
-	}
-
-	private static void chat(Component message) {
-		Minecraft.getInstance().execute(() -> {
-			if (Minecraft.getInstance().player != null) {
-				Minecraft.getInstance().player.displayClientMessage(message, false);
-			}
-		});
 	}
 }
