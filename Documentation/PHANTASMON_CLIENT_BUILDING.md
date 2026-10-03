@@ -1421,6 +1421,73 @@ LAN, le vrai registre du serveur intégré est utilisé.
 
 ---
 
+### 4.41 Ghost : suivi fluide du propriétaire (2026-10-03)
+
+Remplace la téléportation sur la position du joueur toutes les secondes (niveau « simple » choisi par
+Adrien ; la balade aléatoire et le vrai pathfinding Cobblemon restent des pistes non faites).
+
+- `GhostEntityManager.tick()` (appelé à chaque tick client depuis `GhostSession.onClientTick()`) déplace
+  chaque Ghost vers un point **derrière et à droite** de son propriétaire (1,5 bloc derrière, 1,2 de côté).
+- **Position du propriétaire** : lue sur son entité `Player` côté client (`level.getPlayerByUUID`) quand elle
+  est chargée — position et orientation en direct, sans latence réseau, aussi pour les autres joueurs. Sinon
+  repli sur la dernière position relayée par le backend (`GhostEntityMove`, ~1 s).
+- **Mouvement** : vitesse adoucie (0,06 à 0,40 bloc/tick selon la distance), `Entity.move` avec collisions,
+  gravité maison, saut d'un bloc quand il est bloqué, hystérésis (repart à 1,3 bloc, s'arrête à 0,4) pour
+  éviter le tremblement. Se téléporte si > 20 blocs, ou s'il reste bloqué ~3 s à plus de 3 blocs.
+- **Orientation** : regarde sa direction de marche, ou son propriétaire à l'arrêt (rotation limitée à
+  25°/tick).
+- **Animations** : l'entité n'a pas de delegate serveur Cobblemon, donc les drapeaux synchronisés
+  `PokemonEntity.MOVING` et `POSE_TYPE` sont posés à la main (WALK/STAND ; FLY/HOVER pour les espèces qui
+  `getCanFly()`, qui flottent 1,2 bloc au-dessus de leur point).
+- Non testé par Claude (aucun écran). À vérifier en jeu : marche fluide, bonne animation de marche, saut
+  des marches, comportement des volants (ex. Rayquaza), Ghost de l'autre joueur, pas de décalage visible à
+  la sortie.
+
+---
+
+### 4.42 Ghost : roaming, caméra sans effet, animations de sortie/rappel, formes et shiny (2026-10-03)
+
+Suite au premier test du suivi fluide (§4.41), tout dans `GhostEntityManager`.
+
+- **Caméra** : le point de suivi n'est plus calculé sur l'orientation de la caméra du joueur mais sur son
+  **cap de déplacement** (déduit de sa position), figé quand il s'arrête. Tourner la caméra sur place ne
+  bouge donc plus le Ghost. « Le joueur ne bouge pas » = déplacement horizontal < 0,02 bloc/tick et
+  vertical < 0,08 ; seule la position compte.
+- **Roaming** : après 5 s (100 ticks) sans mouvement du propriétaire, le Ghost se promène : de temps en
+  temps (pause de 3 à 10 s, 1 à 4 s la première fois) il choisit un point au hasard dans un cercle de
+  **10 blocs** autour du propriétaire, y va au pas (0,12 bloc/tick, animation de marche), puis s'arrête et
+  regarde son propriétaire. Dès que le propriétaire rebouge, il revient à son point de suivi. Un obstacle
+  qui le bloque pendant ~3 s abandonne simplement la destination de balade (pas de téléportation).
+- **Sortie / rappel** : mêmes animations que le combat — lancer de la Poké Ball (le propriétaire fait le
+  geste), faisceau de sortie, cri, anneau chromatique ; faisceau de rappel vers le propriétaire. Mêmes
+  mécanismes et durées que `BattleVisuals` (`BEAM_MODE` 1/3, `PHASING_TARGET_ID`, 0,5 s / 1,5 s), avec un
+  minuteur propre au Ghost. Le Ghost reste immobile pendant le faisceau de sortie. Rappel instantané si le
+  propriétaire n'est pas chargé chez nous, ou à la déconnexion / changement de dimension. Le rattrapage à
+  l'arrivée dans un groupe rejoue la sortie des Ghost déjà dehors (même message `GhostEntitySpawn`).
+- **Bug formes spéciales (Arceus Fée, Rotom Lavage, Ogerpon Fontaine…) et shiny** : le moteur de rendu lit
+  les `ASPECTS` **synchronisés** de l'entité, que le delegate serveur de Cobblemon remplit normalement ;
+  une entité côté client seule n'en a pas, d'où le modèle de base non chromatique. Les aspects (ceux de la
+  forme + `shiny`) sont maintenant écrits à la main dans la donnée synchronisée (`PokemonEntity.ASPECTS`).
+  Au passage, `setShiny` n'est plus appelé *après* le forçage des aspects de la forme (il retombait sur
+  les aspects forcés, sans `shiny`).
+- Non testé par Claude. À vérifier : les formes et le shiny sur les Ghost sortis (les cas cités), la
+  balade, l'immobilité à la rotation de caméra, les animations de sortie/rappel (pour soi et pour l'autre
+  joueur).
+- **Retour de test (2026-10-03)** : tout est correct, sauf que les gros Pokémon (Arceus, Rayquaza…)
+  **poussaient le joueur** en le suivant (OK pour les petits/moyens : Ogerpon, Lucario, Aegislash,
+  Mimikyu…). Cause : poussée entre entités (`Entity.push`) quand les hitbox se chevauchent, dans les deux
+  sens. Solution sans toucher aux hitbox : le Ghost est en **`noPhysics = true`** en permanence —
+  `Entity.push` ne fait rien si l'un des deux a `noPhysics`, donc il ne pousse ni n'est poussé. Comme
+  `noPhysics` désactive aussi les collisions avec les blocs dans `Entity.move`, il n'est remis à `false`
+  que le temps de **notre propre appel** `entity.move(...)` dans `tickGhost` (même tick client, rien ne
+  peut le pousser pendant ce temps), puis à `true`. Pour l'aspect visuel, le point de suivi est écarté en
+  fonction de la largeur de la hitbox (`followScaleFor` : demi-largeur du Ghost + 0,3 du joueur + 0,5 de
+  marge ; les petits/moyens gardent le point d'origine), pour qu'un gros Ghost au repos ne se tienne pas
+  dans son propriétaire. Conséquence assumée : le Ghost traverse le joueur s'il marche dessus.
+- Non testé par Claude : à vérifier avec Arceus/Rayquaza en marchant, en sprintant et en faisant demi-tour.
+
+---
+
 ## 5. Dépannage courant
 
 | Symptôme | Cause probable |

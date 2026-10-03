@@ -202,6 +202,7 @@ public final class GhostSession {
 		if (player == null) {
 			return;
 		}
+		entityManager.tick();
 		if (player.isDeadOrDying() && activeGhostPokemonUuid != null) {
 			recall();
 			return;
