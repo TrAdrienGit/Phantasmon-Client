@@ -298,6 +298,26 @@ public final class PokemonCommandHandler {
 				});
 	}
 
+	/** {@code /phantasmon debug battle} (Phase 9 prototype): the active team against a Cobblemon-AI copy of itself, run locally. */
+	public void startDebugBattle() {
+		if (!session.isAuthenticated()) {
+			chatMessage(Component.translatable("phantasmon.error.not_authenticated"));
+			return;
+		}
+		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+				.thenAccept(pokemons -> {
+					List<PokemonDto> team = java.util.Arrays.stream(pokemons)
+							.filter(pokemon -> pokemon.teamSlot() != null)
+							.sorted(java.util.Comparator.comparingInt(PokemonDto::teamSlot))
+							.toList();
+					Minecraft.getInstance().execute(() -> com.mystaria.phantasmon.client.battle.GhostBattles.startDebugBattle(team));
+				})
+				.exceptionally(ex -> {
+					Minecraft.getInstance().execute(() -> chatMessage(Component.translatable("phantasmon.error.network")));
+					return null;
+				});
+	}
+
 	private static void chatMessage(Component message) {
 		var player = Minecraft.getInstance().player;
 		if (player != null) {

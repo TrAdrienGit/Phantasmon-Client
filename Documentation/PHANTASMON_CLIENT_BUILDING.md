@@ -1250,6 +1250,126 @@ même base graphique :
   `species.getFormByName` du Ghost renvoyait silencieusement la forme de base pour un nom inconnu.
 - Build vert. **Non testé visuellement par Claude.**
 
+### 4.38 Phase 9 — prototype du moteur de combat local (2026-10-03)
+
+**Choix d'Adrien** : interface de combat **native de Cobblemon** ; équipe active telle quelle (niveaux
+stockés, règles Gen 9 de Cobblemon) ; lancement comme l'échange (commande + touche + [Accepter] dans le
+chat) ; chrono **désactivé par défaut**, activable par l'un ou l'autre joueur pour les deux, puis plus
+désactivable (comme Showdown) — 90 s, puis action par défaut automatique.
+
+**Architecture retenue (CAD Partie 2 §9.1)** : le client hôte fait tourner **la pile de combat serveur de
+Cobblemon elle-même** (`PokemonBattle` + Showdown via GraalJS + son interpréteur), sans rien réécrire :
+- `battle/BattleThread` : tout le combat s'exécute sur un seul thread — le thread du serveur intégré s'il
+  existe (solo / hôte LAN : Showdown y est déjà démarré et `BattleRegistry` déjà « tické »), sinon un thread
+  privé qui démarre Showdown une fois (données d'espèces synchronisées + scripts JS du jar Cobblemon) et
+  tick `BattleRegistry` toutes les 50 ms ;
+- `battle/GhostBattlePokemonFactory` : un `Pokemon` Cobblemon jetable construit depuis les données du Ghost
+  (forme et aspects, niveau, nature, talent, IV/EV, capacités, objet, sexe, Téra, surnom) — l'état de combat
+  vit sur cette copie, le Ghost n'est jamais modifié (CAD Partie 1 §25) ;
+- `battle/GhostBattleActor` : un joueur du combat ; son uuid = uuid Mojang (c'est ainsi que l'UI Cobblemon
+  reconnaît « mon camp »), mais sans « joueur serveur », pour que le moteur n'envoie jamais rien par le
+  serveur Minecraft ; tous ses paquets vont à un « puits » : l'UI Cobblemon locale ou (étape suivante) le
+  relais backend vers l'autre joueur ;
+- `battle/CobblemonPackets` : remet un paquet au gestionnaire client enregistré par Cobblemon pour ce
+  paquet, comme s'il venait du serveur ; encode/décode avec le codec Cobblemon pour le relais ;
+- `mixin/ClientCommonPacketListenerImplMixin` (premier Mixin du mod, sur une méthode vanilla ; un second,
+  `DistributionUtilsMixin`, est arrivé au §4.39) :
+  intercepte `BattleSelectActionsPacket` (le seul paquet que l'UI de combat renvoie : capacité, changement,
+  abandon) pour un combat Ghost et le donne au moteur au lieu du serveur.
+
+**Prototype à tester** : `/phantasmon debug battle` — ton équipe active contre une copie pilotée par l'IA
+aléatoire de Cobblemon, entièrement en local, avec l'interface de combat Cobblemon. Chaque paquet passe par
+un aller-retour encodage/décodage avant d'arriver à l'UI (valide d'avance le relais vers l'autre joueur).
+À tester dans les deux cas : **monde solo** (chemin « serveur intégré ») et **en invité** sur une partie
+LAN ou un serveur (chemin « client pur » : le premier lancement démarre Showdown, quelques secondes).
+Commande temporaire, retirée quand les vrais combats seront livrés.
+
+**Retours de test du prototype (2026-10-03)** — trois correctifs, puis combat complet validé par Adrien
+(attaques, changements, K.O., objets activés, dégâts cohérents, fin de combat, aucun bug vu) :
+1. l'écran ne s'ouvrait pas : Cobblemon n'envoie `BattleInitializePacket` qu'à sa classe `PlayerBattleActor`
+   (finale) — `GhostBattleActor` l'envoie lui-même juste avant l'équipe ;
+2. aucun Pokémon actif : au départ Cobblemon ne remplit les emplacements actifs qu'à travers l'entité qu'il
+   fait sortir dans le monde — `placeStartingPokemon` les remplit depuis la requête Showdown, ou à défaut avec
+   les premiers de l'équipe (ordre Showdown sans aperçu d'équipe) ;
+3. côté client pur, les délais d'animation tournent sur les `ServerTaskTracker` de Cobblemon — avancés par
+   `BattleThread`.
+
+**Mise en scène (demande d'Adrien)** : `battle/BattleVisuals` fait apparaître le Pokémon actif de chaque camp
+devant son dresseur (entité client-only, orientée vers l'adversaire, à 3 blocs max sur la ligne entre les
+deux joueurs), le remplace lors d'un changement, le retire au K.O. et en fin de combat. Piloté uniquement par
+les paquets de combat reçus par ce client : l'hôte et l'autre joueur construisent la même scène, sans trafic
+réseau en plus.
+
+**Animations de sortie / rappel identiques à Cobblemon (2026-10-03)** : le rendu Cobblemon dessine ces effets
+côté client à partir de données d'entité synchronisées (`BEAM_MODE` 1 = sortie, 3 = rappel ;
+`PHASING_TARGET_ID` = dresseur d'où part / où revient la balle ; `SPAWN_DIRECTION`). `BattleVisuals` pose ces
+mêmes valeurs sur nos entités locales avec les durées exactes de Cobblemon (lancer 0,5 s, sortie 1,5 s) : geste
+du dresseur + son de lancer, rayon de sortie, puis cri et éclat chromatique (paquets Cobblemon remis à ses
+propres gestionnaires) ; au changement et au K.O., rayon de rappel vers le dresseur puis sortie du suivant
+une fois le rappel fini (ordre de Cobblemon pour un dresseur). Ordre décidé avec Adrien : animations
+d'attaques en étape dédiée **après** le combat à deux joueurs (il faut réécrire côté client le lecteur de
+chorégraphies d'attaque de Cobblemon, qui ne tourne que sur serveur).
+
+- Build vert. **Non testé par Claude** (aucun jeu ici).
+
+### 4.39 Phase 9 — combat à deux joueurs (2026-10-03)
+
+Le moteur validé au §4.38 est maintenant branché sur le backend (voir la section « Combat en direct » de
+`PHANTASMON_API_REFERENCE.md`).
+
+**Côté joueur :**
+- `/phantasmon battle invite <joueur>` (suggestions = joueurs du serveur), ou la touche **B** en visant un
+  joueur (rebindable, « Combattre le joueur visé »).
+- Le joueur invité reçoit [Accepter]/[Refuser] dans le chat → `/phantasmon battle join` / `decline`.
+- Au démarrage, un bouton [Activer le chrono] dans le chat → `/phantasmon battle timer`. Une fois activé
+  par l'un des deux, il l'est pour les deux jusqu'à la fin du combat (90 s par tour, compte à rebours dans
+  la barre d'action, rouge sous 10 s). À expiration, une action automatique est jouée (IA aléatoire de
+  Cobblemon, comme le joueur IA du prototype).
+- L'interface est celle de Cobblemon, avec les mêmes animations de lancer/rappel qu'au §4.38.
+
+**Architecture (`client/battle/LiveBattleController`) :**
+- Le backend désigne l'**hôte** (alternance entre les deux joueurs). L'hôte lance
+  `GhostBattles.startHostedBattle` avec les deux équipes reçues dans `BattleSessionStarted`.
+- L'acteur de l'hôte alimente son UI Cobblemon locale. L'acteur de l'invité a pour « sink » un encodeur :
+  chaque paquet Cobblemon part en `BattlePacket` (id + payload base64, codec Cobblemon via
+  `CobblemonPackets.encode`).
+- L'invité décode ces paquets et les joue dans sa propre UI Cobblemon (`CobblemonPackets.dispatchLocally`),
+  ce qui déclenche aussi les mêmes visuels (`BattleVisuals`). Ses choix (`BattleSelectActionsPacket`,
+  interceptés par le mixin) repartent en `BattleChoice` ; l'hôte les applique via `GhostBattles.applyChoice`.
+- Chrono : l'hôte applique les délais pour les deux joueurs (`GhostBattles.whenMustChoose` +
+  `forceAutomaticChoice`), avec 3 s de marge réseau pour l'invité. Chaque client affiche son propre
+  compte à rebours : `CobblemonPackets.addDeliveryListener` détecte les demandes d'action et
+  `GhostBattles.setLocalChoiceListener` détecte le choix envoyé.
+- Fin : l'hôte envoie `BattleResult` (vainqueur ou nul) ; quitter = abandon (`BattleLeave`) ; une
+  déconnexion annule le combat sans vainqueur. Les messages `Battle*` passent par le WebSocket de
+  `GhostSession`, qui les transmet sur le thread client (`LiveBattleListener`).
+- Le backend accepte des messages WebSocket jusqu'à 1 Mio (les paquets d'équipe Cobblemon dépassent la
+  limite de 8 Kio par défaut).
+
+**Retours du premier test à deux comptes (2026-10-03)**, partie LAN ouverte par MystAria_ (serveur
+intégré), TheMashen connecté en client pur :
+1. *Combat 1, MystAria_ hôte* : le combat se déroule, mais TheMashen (invité) ne voit aucun Pokémon sorti.
+   Log : `Unknown MovesetBuilder id: cobblemon:wild` dans `BattleVisuals.sendOut`.
+   `PokemonProperties.create()` initialise un moveset par défaut via les « moveset builders » de
+   Cobblemon, un registre de datapack **serveur**, vide chez un client pur. Correctif :
+   `new Pokemon()` + `properties.apply(pokemon)` (seulement les propriétés visuelles, comme les Ghosts).
+2. *Combat 2, TheMashen hôte* : Showdown démarre et le combat est créé, puis plus rien des deux côtés.
+   Cause : Cobblemon passe chaque message Showdown par `runOnServer` (`ShowdownInterpreter.interpretMessage`),
+   qui échoue **en silence** sans `MinecraftServer`. Le chemin « client pur » n'avait jamais été testé.
+   Correctif : `mixin/DistributionUtilsMixin` intercepte `DistributionUtilsKt.runOnServer`, mais
+   **uniquement** quand l'appel vient de notre thread `phantasmon-battle`, et y remet le bloc en file
+   (équivalent de `server.execute`). Les autres appels gardent le comportement de Cobblemon.
+3. « Aucun combat en cours » affiché au vainqueur juste après « Victoire ! » : les derniers paquets du
+   moteur arrivaient au backend après la fin du combat. `ERROR_BATTLE_NOT_IN_BATTLE` venant du backend est
+   maintenant ignoré : les commandes vérifient déjà localement qu'un combat est en cours.
+
+Bruit connu dans le log de l'hôte : `NoSuchElementException: List is empty` dans
+`EntityParticlesActionEffectKeyframe`. Les animations d'attaque côté serveur cherchent des entités qui
+n'existent pas. C'est sans effet sur le combat, et ce sera traité par l'étape des animations d'attaque.
+
+`/phantasmon debug battle` (combat contre l'IA, §4.38) reste disponible pour l'instant. Il sera retiré
+après la phase des animations d'attaque.
+
 ---
 
 ## 5. Dépannage courant
@@ -1259,11 +1379,13 @@ même base graphique :
 | `Dependency requires at least JVM runtime version 25` | JDK utilisé pour Gradle < 25 — voir §1.1 |
 | Le mod n'apparaît pas dans le jeu | Mauvais dossier `mods/`, Fabric API manquante/incompatible, version Minecraft ≠ 1.21.1 |
 | Toujours `Backend injoignable` dans le chat | Backend non lancé, mauvais port, pare-feu local |
-| Crash au lancement mentionnant un mixin | Ne devrait pas arriver (mixins actuellement vides) — signaler si observé |
+| Crash au lancement mentionnant un mixin | Mixin `phantasmon.client.mixins.json` devenu incompatible après une mise à jour de Cobblemon (cible `DistributionUtilsKt.runOnServer`) ou de Minecraft — signaler avec le log |
 | `/phantasmon login` répond "comptes hors-ligne non supportés" | Compte de lancement en mode hors-ligne/cracké (`User.Type.LEGACY`) — utiliser un vrai compte Microsoft |
 | `/phantasmon login` échoue à la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang temporairement indisponible |
 | Crash au lancement mentionnant `cobblemon`/Kotlin | Version de Cobblemon absente/incompatible (doit être 1.8.1 pour Fabric 1.21.1) |
 | `UUID non valide à la position N` sur `delete`/`clone`/`edit`/`sendout` | UUID incomplet/tronqué tapé à la main — il faut l'UUID entier (36 caractères), affiché en clair par `/phantasmon pokemon list`/`pc` depuis le correctif du 2026-09-26 |
 | `/phantasmon trade invite` : « Ce joueur n'est pas connecté à Phantasmon » | L'autre joueur n'a pas (encore) de session WebSocket : il n'est pas connecté au backend (auto-login raté, `/phantasmon login`), ou les deux clients ne pointent pas vers le même backend |
 | L'écran d'échange ne s'ouvre pas après [Accepter] | Invitation expirée (60 s) ou l'inviteur a quitté/est déjà en échange — le message d'erreur est dans le chat ; relancer l'invitation |
+| `/phantasmon battle invite` : « Ce joueur n'est pas connecté à Phantasmon » | Même cause que pour l'échange : l'autre joueur n'a pas de session WebSocket au backend |
+| Le combat ne démarre pas chez l'invité | Regarder les logs de l'hôte pour `Cannot` / `engine` (moteur Showdown non démarré) ; le message « Le moteur de combat n'a pas pu démarrer » s'affiche alors dans le chat |
 | Le Ghost d'un autre joueur n'apparaît jamais | Vérifier les logs client pour `Cannot render Ghost: unresolved species` (espèce/forme non reconnue par Cobblemon côté receveur) ; sinon vérifier que les deux joueurs sont bien dans la même dimension et que le backend tourne |

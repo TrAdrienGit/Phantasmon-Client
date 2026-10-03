@@ -44,7 +44,7 @@ players (uuid PK)
    │
    │ N
    └──────► battle_sessions
-            (player_a, player_b FK → players.uuid)
+            (player_a, player_b, host_uuid FK → players.uuid)
             (team_a, team_b : JSONB — snapshot de pokemon_uuid, pas de FK SQL)
 
 idempotency_keys (request_uuid PK, player_uuid — pas de FK stricte, voir §7)
@@ -53,6 +53,82 @@ idempotency_keys (request_uuid PK, player_uuid — pas de FK stricte, voir §7)
 5 tables au total en V1 : `players`, `pokemon`, `trades`, `battle_sessions`, `idempotency_keys`.
 Aucune autre table n'est nécessaire pour le périmètre V1 (pas de table `teams` séparée — voir §3.2 ;
 pas de table `presence` — voir §8).
+
+### 2.1 Diagramme ER (Mermaid)
+
+Reflète l'état réellement appliqué par les migrations Flyway (`src/main/resources/db/migration/`).
+Se rend nativement sur GitHub. À maintenir en même temps que toute migration ajoutée/modifiée.
+
+```mermaid
+erDiagram
+    PLAYERS ||--o{ POKEMON : owns
+    PLAYERS ||--o{ TRADES : initiates
+    PLAYERS ||--o{ TRADES : receives
+    PLAYERS ||--o{ BATTLE_SESSIONS : "plays (a/b)"
+    PLAYERS |o--o{ BATTLE_SESSIONS : "hosts (V8)"
+    POKEMON |o..o{ TRADES : "offered/requested (historique, sans FK depuis V7)"
+
+    PLAYERS {
+        uuid uuid PK
+        varchar last_username
+        timestamptz created_at
+        timestamptz last_seen_at
+    }
+
+    POKEMON {
+        uuid uuid PK
+        uuid owner_uuid FK
+        varchar species
+        varchar form
+        smallint level
+        varchar nature
+        varchar ability
+        boolean is_shiny
+        smallint box_id
+        smallint box_slot
+        smallint team_slot
+        varchar cobblemon_data_version
+        jsonb data
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    TRADES {
+        uuid uuid PK
+        uuid initiator_uuid FK
+        uuid recipient_uuid FK
+        uuid offered_pokemon "sans FK (V7)"
+        uuid requested_pokemon "sans FK (V7)"
+        varchar status
+        timestamptz created_at
+        timestamptz resolved_at
+    }
+
+    BATTLE_SESSIONS {
+        uuid uuid PK
+        uuid player_a FK
+        uuid player_b FK
+        uuid host_uuid FK "nullable, V8"
+        jsonb team_a
+        jsonb team_b
+        varchar status
+        jsonb result
+        timestamptz created_at
+        timestamptz finished_at
+    }
+
+    IDEMPOTENCY_KEYS {
+        uuid request_uuid PK
+        uuid player_uuid "pas de FK stricte, voir §7"
+        varchar endpoint
+        jsonb response_snapshot
+        timestamptz created_at
+    }
+```
+
+`idempotency_keys.player_uuid` n'a volontairement pas de FK vers `players` (§7.3/§9.5) ; elle n'apparaît
+donc pas comme une relation dans ce diagramme, seulement comme une colonne informative. De même,
+`battle_sessions.team_a`/`team_b` sont des snapshots JSONB sans FK SQL vers `pokemon` (§6.4).
 
 ---
 
@@ -153,7 +229,7 @@ CREATE UNIQUE INDEX uq_pokemon_team_slot
 | `ability` | VARCHAR(64) | NOT NULL | Identifiant texte. Pas de contrainte de cohérence espèce/capacité en base — portée par `PokemonLegalityService` (CAD Partie 3 §B), pas par une contrainte SQL, car la liste des capacités valides dépend des données Cobblemon côté client/serveur, pas d'une table de référence en base. |
 | `is_shiny` | BOOLEAN | NOT NULL DEFAULT FALSE | |
 | `box_id` | SMALLINT | CHECK 1-16, nullable | Boîte du Ghost PC (16 boîtes, CAD Partie 1 §12.1). NULL si le Pokémon n'est pas rangé en PC (cas transitoire uniquement — voir §9.3). |
-| `box_slot` | SMALLINT | CHECK 1-30, nullable | Emplacement dans la boîte (30 = 6×5 — redimensionné depuis 6×6/36 le 2026-09-27, `V6__resize_pokemon_box.sql` côté backend, voir CAD Partie 1 §12.1 mis à jour). |
+| `box_slot` | SMALLINT | CHECK 1-30, nullable | Emplacement dans la boîte (30 = 6×5 — redimensionné depuis 6×6/36 le 2026-09-27, `V6__resize_pokemon_box.sql`, voir CAD Partie 1 §12.1 mis à jour). |
 | `team_slot` | SMALLINT | CHECK 1-6, nullable | Slot dans l'équipe active. NULL = pas dans l'équipe active. Une équipe active incomplète est autorisée (CAD Partie 1 §15/§17) : les slots occupés n'ont pas besoin d'être contigus du point de vue base de données (l'ordre d'affichage 1-6 est géré côté client/service). |
 | `cobblemon_data_version` | VARCHAR(32) | NOT NULL | Version Cobblemon au moment de la dernière création/modification (CAD Partie 2 §6.1) — sert de base à la détection d'incompatibilité côté client, aucune logique de migration auto en V1. |
 | `data` | JSONB | NOT NULL | Voir structure détaillée §4.4. |
@@ -300,6 +376,10 @@ CREATE TABLE battle_sessions (
 
 CREATE INDEX idx_battle_player_a ON battle_sessions(player_a);
 CREATE INDEX idx_battle_player_b ON battle_sessions(player_b);
+
+-- V8 (2026-10-03) : combats en direct, client hôte
+ALTER TABLE battle_sessions ADD COLUMN host_uuid UUID REFERENCES players(uuid) ON DELETE RESTRICT;
+CREATE INDEX idx_battle_host ON battle_sessions(host_uuid);
 ```
 
 ### 6.3 Colonnes
@@ -308,6 +388,7 @@ CREATE INDEX idx_battle_player_b ON battle_sessions(player_b);
 |---|---|---|---|
 | `uuid` | UUID | PK | |
 | `player_a` / `player_b` | UUID | NOT NULL, FK → `players.uuid` | `player_a` = initiateur par convention applicative (utile pour l'alternance de l'hôte, CAD Partie 3 §D.2 /Partie 2 §9.2). |
+| `host_uuid` | UUID | nullable, FK → `players.uuid`, indexé (`V8`) | Client qui a fait tourner le moteur de combat. Renseigné pour les combats en direct (WebSocket, Phase 9), où `player_a` = l'hôte ; NULL pour les sessions créées par `POST /battles`. Sert à l'alternance de l'hôte entre deux mêmes joueurs. |
 | `team_a` / `team_b` | JSONB | NOT NULL | Snapshot des `pokemon_uuid` engagés au moment du combat — **pas** de FK SQL vers `pokemon`, car un snapshot doit rester lisible même si le Pokémon est modifié/supprimé après coup (historique d'audit). Volontairement pas de contrainte référentielle ici. |
 | `status` | VARCHAR(16) | NOT NULL, CHECK ∈ {PENDING, ACTIVE, FINISHED, ABORTED} | CHECK ajouté par ce document, cf. §9.2. |
 | `result` | JSONB | nullable | NULL tant que le combat n'est pas terminé. Contenu : vainqueur, log de combat (voir `POST /battles/{uuid}/result` dans l'OpenAPI). |
@@ -449,13 +530,21 @@ src/main/resources/db/migration/
 ├── V4__init_battle_sessions.sql
 ├── V5__init_idempotency_keys.sql
 ├── V6__resize_pokemon_box.sql
-└── V7__trades_pokemon_history_without_fk.sql
+├── V7__trades_pokemon_history_without_fk.sql
+└── V8__battle_sessions_host.sql
 ```
 
 Une table = une migration, dans l'ordre de dépendance des FK (`players` avant `pokemon`,
 `pokemon`/`players` avant `trades` et `battle_sessions`). Toute évolution future du schéma
-(ex. migration de `nickname` vers une colonne, §9.1) passe par une nouvelle migration,
-jamais par une modification de `V1`-`V5`.
+passe par une nouvelle migration, jamais par une modification de celles déjà appliquées —
+`V6` (2026-09-27) en est l'illustration : elle rétrécit la contrainte `CHECK` sur `box_slot`
+(36 → 30, boîte 6×5) plutôt que d'éditer la contrainte inline de `V2`. Comme cette contrainte
+n'avait pas de nom explicite dans `V2` (Postgres en génère un automatiquement,
+`pokemon_box_slot_check`), `V6` le retrouve dynamiquement via `pg_constraint` avant de la
+remplacer par une contrainte nommée (`chk_pokemon_box_slot`) — plus robuste qu'un nom deviné
+en dur si la convention de nommage automatique de Postgres venait à changer. `V7` (2026-10-02)
+applique la même méthode pour retirer les FK `trades → pokemon` de `V3`, elles aussi non nommées
+(recherchées via `pg_constraint` par table cible `pokemon`, §5.5).
 
 ---
 

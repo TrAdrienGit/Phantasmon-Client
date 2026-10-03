@@ -8,6 +8,7 @@ import net.minecraft.client.KeyMapping;
 import com.mystaria.phantasmon.client.command.PhantasmonCommands;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.battle.LiveBattleController;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
 
 /**
@@ -34,6 +35,8 @@ public final class PhantasmonKeybinds {
 	private static final KeyMapping TOGGLE_SEND_OUT = new KeyMapping("key.phantasmon.sendout", GLFW.GLFW_KEY_O, CATEGORY);
 	/** Live trade invite to whoever the crosshair is on (Adrien 2026-10-02 — the "Ghost Trade" keybind planned instead of a Cobblemon interaction-wheel Mixin). G is unused by vanilla and Cobblemon. */
 	private static final KeyMapping TRADE_WITH_TARGET = new KeyMapping("key.phantasmon.trade", GLFW.GLFW_KEY_G, CATEGORY);
+	/** Live Ghost battle invite to the targeted player (Phase 9). */
+	private static final KeyMapping BATTLE_WITH_TARGET = new KeyMapping("key.phantasmon.battle", GLFW.GLFW_KEY_B, CATEGORY);
 
 	private PhantasmonKeybinds() {
 	}
@@ -42,10 +45,12 @@ public final class PhantasmonKeybinds {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
 		KeyBindingHelper.registerKeyBinding(TOGGLE_SEND_OUT);
 		KeyBindingHelper.registerKeyBinding(TRADE_WITH_TARGET);
+		KeyBindingHelper.registerKeyBinding(BATTLE_WITH_TARGET);
 	}
 
 	/** Called every client tick (see {@link PhantasmonClient}) — {@code consumeClick()} is the standard vanilla pattern for a keybind's action firing once per press, queued click included, regardless of how long the key is held. */
-	public static void tick(PokemonCommandHandler pokemonCommands, GhostSession ghostSession, LiveTradeController liveTrade) {
+	public static void tick(PokemonCommandHandler pokemonCommands, GhostSession ghostSession, LiveTradeController liveTrade,
+			LiveBattleController liveBattle) {
 		while (OPEN_PC.consumeClick()) {
 			pokemonCommands.openPc();
 		}
@@ -54,6 +59,9 @@ public final class PhantasmonKeybinds {
 		}
 		while (TRADE_WITH_TARGET.consumeClick()) {
 			liveTrade.inviteTargetedPlayer();
+		}
+		while (BATTLE_WITH_TARGET.consumeClick()) {
+			liveBattle.inviteTargetedPlayer();
 		}
 	}
 }

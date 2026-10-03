@@ -72,6 +72,7 @@ public final class GhostSession {
 	};
 
 	private LiveTradeListener liveTradeListener;
+	private com.mystaria.phantasmon.client.battle.LiveBattleListener liveBattleListener;
 
 	public GhostSession(AuthSession authSession) {
 		this.webSocketClient = new PhantasmonWebSocketClient();
@@ -88,6 +89,11 @@ public final class GhostSession {
 	/** Live trade sessions (the graphical trade screen) also ride this one presence WebSocket — see {@link #send}. */
 	public void setLiveTradeListener(LiveTradeListener liveTradeListener) {
 		this.liveTradeListener = liveTradeListener;
+	}
+
+	/** Live Ghost battles also ride this one presence WebSocket. */
+	public void setLiveBattleListener(com.mystaria.phantasmon.client.battle.LiveBattleListener liveBattleListener) {
+		this.liveBattleListener = liveBattleListener;
 	}
 
 	/**
@@ -291,7 +297,12 @@ public final class GhostSession {
 			case "TradeAccepted" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeAccepted(data));
 			case "TradeCancelled" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeCancelled(data));
 			default -> {
-				if (type.startsWith("TradeInvite") || type.startsWith("TradeSession")) {
+				if (type.startsWith("Battle") && !type.equals("BattleState")) {
+					var battleListener = liveBattleListener;
+					if (battleListener != null) {
+						Minecraft.getInstance().execute(() -> battleListener.onLiveBattleMessage(type, data));
+					}
+				} else if (type.startsWith("TradeInvite") || type.startsWith("TradeSession")) {
 					LiveTradeListener listener = liveTradeListener;
 					if (listener != null) {
 						Minecraft.getInstance().execute(() -> listener.onLiveTradeMessage(type, data));
@@ -306,6 +317,10 @@ public final class GhostSession {
 		LiveTradeListener listener = liveTradeListener;
 		if (listener != null) {
 			Minecraft.getInstance().execute(listener::onConnectionLost);
+		}
+		var battleListener = liveBattleListener;
+		if (battleListener != null) {
+			Minecraft.getInstance().execute(battleListener::onConnectionLost);
 		}
 	}
 

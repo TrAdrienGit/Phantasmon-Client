@@ -16,6 +16,7 @@ import com.mystaria.phantasmon.client.auth.AuthService;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.network.PingToggle;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.battle.LiveBattleController;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
 import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
 
@@ -61,7 +62,8 @@ public final class PhantasmonCommands {
 	}
 
 	public static void register(AuthService authService, PingToggle pingToggle, PokemonCommandHandler pokemonCommands,
-			GhostSession ghostSession, TradeCommandHandler tradeCommands, LiveTradeController liveTrade) {
+			GhostSession ghostSession, TradeCommandHandler tradeCommands, LiveTradeController liveTrade,
+			LiveBattleController liveBattle) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			var pokemonNode = ClientCommandManager.literal("pokemon")
 					.then(ClientCommandManager.literal("import").executes(context -> {
@@ -176,6 +178,28 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}));
 
+			// Live Ghost battles (Phase 9): invite (names from the server's player list), answer, turn timer.
+			var battleNode = ClientCommandManager.literal("battle")
+					.then(ClientCommandManager.literal("invite")
+							.then(ClientCommandManager.argument("player", StringArgumentType.word())
+									.suggests((context, builder) -> SharedSuggestionProvider.suggest(LiveTradeController.onlinePlayerNames(), builder))
+									.executes(context -> {
+										liveBattle.inviteByName(StringArgumentType.getString(context, "player"));
+										return Command.SINGLE_SUCCESS;
+									})))
+					.then(ClientCommandManager.literal("join").executes(context -> {
+						liveBattle.acceptInvite();
+						return Command.SINGLE_SUCCESS;
+					}))
+					.then(ClientCommandManager.literal("decline").executes(context -> {
+						liveBattle.declineInvite();
+						return Command.SINGLE_SUCCESS;
+					}))
+					.then(ClientCommandManager.literal("timer").executes(context -> {
+						liveBattle.enableTimer();
+						return Command.SINGLE_SUCCESS;
+					}));
+
 			dispatcher.register(ClientCommandManager.literal("phantasmon")
 					.then(ClientCommandManager.literal("login").executes(context -> {
 						authService.login();
@@ -192,6 +216,11 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}))
 					.then(ClientCommandManager.literal("debug")
+							// Phase 9 prototype: local Ghost battle against Cobblemon's AI (remove once real battles ship).
+							.then(ClientCommandManager.literal("battle").executes(context -> {
+								pokemonCommands.startDebugBattle();
+								return Command.SINGLE_SUCCESS;
+							}))
 							.then(ClientCommandManager.literal("fingerprint")
 									.executes(context -> {
 										GhostSession.setFingerprintOverride(null);
@@ -208,6 +237,7 @@ public final class PhantasmonCommands {
 									}))))
 					.then(pokemonNode)
 					.then(tradeNode)
+					.then(battleNode)
 					.then(ClientCommandManager.literal("sendout").executes(context -> {
 						toggleSendOut(pokemonCommands, ghostSession);
 						return Command.SINGLE_SUCCESS;

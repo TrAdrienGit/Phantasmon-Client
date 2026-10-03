@@ -31,12 +31,15 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final GhostSession ghostSession = new GhostSession(authSession);
 	private final TradeCommandHandler tradeCommands = new TradeCommandHandler(new TradeClient(httpClient), authSession);
 	private final LiveTradeController liveTrade = new LiveTradeController(ghostSession, authSession);
+	private final com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle =
+			new com.mystaria.phantasmon.client.battle.LiveBattleController(ghostSession, authSession);
 
 	@Override
 	public void onInitializeClient() {
 		authService.setOnAuthenticated(ghostSession::start);
 		ghostSession.setTradeNotificationListener(tradeCommands);
 		ghostSession.setLiveTradeListener(liveTrade);
+		ghostSession.setLiveBattleListener(liveBattle);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			pingToggle.onJoin();
@@ -47,16 +50,18 @@ public class PhantasmonClient implements ClientModInitializer {
 			pingToggle.onDisconnect();
 			refreshScheduler.stop();
 			ghostSession.stop();
+			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			authSession.clear();
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ghostSession.onClientTick();
 			pokemonCommands.tick();
 			liveTrade.tick();
-			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade);
+			liveBattle.tick();
+			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade, liveBattle);
 		});
 
 		PhantasmonKeybinds.register();
-		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade);
+		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
 	}
 }

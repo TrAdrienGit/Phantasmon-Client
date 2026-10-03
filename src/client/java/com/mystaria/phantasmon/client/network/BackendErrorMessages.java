@@ -34,7 +34,17 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_TRADE_NOT_IN_SESSION", "phantasmon.trade.error.not_in_session"),
 			Map.entry("ERROR_TRADE_OFFER_NOT_IN_TEAM", "phantasmon.trade.error.offer_not_in_team"),
 			Map.entry("ERROR_TRADE_OFFERS_INCOMPLETE", "phantasmon.trade.error.offers_incomplete"),
-			Map.entry("ERROR_POKEMON_IN_PENDING_TRADE", "phantasmon.pokemon.error.in_pending_trade"));
+			Map.entry("ERROR_POKEMON_IN_PENDING_TRADE", "phantasmon.pokemon.error.in_pending_trade"),
+			Map.entry("ERROR_BATTLE_SELF", "phantasmon.battle.error.self"),
+			Map.entry("ERROR_BATTLE_ALREADY_IN_BATTLE", "phantasmon.battle.error.already_in_battle"),
+			Map.entry("ERROR_BATTLE_PARTNER_UNAVAILABLE", "phantasmon.battle.error.partner_unavailable"),
+			Map.entry("ERROR_BATTLE_PARTNER_BUSY", "phantasmon.battle.error.partner_busy"),
+			Map.entry("ERROR_BATTLE_INVITE_NOT_FOUND", "phantasmon.battle.error.invite_not_found"),
+			Map.entry("ERROR_BATTLE_NOT_IN_BATTLE", "phantasmon.battle.error.not_battling"),
+			Map.entry("ERROR_BATTLE_EMPTY_TEAM", "phantasmon.battle.error.empty_team"),
+			Map.entry("ERROR_BATTLE_NOT_HOST", "phantasmon.battle.error.not_host"),
+			Map.entry("ERROR_BATTLE_NOT_GUEST", "phantasmon.battle.error.not_guest"),
+			Map.entry("ERROR_BATTLE_INVALID_RESULT", "phantasmon.battle.error.invalid_result"));
 
 	private BackendErrorMessages() {
 	}
