@@ -62,10 +62,9 @@ public final class PokemonGuiRendering {
 		if (species == null) {
 			return;
 		}
-		Set<String> aspects = new HashSet<>();
-		if (form != null && !form.isBlank()) {
-			aspects.add(form.toLowerCase(Locale.ROOT));
-		}
+		// Form models are driven by the form's Cobblemon *aspects* (e.g. Arceus Fairy = "fairy-plate",
+		// Ogerpon Wellspring = "wellspring-mask"), not by the form name — passing the name drew the base form.
+		Set<String> aspects = new HashSet<>(formAspects(species, form));
 		if (shiny) {
 			aspects.add("shiny");
 		}
@@ -100,6 +99,40 @@ public final class PokemonGuiRendering {
 		} finally {
 			poseStack.popPose();
 		}
+	}
+
+	/**
+	 * The species' form matching a stored form id, tolerant to how it was written (Showdown import stores
+	 * e.g. "fairy", "wellspringtera"; Cobblemon names are "Fairy", "Wellspring-Tera"): compares names and
+	 * Showdown ids with every non-alphanumeric character stripped. {@code null} for the base form / no match.
+	 */
+	public static com.cobblemon.mod.common.pokemon.FormData resolveForm(Species species, String formId) {
+		if (species == null || formId == null || formId.isBlank()) {
+			return null;
+		}
+		String wanted = normalize(formId);
+		for (com.cobblemon.mod.common.pokemon.FormData candidate : species.getForms()) {
+			if (wanted.equals(normalize(candidate.getName())) || wanted.equals(normalize(candidate.formOnlyShowdownId()))) {
+				return candidate;
+			}
+		}
+		return null;
+	}
+
+	/** Aspects that make Cobblemon render {@code formId}; falls back to the raw id (old behavior) if the form is unknown. */
+	public static Set<String> formAspects(Species species, String formId) {
+		Set<String> aspects = new HashSet<>();
+		com.cobblemon.mod.common.pokemon.FormData form = resolveForm(species, formId);
+		if (form != null) {
+			aspects.addAll(form.getAspects());
+		} else if (formId != null && !formId.isBlank()) {
+			aspects.add(formId.toLowerCase(Locale.ROOT));
+		}
+		return aspects;
+	}
+
+	private static String normalize(String value) {
+		return value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
 	}
 
 	private static java.lang.reflect.Method drawProfilePokemonDefault() {

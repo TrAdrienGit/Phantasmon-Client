@@ -73,6 +73,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final SlotLayout GRID_SLOT = new SlotLayout(16, 92, SLOT_MODEL_SCALE * 88 / 142f * 2f, 112, GRID_SLOT_W - 24, 84, 18);
 
 	// ---- Header / footer buttons ----
+	/** Red ✕ closing the PC, at the right end of the right header plate (Adrien 2026-10-03). */
+	private static final int CLOSE_SIZE = 36;
+	private static final int CLOSE_X = 1585 - 6 - CLOSE_SIZE;
+	private static final int CLOSE_Y = 15 + (48 - CLOSE_SIZE) / 2;
 	private static final int IMPORT_X = 715;
 	private static final int IMPORT_Y = 15;
 	private static final int IMPORT_W = 170;
@@ -344,6 +348,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			}
 			return true;
 		}
+		if (inside(x, y, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE)) {
+			onClose();
+			return true;
+		}
 		if (inside(x, y, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
 			importFromClipboard();
 			return true;
@@ -539,7 +547,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		long teamCount = Arrays.stream(teamSlots).filter(p -> p != null).count();
 		long pcCount = allPokemon.size() - teamCount;
 		String totals = upper(Component.translatable("phantasmon.pc.screen.count", pcCount, PC_CAPACITY, teamCount, TEAM_SIZE).getString());
-		drawText(g, totals, 1569 - textWidth(totals, 2f, false, 1f), 32, 2f, MUTED, false, 1f);
+		drawText(g, totals, CLOSE_X - 14 - textWidth(totals, 2f, false, 1f), 32, 2f, MUTED, false, 1f);
+		renderCloseButton(g, CLOSE_X, CLOSE_Y, CLOSE_SIZE, inside(mx, my, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE));
 
 		boolean hovered = inside(mx, my, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H);
 		renderPrimaryButtonFrame(g, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, hovered, false);

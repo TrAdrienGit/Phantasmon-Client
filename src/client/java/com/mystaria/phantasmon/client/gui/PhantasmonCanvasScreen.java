@@ -585,6 +585,14 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		drawText(g, label, x + (w - width) / 2f, y + (h - height) / 2f, textScale, WHITE, true, 1.5f);
 	}
 
+	/** Square danger-style close button with a ✕ (same red as QUITTER / SUPPRIMER). */
+	protected void renderCloseButton(GuiGraphics g, int x, int y, int size, boolean hovered) {
+		int[] gradient = hovered ? DANGER_BUTTON_HOVER : DANGER_BUTTON;
+		g.fillGradient(x, y, x + size, y + size, gradient[0], gradient[1]);
+		outline(g, x, y, size, size, DANGER_BORDER);
+		drawCentered(g, "✕", x + size / 2f, y + (size - 7 * snapTextScale(2f)) / 2f, 2f, WHITE, false, 0f);
+	}
+
 	/** Full-screen veil then the canvas transform again, all lifted to z=2000 (above item icons/3D models drawn underneath). */
 	protected void beginModalLayer(GuiGraphics g, float fade) {
 		g.flush();
@@ -928,16 +936,10 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		}
 
 		private static FormData formOf(Species species, String formId) {
-			if (formId != null && !formId.isBlank()) {
-				String wanted = formId.toLowerCase(Locale.ROOT);
-				for (FormData form : species.getForms()) {
-					if (wanted.equals(form.getName().toLowerCase(Locale.ROOT)) || wanted.equals(form.formOnlyShowdownId())) {
-						return form;
-					}
-				}
-			}
-			return species.getStandardForm();
+			FormData form = PokemonGuiRendering.resolveForm(species, formId);
+			return form != null ? form : species.getStandardForm();
 		}
+
 
 		static ElementalType safeType(String typeId) {
 			if (typeId == null) {

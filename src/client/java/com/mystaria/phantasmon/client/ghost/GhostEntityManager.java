@@ -58,9 +58,13 @@ public final class GhostEntityManager {
 		Pokemon pokemon = new Pokemon();
 		pokemon.setSpecies(resolvedSpecies);
 		if (form != null) {
-			FormData formData = resolveForm(resolvedSpecies, form);
+			// Same resolution as the screens: the form's aspects are what actually select its model
+			// (Arceus plates, Ogerpon masks...) — setForm alone kept rendering the base form.
+			FormData formData = com.mystaria.phantasmon.client.gui.PokemonGuiRendering.resolveForm(resolvedSpecies, form);
 			if (formData != null) {
 				pokemon.setForm(formData);
+				pokemon.setForcedAspects(new java.util.HashSet<>(formData.getAspects()));
+				pokemon.updateAspects();
 			}
 		}
 		pokemon.setShiny(shiny);
@@ -97,16 +101,5 @@ public final class GhostEntityManager {
 	/** Called on disconnect/dimension change — nothing to notify server-side here, the caller handles that. */
 	public void despawnAll() {
 		activeGhosts.keySet().forEach(this::despawn);
-	}
-
-	private static FormData resolveForm(Species species, String formIdentifier) {
-		FormData exact = species.getFormByName(formIdentifier);
-		if (exact != null) {
-			return exact;
-		}
-		return species.getForms().stream()
-				.filter(candidate -> candidate.getName().equalsIgnoreCase(formIdentifier))
-				.findFirst()
-				.orElse(null);
 	}
 }

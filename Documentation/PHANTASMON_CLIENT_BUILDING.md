@@ -1238,6 +1238,18 @@ même base graphique :
     objets de combat seulement, pas de capacité en double, un seul PATCH à l'enregistrement).
 - Build vert. **Non testé visuellement par Claude.**
 
+### 4.37 Bouton ✕ du PC, modèles 3D des formes (2026-10-03)
+
+- **Bouton ✕ rouge** en haut à droite du PC (bout de la plaque d'en-tête droite) pour le fermer.
+- **Formes alternatives rendues avec le modèle de base** (Arceus Fée affiché en Arceus Normal, Ogerpon
+  sans son masque, Motisma…) : Cobblemon choisit le modèle d'une forme via ses **aspects** (`fairy-plate`,
+  `wellspring-mask`…), pas via son nom. On envoyait le nom de forme brut (`fairy`) — inconnu, donc forme
+  de base. Corrigé dans `PokemonGuiRendering.resolveForm/formAspects` (correspondance tolérante nom /
+  identifiant Showdown, ex. `wellspringtera` ↔ `Wellspring-Tera`), utilisé par les écrans (slots, fiche,
+  types de la forme) **et** par le Ghost en jeu (`setForm` + aspects forcés). L'ancien
+  `species.getFormByName` du Ghost renvoyait silencieusement la forme de base pour un nom inconnu.
+- Build vert. **Non testé visuellement par Claude.**
+
 ---
 
 ## 5. Dépannage courant
