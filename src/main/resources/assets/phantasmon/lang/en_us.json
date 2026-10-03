@@ -220,5 +220,7 @@
   "phantasmon.battle.error.empty_team": "[Phantasmon] One of the two players has no Pokémon in their team.",
   "phantasmon.battle.error.not_host": "[Phantasmon] Only the battle host can do that.",
   "phantasmon.battle.error.not_guest": "[Phantasmon] Only the battle guest can do that.",
-  "phantasmon.battle.error.invalid_result": "[Phantasmon] Invalid battle result."
+  "phantasmon.battle.error.invalid_result": "[Phantasmon] Invalid battle result.",
+  "phantasmon.wheel.trade": "Ghost Trade",
+  "phantasmon.wheel.battle": "Ghost Battle"
 }

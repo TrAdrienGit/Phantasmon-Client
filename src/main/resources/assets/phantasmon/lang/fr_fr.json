@@ -220,5 +220,7 @@
   "phantasmon.battle.error.empty_team": "[Phantasmon] Un des deux joueurs n'a aucun Pokémon dans son équipe.",
   "phantasmon.battle.error.not_host": "[Phantasmon] Seul l'hôte du combat peut faire ça.",
   "phantasmon.battle.error.not_guest": "[Phantasmon] Seul l'invité du combat peut faire ça.",
-  "phantasmon.battle.error.invalid_result": "[Phantasmon] Résultat de combat invalide."
+  "phantasmon.battle.error.invalid_result": "[Phantasmon] Résultat de combat invalide.",
+  "phantasmon.wheel.trade": "Échange Ghost",
+  "phantasmon.wheel.battle": "Combat Ghost"
 }

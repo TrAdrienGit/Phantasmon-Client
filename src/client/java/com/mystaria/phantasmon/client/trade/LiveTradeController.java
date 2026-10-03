@@ -85,6 +85,11 @@ public final class LiveTradeController implements LiveTradeListener {
 				.toList();
 	}
 
+	/** Cobblemon's interaction wheel ("Ghost Trade"): invites the player the wheel is open on. */
+	public void invitePlayer(UUID targetUuid) {
+		invite(targetUuid, null);
+	}
+
 	private void invite(UUID targetUuid, String targetName) {
 		if (!requireReady()) {
 			return;

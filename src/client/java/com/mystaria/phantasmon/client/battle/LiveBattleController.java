@@ -102,6 +102,11 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
+	/** Cobblemon's interaction wheel ("Ghost Battle"): invites the player the wheel is open on. */
+	public void invitePlayer(UUID targetUuid) {
+		invite(targetUuid);
+	}
+
 	private void invite(UUID targetUuid) {
 		if (!requireReady()) {
 			return;

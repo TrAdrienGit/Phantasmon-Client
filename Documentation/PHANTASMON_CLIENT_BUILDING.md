@@ -1530,6 +1530,37 @@ d'aspects de Cobblemon : l'aspect est donc ajouté explicitement.
 - Le combat n'est pas concerné : il utilisait déjà le sexe (`GhostBattlePokemonFactory`).
 - Non testé par Claude : à vérifier avec un Meowstic ♂ puis ♀ (carte du PC et Ghost sorti, chez soi et chez
   l'autre joueur).
+- **Confirmé en jeu par Adrien** : le sexe sur le modèle fonctionne.
+
+---
+
+### 4.45 « Échange Ghost » et « Combat Ghost » dans la roue Cobblemon (2026-10-03)
+
+La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus des touches G (échange) et B
+(combat), qui visent au réticule. Ici l'invitation part vers **le joueur sur lequel la roue est ouverte**.
+
+- **Pourquoi un Mixin** (idée gardée de côté au §4.32) : Cobblemon construit cette roue à partir d'un enum
+  fermé rempli par son serveur, sans point d'extension. L'écran terminé est donc complété après coup.
+- **Comment, deux Mixins minces** (`remap = false`, comme les autres Mixins visant Cobblemon) :
+  - `InteractWheelGuiFactoryMixin` : `@Inject` en `RETURN` sur `InteractWheelGuiFactoryKt.createPlayerInteractGui`
+    (méthode statique publique, signature vérifiée par décompilation sur 1.8.1) ;
+  - `InteractWheelGuiAccessor` : `@Accessor` sur le champ privé `options` de `InteractWheelGUI`. C'est une
+    `Multimap<Orientation, InteractWheelOption>` modifiable que `init()` transforme en boutons à l'ouverture
+    de l'écran : les options ajoutées juste après la création apparaissent comme celles de Cobblemon.
+  Le Mixin ne contient aucune logique : tout est dans `wheel/GhostWheelOptions`.
+- **Entrées** : Échange Ghost en **Est** (teinte cyan), Combat Ghost en **Nord-Ouest** (teinte rose-rouge) ;
+  Cobblemon n'utilise que le Nord (combat/spectateur) et le Nord-Est (échange). Icônes : celles de Cobblemon
+  (blanches, teintées par la couleur fournie). Clic : ferme la roue puis appelle
+  `LiveTradeController.invitePlayer(uuid)` / `LiveBattleController.invitePlayer(uuid)` (nouvelles méthodes
+  publiques, mêmes invitations que les touches). Textes : `phantasmon.wheel.trade` / `phantasmon.wheel.battle`.
+- Les entrées de Cobblemon (échange/combat de vrais Pokémon Cobblemon) restent intactes.
+- **Fragilité assumée, à revalider à chaque mise à jour de Cobblemon** : `defaultRequire = 1` dans la config
+  des Mixins fait échouer le lancement du jeu avec une erreur Mixin explicite si `createPlayerInteractGui` ou
+  le champ `options` changent — jamais un comportement silencieusement faux. Une erreur pendant l'ajout des
+  entrées est attrapée et loguée sans casser la roue de Cobblemon.
+- Non testé par Claude : seule la compilation est vérifiée, l'application des Mixins n'a lieu qu'au lancement.
+  À vérifier : le jeu démarre, R sur un joueur affiche bien trois sortes d'entrées (Cobblemon + les deux
+  Ghost), chaque clic envoie l'invitation, et les textes sont lisibles.
 
 ---
 

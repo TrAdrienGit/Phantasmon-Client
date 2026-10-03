@@ -7,7 +7,9 @@
 		"DistributionUtilsMixin",
 		"ActionEffectTimelineMixin",
 		"ActionEffectInstructionsMixin",
-		"MoveInstructionMixin"
+		"MoveInstructionMixin",
+		"InteractWheelGuiAccessor",
+		"InteractWheelGuiFactoryMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

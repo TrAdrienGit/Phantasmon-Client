@@ -61,6 +61,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade, liveBattle);
 		});
 
+		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
 	}
