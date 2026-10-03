@@ -34,9 +34,7 @@ Le JWT n'est **jamais** écrit sur disque.
 |---|---|
 | `gradle.properties` | `minecraft_version=1.21.1`, `loader_version=0.18.1`, `loom_version=1.18-SNAPSHOT`, `fabric_api_version=0.116.17+1.21.1`, `cobblemon_version=gBW3vLC7` (identifiant de version **Modrinth** du build Fabric 1.8.1 ; ne pas le remplacer par `1.8.1`, ambigu avec le build NeoForge), `version=1.0.0` |
 | `build.gradle` | Loom (`splitEnvironmentSourceSets`, mappings officiels), dépôt Maven Modrinth, `kotlin-stdlib` en `compileOnly`, JUnit 5, `options.release = 21`, le jeu de sources `client` branché sur les tests |
-| `src/main/resources/fabric.mod.json` | Identifiant `phantasmon`, `environment: client`, points d'entrée, dépendances (`fabricloader >= 0.18.1`, `minecraft ~1.21.1`, `java >= 21`, `fabric-api`), licence déclarée `CC0-1.0` alors que le projet est en GPL 3.0 (BUG-1, `project/known-issues.md`), liens `homepage`/`sources` factices |
+| `src/main/resources/fabric.mod.json` | Identifiant `phantasmon`, `environment: client`, points d'entrée, dépendances (`fabricloader >= 0.18.1`, `minecraft ~1.21.1`, `java >= 21`, `fabric-api`, `cobblemon >= 1.8.1`), licence `GPL-3.0-only`, liens `homepage`/`sources` factices |
 | `src/client/resources/phantasmon.client.mixins.json` | 7 Mixins client, `defaultRequire = 1` |
 | `.env` / `.env.template` | Non utilisés par le mod (reliquat aligné sur le backend : clés `BDD_*`) |
 
-Cobblemon n'est pas déclaré dans `depends` de `fabric.mod.json` : il est requis en pratique (le mod en utilise les
-classes), mais son absence ne serait pas signalée proprement par Fabric Loader.

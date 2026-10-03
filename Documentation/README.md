@@ -10,6 +10,7 @@ combat de **Ghost Pokémon**, en dialogue avec le
 
 | Je veux… | Lire |
 |---|---|
+| Apprendre à créer un mod comme celui-ci (parcours pédagogique) | [`apprentissage/`](apprentissage/README.md) |
 | Comprendre le projet en 5 minutes | [`architecture/system-overview.md`](architecture/system-overview.md) |
 | Jouer avec le mod | [`guides/installing.md`](guides/installing.md), puis [`guides/user-guide.md`](guides/user-guide.md) |
 | Compiler le mod | [`guides/building.md`](guides/building.md) |
@@ -23,6 +24,7 @@ combat de **Ghost Pokémon**, en dialogue avec le
 ```text
 Documentation/
 ├── README.md                        ce fichier
+├── apprentissage/                   parcours pédagogique : tout le mod expliqué, chapitres 1 à 15
 ├── architecture/
 │   ├── system-overview.md           vue d'ensemble du système (miroir)
 │   ├── client-architecture.md       paquets, cycle de vie, fils, réseau, i18n, pièges

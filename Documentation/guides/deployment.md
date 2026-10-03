@@ -53,5 +53,5 @@ manipulation est inutile.
 - URL du backend configurable (aujourd'hui en dur).
 - Retirer `/phantasmon debug fingerprint`.
 - Renseigner les liens de `fabric.mod.json` et le lien de mise à jour (`AuthService`).
-- Corriger la licence de `fabric.mod.json` (GPL 3.0, BUG-1) et traiter les autres points de priorité haute de [`project/known-issues.md`](../project/known-issues.md).
+- Traiter les points de priorité haute de [`project/known-issues.md`](../project/known-issues.md).
 - Aligner `version` (`gradle.properties`) et `phantasmon.version.current` / `min-supported` du backend.

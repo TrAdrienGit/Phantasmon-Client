@@ -11,7 +11,7 @@
 		"homepage": "https://github.com/your-account/phantasmon-client",
 		"sources": "https://github.com/your-account/phantasmon-client"
 	},
-	"license": "CC0-1.0",
+	"license": "GPL-3.0-only",
 	"icon": "assets/phantasmon/icon.png",
 	"environment": "client",
 	"entrypoints": {
@@ -33,6 +33,7 @@
 		"fabricloader": ">=0.18.1",
 		"minecraft": "~1.21.1",
 		"java": ">=21",
-		"fabric-api": "*"
+		"fabric-api": "*",
+		"cobblemon": ">=1.8.1"
 	}
 }
