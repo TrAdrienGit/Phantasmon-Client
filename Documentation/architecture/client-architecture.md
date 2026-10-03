@@ -68,8 +68,9 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 
 ## 5. Réseau
 
-- **URL du backend** : constante `BackendConfig.BASE_URL` (actuellement `http://100.116.43.32:8080`, IP Tailscale de
-  la machine de dev). Non configurable par le joueur à ce jour.
+- **URL du backend** : `BackendConfig.BASE_URL`, lue au lancement dans `config/phantasmon.json` (`"backend_url"`) par
+  `BackendUrlFile` (défaut `http://100.116.43.32:8080`, IP Tailscale de la machine de dev ; voir
+  [`reference/configuration.md`](../reference/configuration.md)).
 - **REST** : `BackendJsonClient` (Gson, `LOWER_CASE_WITH_UNDERSCORES`) : les DTO restent en camelCase. En-tête
   `Authorization: Bearer` ajouté pour les routes protégées. Une erreur structurée devient `BackendApiException`
   (dont le code est traduit, jamais affiché tel quel). `GsonUuidSanityTest` garantit qu'un `UUID` est sérialisé en

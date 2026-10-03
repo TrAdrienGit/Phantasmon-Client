@@ -9,7 +9,7 @@
 | Pas de connexion automatique, aucun message | Backend injoignable (comportement voulu : silence) | Démarrer le backend, puis `/phantasmon login` |
 | « comptes hors-ligne non supportés » | Jeu lancé avec un compte hors-ligne | Utiliser un compte Microsoft |
 | Échec de la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang indisponible | Réessayer plus tard |
-| `Backend injoignable` (ping activé) | Backend arrêté, mauvaise adresse, pare-feu | Vérifier `BackendConfig.BASE_URL` et le backend |
+| `Backend injoignable` (ping activé) | Backend arrêté, mauvaise adresse, pare-feu | Vérifier `backend_url` dans `config/phantasmon.json` (et l'avertissement éventuel `Invalid 'backend_url'` dans le log), puis le backend |
 | `UUID non valide à la position N` | UUID tapé incomplet | Utiliser l'UUID complet (cliquer dessus dans le chat l'insère) |
 | « Pas encore connecté au service de présence Ghost » | WebSocket pas encore ouvert | Réessayer quelques secondes après la connexion |
 | Le Ghost d'un autre joueur n'apparaît pas | Dimension différente, autre backend, empreinte différente (test LAN), ou espèce inconnue (`Cannot render Ghost: unresolved species` dans le log) | Même dimension, même backend, `/phantasmon debug fingerprint` en test LAN |

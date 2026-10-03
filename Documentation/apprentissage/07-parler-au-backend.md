@@ -7,10 +7,12 @@ voit comment le **client** les utilise.
 
 ```java
 // network/BackendConfig.java
-public static final URI BASE_URL = URI.create("http://100.116.43.32:8080");
+public static final URI BASE_URL = BackendUrlFile.load(FabricLoader.getInstance().getConfigDir().resolve("phantasmon.json"));
 ```
 
-Une seule constante pour tout le mod (actuellement en dur : rendre l'adresse configurable est un TODO).
+Une seule constante pour tout le mod, lue une fois au lancement dans `config/phantasmon.json` (`"backend_url"`).
+`BackendUrlFile` crée le fichier avec la valeur par défaut s'il manque et retombe sur cette valeur si l'adresse est
+invalide ; il ne dépend pas de Minecraft, ce qui permet de le tester (`BackendUrlFileTest`).
 `BASE_URL.resolve("/pokemon")` construit chaque adresse.
 
 ## 7.2 Un client REST générique

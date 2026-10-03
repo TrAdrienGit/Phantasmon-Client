@@ -27,7 +27,8 @@ contient des chemins propres aux machines d'Adrien) : il n'existe que sur la mac
 | « production-server » (`100.106.248.73`) | `TheMashen` | Cobblemon Academy 2.0 - Copie | Second client |
 | Développement (secours) | — | Cobblemon 2 | Reçoit le jar si la machine serveur est injoignable |
 
-Les deux clients doivent viser **le même backend** (celui de la machine de dev, `BackendConfig.BASE_URL`).
+Les deux clients doivent viser **le même backend** (celui de la machine de dev) : `backend_url` de
+`config/phantasmon.json` dans chaque instance (valeur par défaut = machine de dev, rien à faire).
 
 ### Rejoindre la même partie
 

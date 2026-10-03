@@ -3,11 +3,24 @@
 > Vérifié le 2026-10-03. Le mod n'a **pas encore d'écran ni de fichier de paramètres** pour le joueur : les
 > réglages ci-dessous sont dans le code ou les fichiers de build.
 
+## 0. Fichier de configuration du joueur
+
+`config/phantasmon.json` dans le dossier de l'instance Minecraft, créé au premier lancement :
+
+```json
+{
+  "backend_url": "http://100.116.43.32:8080"
+}
+```
+
+| Clé | Valeur par défaut | Règles |
+|---|---|---|
+| `backend_url` | `http://100.116.43.32:8080` (IP Tailscale de la machine de dev) | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur absente ou invalide, ou fichier illisible : valeur par défaut et avertissement dans le log (`BackendUrlFile`). |
+
 ## 1. Constantes du code
 
 | Réglage | Valeur | Où |
 |---|---|---|
-| URL du backend | `http://100.116.43.32:8080` (IP Tailscale de la machine de dev) | `network/BackendConfig.BASE_URL` |
 | Version Cobblemon enregistrée sur les Pokémon créés | `1.8.1` | `pokemon/PokemonCommandHandler.COBBLEMON_DATA_VERSION` |
 | Lien de mise à jour proposé si la version est refusée | `https://modrinth.com/mod/phantasmon` (factice) | `auth/AuthService` |
 | Position + heartbeat WebSocket | toutes les 1 s | `ghost/GhostSession` |

@@ -80,7 +80,7 @@ loader_version=0.18.1
 loom_version=1.18-SNAPSHOT
 fabric_api_version=0.116.17+1.21.1
 cobblemon_version=gBW3vLC7
-version=1.0.0
+version=0.1.0
 ```
 
 ### Piège : l'identifiant de version Cobblemon
@@ -102,7 +102,7 @@ Dependency requires at least JVM runtime version 25. This build uses a Java 21 J
 ## 3.5 Les tâches utiles
 
 ```bash
-./gradlew build        # compile, teste, produit build/libs/phantasmon-client-1.0.0.jar
+./gradlew build        # compile, teste, produit build/libs/phantasmon-client-0.1.0.jar
 ./gradlew runClient    # lance Minecraft de développement avec le mod
 ./gradlew test         # tests unitaires
 ```

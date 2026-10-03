@@ -76,6 +76,8 @@
 | §4.44 | 2026-10-03 | Le sexe change le modèle 3D |
 | §4.45 | 2026-10-03 | « Échange Ghost » et « Combat Ghost » dans la roue Cobblemon |
 | §4.46 | 2026-10-03 | Corrections BUG-1 à BUG-5 (`fabric.mod.json`, indicateur `[Ghost]`, TTL, échange et PC plein) |
+| §4.47 | 2026-10-03 | TODO-1 : URL du backend configurable (`config/phantasmon.json`) |
+| §4.48 | 2026-10-03 | TODO-4 : version unique 0.1.0 |
 
 ---
 
@@ -1577,3 +1579,23 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   `transferOwnership` rendait la transaction rollback-only. `TradeService.requirePcRoom` vérifie la place des deux
   PC avant tout transfert ; l'échange reste `PENDING`. Suite backend complète : 129 tests verts.
 - Le backend doit être redémarré pour que BUG-3 (`nickname`), BUG-4 et BUG-5 prennent effet.
+
+### 4.47 URL du backend configurable — TODO-1 (2026-10-03)
+
+- `config/phantasmon.json`, clé `backend_url`, créé au premier lancement avec l'ancienne constante
+  (`http://100.116.43.32:8080`) : l'installation de test actuelle continue de marcher sans rien toucher.
+- `BackendConfig.BASE_URL` reste la seule source (aucun appelant modifié) ; la lecture est dans `BackendUrlFile`,
+  sans dépendance Minecraft, testée par `BackendUrlFileTest` (fichier absent, valeur valide, JSON invalide, schéma
+  autre que http(s), chemin ou paramètres refusés car `resolve("/…")` et le WebSocket les ignoreraient).
+- Lu une seule fois au lancement : `BackendHealthPinger` et les clients REST capturent l'URL dès le démarrage.
+- Pas d'écran ni de commande pour la modifier : le fichier suffit pour l'instant.
+
+### 4.48 Version unique 0.1.0 — TODO-4 (2026-10-03)
+
+- Choix d'Adrien : **0.1.0 partout** tant que le projet n'est pas publié (1.0.0 réservé à la première publication
+  Modrinth/CurseForge). Client `1.0.0` → `0.1.0` (`gradle.properties`), jar backend `0.0.1-SNAPSHOT` → `0.1.0`
+  (`build.gradle`) ; `phantasmon.version.current` et `min-supported` étaient déjà à `0.1.0`.
+- Aucun risque de refus de connexion : le client 0.1.0 est égal au minimum accepté par le backend.
+- Règle notée dans `application.properties` : `current` suit la version des deux dépôts ; `min-supported` ne monte
+  que pour refuser d'anciens clients.
+- Le jar backend s'appelle maintenant `phantasmon-backend-0.1.0.jar` (guides et README mis à jour).

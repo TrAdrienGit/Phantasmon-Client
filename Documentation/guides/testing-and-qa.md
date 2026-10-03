@@ -27,7 +27,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 ## 2. Préparer une recette
 
 - Backend lancé (voir `Phantasmon-Backend/Documentation/guides/running.md`) et joignable à l'adresse de
-  `BackendConfig.BASE_URL`.
+  `backend_url` (`config/phantasmon.json` de l'instance).
 - Mod compilé et installé (voir [`deployment.md`](deployment.md) pour les instances de test).
 - Un compte Microsoft ; **deux comptes** pour les échanges, la visibilité mutuelle et les combats.
 - Garder le log du jeu (`logs/latest.log`) et la console du backend ouverts.

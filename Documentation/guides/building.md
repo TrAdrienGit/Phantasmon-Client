@@ -39,7 +39,7 @@ $env:JAVA_HOME = "C:\Program Files\Microsoft\jdk-25.0.4.101-hotspot"
 .\gradlew.bat build
 ```
 
-Résultat : `build/libs/phantasmon-client-<version>.jar` (actuellement `1.0.0`). Ignorer le
+Résultat : `build/libs/phantasmon-client-<version>.jar` (actuellement `0.1.0`). Ignorer le
 `-sources.jar`. Les dépendances (Minecraft, Fabric API, Cobblemon via le Maven Modrinth) sont téléchargées au
 premier build.
 
