@@ -12,13 +12,13 @@ import com.mystaria.phantasmon.client.battle.LiveBattleController;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
 
 /**
- * Two convenience keybinds (Adrien: 2026-09-29) for the two most-used chat
- * commands: opening the PC screen and toggling sendout/recall of the team's
- * lead Pokémon (team slot 1 — see {@link PokemonCommandHandler#sendOutTeamLead}
+ * The mod's four keybinds. Two (Adrien: 2026-09-29) for the most-used chat
+ * commands: opening the PC screen (P) and toggling sendout/recall of the team's
+ * lead Pokémon (O, team slot 1 — see {@link PokemonCommandHandler#sendOutTeamLead}
  * and {@link PhantasmonCommands#toggleSendOut}, shared with the
- * {@code /phantasmon sendout} command so both stay in sync). A third one
- * (Adrien: 2026-10-02) invites the targeted player to a live trade, same as
- * {@code /phantasmon trade invite <player>}.
+ * {@code /phantasmon sendout} command so both stay in sync). Two invite the
+ * player under the crosshair: to a live trade (G, Adrien: 2026-10-02, same as
+ * {@code /phantasmon trade invite <player>}) and to a Ghost battle (B, Phase 9).
  *
  * <p>Registered once via {@link KeyBindingHelper} with a plain default key —
  * no custom persistence needed: Minecraft itself saves any rebind to

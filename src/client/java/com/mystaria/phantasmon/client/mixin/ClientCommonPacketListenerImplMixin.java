@@ -14,7 +14,7 @@ import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
 import com.mystaria.phantasmon.client.battle.GhostBattles;
 
 /**
- * The only Mixin of the mod (Phase 9). Cobblemon's battle UI sends the
+ * The mod's first Mixin (Phase 9; the full list is in {@code phantasmon.client.mixins.json}). Cobblemon's battle UI sends the
  * player's choices to the Minecraft server; for a Ghost battle there is no
  * such battle on the server — it runs on a player's client — so the choice
  * is stopped here and routed to the Ghost battle engine instead. Every other

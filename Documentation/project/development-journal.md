@@ -78,6 +78,11 @@
 | §4.46 | 2026-10-03 | Corrections BUG-1 à BUG-5 (`fabric.mod.json`, indicateur `[Ghost]`, TTL, échange et PC plein) |
 | §4.47 | 2026-10-03 | TODO-1 : URL du backend configurable (`config/phantasmon.json`) |
 | §4.48 | 2026-10-03 | TODO-4 : version unique 0.1.0 |
+| §4.49 | 2026-10-03 | TODO-5 : sauvegardes PostgreSQL (native ou Docker) et test de restauration |
+| §4.50 | 2026-10-03 | TODO-6 : PostgreSQL natif limité à localhost |
+| §4.51 | 2026-10-03 | TODO-8 : commentaires de code vers les nouveaux noms de documentation |
+| §4.52 | 2026-10-03 | TODO-9 : javadocs obsolètes corrigées |
+| §4.53 | 2026-10-03 | TODO-10 : textures inutilisées du PC supprimées |
 
 ---
 
@@ -1599,3 +1604,59 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
 - Règle notée dans `application.properties` : `current` suit la version des deux dépôts ; `min-supported` ne monte
   que pour refuser d'anciens clients.
 - Le jar backend s'appelle maintenant `phantasmon-backend-0.1.0.jar` (guides et README mis à jour).
+
+### 4.49 Sauvegardes PostgreSQL — TODO-5 (2026-10-03, backend)
+
+- Question d'Adrien : la base sera aussi dans Docker. `scripts/backup-database.ps1` détecte la source : conteneur
+  `phantasmon-postgres` en marche → `pg_dump` dans le conteneur (fichier écrit dedans puis `docker cp`, car un
+  binaire passé par un pipe PowerShell 5.1 serait corrompu) ; sinon `pg_dump.exe` natif avec les `BDD_*` de
+  l'environnement ou du `.env` (mot de passe via `PGPASSWORD`, jamais affiché).
+- Rotation du CAD : `backups\daily\` 14 jours, copie du dimanche dans `backups\weekly\` 92 jours. Écriture en
+  `.partial` puis renommage. `backups/` et `*.dump` ajoutés au `.gitignore`.
+- `scripts/test-restore.ps1` : restauration dans un conteneur `postgres:18` jetable (sans port publié), puis
+  contrôle de l'historique Flyway et des tables principales.
+- Testé : dump de la base native (24 Kio) restauré (8 migrations, 2 joueurs, 26 Pokémon, 4 échanges, 14 combats) ;
+  même chose depuis un conteneur configuré comme `docker-compose.yml` ; rotation ; échec propre (code 1) si le
+  conteneur demandé ne tourne pas.
+- Non fait : planification Windows (TODO-16, commande dans `guides/deployment.md` §3.2), archivage WAL (LIM-8).
+
+### 4.50 PostgreSQL natif limité à localhost — TODO-6 (2026-10-03, machine de dev)
+
+- Avant : `listen_addresses = '*'` (écoute sur `0.0.0.0` et `::`). `pg_hba.conf` n'autorisait déjà que `127.0.0.1` /
+  `::1`, donc une connexion distante était refusée à l'authentification, mais le port restait joignable.
+- Réglage système fait par Adrien (pas par Claude) : `listen_addresses = 'localhost'`, redémarrage du service
+  `postgresql-x64-18`, copie `postgresql.conf.bak-2026-10-03`.
+- Vérifié : écoute sur `127.0.0.1:5432` et `[::1]:5432` seulement ; `100.116.43.32:5432` (Tailscale) injoignable ;
+  backend `100.116.43.32:8080` toujours joignable ; `/health` → `database: UP`.
+- Le conteneur Docker n'est pas concerné (publié sur `127.0.0.1:5433` uniquement).
+
+### 4.51 Commentaires de code vers les nouveaux noms de documentation — TODO-8 (2026-10-03)
+
+- 19 références mises à jour (commentaires uniquement, aucun comportement modifié), avec les numéros de section des
+  nouveaux documents : backend `JwtService`, `BattleSession`, `CreateBattleRequest`, `ApiException`,
+  `IdempotencyKey`, `Player`, `PlayerService`, `Pokemon`, `PokemonLegalityService` (×2), `PlayerPresence`,
+  `LiveTradeService`, `ProposeTradeRequest`, `application.properties`, `docker-compose.yml`, `.env.template`,
+  `.gitignore` ; client `PhantasmonCanvasScreen`, `scripts/deploy-to-prod-server.sh`.
+- `PHANTASMON_DB_SCHEMA.md §4.3` (légalité de `ability`) → `database-schema.md §4` (la sous-section n'existe plus).
+- **Non modifié, volontairement** : `V7__trades_pokemon_history_without_fk.sql` (migration appliquée : changer même un
+  commentaire casserait la somme de contrôle Flyway).
+
+### 4.52 Javadocs obsolètes — TODO-9 (2026-10-03)
+
+- Client : `ClientCommonPacketListenerImplMixin` (« seul Mixin » → premier des 7, liste dans
+  `phantasmon.client.mixins.json`) ; `PhantasmonKeybinds` (décrit les 4 touches P, O, G, B) ; `BackendHealthPinger`
+  (n'est plus « en dur », suit `config/phantasmon.json`).
+- Backend : `RequestLoggingFilter` et `LogRetentionService` renvoient à `SessionLogFileEnvironmentPostProcessor`
+  (il n'y a pas de `logback-spring.xml`) ; `RequestLoggingFilter` ne dit plus que le WebSocket n'existe pas ;
+  `PhantasmonWebSocketHandler` : les messages `Battle*` sont routés vers `LiveBattleService`.
+- Trouvé en vérifiant : `./gradlew javadoc` échouait sur un `&` brut (« drag&drop ») dans `PokemonUpdateRequest` ;
+  remplacé par « drag-and-drop », la javadoc se génère sans erreur.
+- Commentaires uniquement : backend compilé, client compilé et déployé.
+
+### 4.53 Textures inutilisées du PC — TODO-10 (2026-10-03)
+
+- Supprimés : `button`, `button_hover`, `button_red`, `button_red_hover`, `panel`, `panel_root`, `slot`,
+  `slot_drag`, `slot_hover`, `slot_selected` (`.png` + `.png.mcmeta`), inutilisés depuis la refonte du PC du
+  2026-10-02. Vérifié avant : aucune référence, ni littérale ni construite (`"pc/" + …`).
+- Gardé : `star.png` (`PhantasmonCanvasScreen.SPRITE_STAR`). Jar : 372 Kio au lieu de 380.
+- `design/trade-screen/SPEC_ECRAN_ECHANGE.md` cite encore ce dossier : document de maquette historique, laissé tel quel.

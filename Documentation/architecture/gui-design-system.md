@@ -58,7 +58,6 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 |---|---|---|
 | `assets/phantasmon/textures/gui/trade/` | Fond, rails, fiches, en-têtes joueur, zone d'aperçu, fenêtre modale, ombre | Générées par `scripts/generate_trade_textures.py` (Pillow) à partir des valeurs CSS exactes de la maquette. Dégradés en demi-résolution avec `"blur": true` dans le `.mcmeta`. Relancer le script après toute retouche de couleur. |
 | `assets/phantasmon/textures/gui/sprites/pc/star.png` | Étoile chromatique | Pixel art généré |
-| `assets/phantasmon/textures/gui/sprites/pc/*` (autres) | Panneaux, cases et boutons nine-slice de l'ancien PC | **Plus utilisées** depuis la refonte du 2026-10-02 (voir `project/status.md`) |
 
 ## 6. Comportements des écrans
 

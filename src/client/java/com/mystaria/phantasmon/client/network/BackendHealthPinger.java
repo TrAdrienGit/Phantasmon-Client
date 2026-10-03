@@ -19,9 +19,8 @@ import net.minecraft.network.chat.Component;
  * wire end to end before any real Ghost feature is built on top of it
  * (CAD Phase 5 groundwork). Off by default — see {@link PingToggle}.
  *
- * <p>The backend URL is hardcoded to the local dev backend for now — this is
- * intentional for this MVP slice, not an oversight. It must become
- * configurable before any real deployment.
+ * <p>Pings whatever {@link BackendConfig#BASE_URL} resolves to (the
+ * {@code backend_url} of {@code config/phantasmon.json}), captured at startup.
  */
 public final class BackendHealthPinger {
 

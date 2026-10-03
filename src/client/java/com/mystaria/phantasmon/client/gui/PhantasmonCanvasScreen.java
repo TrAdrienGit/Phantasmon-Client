@@ -37,7 +37,7 @@ import com.mystaria.phantasmon.client.pokemon.PokemonGender;
  * share one art direction — lives here.
  *
  * <p><b>Coordinates</b>: subclasses lay everything out in the handoff
- * mock-up's own 1600×900 px space ({@code Documentation/ecran_echange/}). The
+ * mock-up's own 1600×900 px space ({@code Documentation/design/trade-screen/}). The
  * canvas is drawn through one pose scale of {@code s/2 × MENU_SCALE} GUI
  * units per px, {@code s = min(1, width/800, height/450)} (trade spec §2),
  * centered. Mouse positions go back through {@link #toCanvasX}/{@link #toCanvasY}
