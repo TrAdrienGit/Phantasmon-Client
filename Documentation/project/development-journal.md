@@ -87,6 +87,7 @@
 | §4.55 | 2026-10-04 | TODO-12 : formes spéciales en combat |
 | §4.56 | 2026-10-04 | TODO-14 : Ghost rappelés et bloqués pendant un combat |
 | §4.57 | 2026-10-04 | TODO-13 : nom des Ghost toujours affiché (pas de « ??? ») |
+| §4.58 | 2026-10-04 | TODO-15 : audit de sécurité |
 
 ---
 
@@ -1738,3 +1739,11 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   `canBattle` renvoie `false` pour les entités Phantasmon. Ce test pilote aussi la touche R (`PartySendBinding`) :
   R ne tente plus de défier un Ghost (entité inexistante côté serveur) ; les combats Ghost passent par l'invitation
   (B, roue, commande). Non testé en jeu par Claude.
+
+### 4.58 Audit de sécurité — TODO-15 (2026-10-04)
+
+- Lecture du code des deux dépôts, sans correction : rapport dans `project/security-audit.md` (identique dans les
+  deux dépôts), points suivis en `SEC-1` à `SEC-9` dans `known-issues.md`.
+- Deux points hauts : authentification usurpable par un serveur Minecraft tiers (`serverId` choisi par le client) ;
+  l'invité d'un combat exécute tout paquet Cobblemon relayé par l'hôte.
+- Non couvert : CVE des dépendances, tests d'intrusion, machine serveur.
