@@ -52,6 +52,7 @@
   "phantasmon.ghost.sendout_confirmed": "[Phantasmon] %s est sorti.",
   "phantasmon.ghost.recall_confirmed": "[Phantasmon] Ghost rappelé.",
   "phantasmon.ghost.error.not_in_team": "[Phantasmon] Seuls les Pokémon présents dans l'équipe active peuvent être sortis (pas ceux du PC).",
+  "phantasmon.ghost.error.in_battle": "[Phantasmon] Impossible de sortir un Ghost pendant un combat Ghost — attendez la fin du combat.",
   "phantasmon.ghost.error.no_team_lead": "[Phantasmon] Aucun Pokémon à l'emplacement 1 de l'équipe — utilisez /phantasmon pokemon team set <uuid> 1.",
   "phantasmon.trade.propose.done": "[Phantasmon] Échange proposé (%s).",
   "phantasmon.trade.accept.done": "[Phantasmon] Échange accepté — Pokémon échangés.",

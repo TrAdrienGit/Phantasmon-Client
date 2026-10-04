@@ -84,6 +84,8 @@
 | §4.52 | 2026-10-03 | TODO-9 : javadocs obsolètes corrigées |
 | §4.53 | 2026-10-03 | TODO-10 : textures inutilisées du PC supprimées |
 | §4.54 | 2026-10-03 | TODO-11 : export Showdown vers le presse-papiers |
+| §4.55 | 2026-10-04 | TODO-12 : formes spéciales en combat |
+| §4.56 | 2026-10-04 | TODO-14 : Ghost rappelés et bloqués pendant un combat |
 
 ---
 
@@ -1678,3 +1680,31 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
 - Retour d'Adrien (2026-10-04) : fonctionnel, mais IMPORTER / EXPORTER décentrés (la paire partait de x = 715, place
   prévue pour un seul bouton). Paire centrée sur x = 800 (625-795 et 805-975), bandeaux d'en-tête du PC et de
   l'éditeur raccourcis à 598 px de chaque côté ; l'écran d'échange garde ses bandeaux de 688 px.
+
+### 4.55 Formes spéciales en combat — TODO-12 (2026-10-04)
+
+- Symptôme (Adrien) : en combat Ghost, les Pokémon apparaissent avec le modèle de base (pas de plaque d'Arceus, de
+  masque d'Ogerpon, de forme régionale…).
+- Cause : le moteur de rendu de Cobblemon choisit le modèle d'après les **aspects synchronisés** de l'entité
+  (`PokemonEntity.ASPECTS`), remplis normalement par le serveur. `GhostEntityManager` les écrivait déjà à la main pour
+  les Ghost dans le monde ; `BattleVisuals.sendOut` ne le faisait pas.
+- Correction : `BattleVisuals.sendOut` écrit les aspects du paquet dans `ASPECTS`. Et `GhostBattlePokemonFactory`
+  force désormais les aspects de forme **après** chromatique et sexe, en les incluant (même règle que les Ghost :
+  forcer remplace les aspects calculés).
+- Non testé en jeu par Claude (compilation seulement). À vérifier : combat avec Arceus à plaque, Ogerpon masqué,
+  forme régionale ; côté hôte **et** invité ; chromatique toujours correct.
+
+### 4.56 Ghost rappelés et bloqués pendant un combat — TODO-14 (2026-10-04)
+
+- Demande d'Adrien : au lancement d'un combat, les Ghost sortis des deux joueurs rentrent ; tant que le combat dure,
+  aucun ne peut sortir.
+- **Backend (autorité)** : `LiveBattleService.respond` rappelle les deux Ghost juste après `BattleSessionStarted` ;
+  `SendOutGhost` passe par `LiveBattleService.ifNotInBattle` (même verrou que le démarrage) et répond
+  `ERROR_GHOST_IN_BATTLE` pendant un combat. Fin du combat (résultat, abandon, déconnexion) : la sortie redevient
+  possible, rien n'est ressorti automatiquement.
+- Le rappel existait en deux copies (handler, échange en direct) : factorisé dans `websocket/GhostRecall`
+  (`recall`, `recallIf`), utilisé aussi pour le combat. `LiveTradeService` n'a plus besoin de `PresenceService`.
+- **Client** : seulement la traduction de `ERROR_GHOST_IN_BATTLE` (`phantasmon.ghost.error.in_battle`) ; le rappel
+  arrive par le `GhostEntityDespawn` habituel (message « rappelé » et touche O remise à zéro).
+- Tests d'abord (rouges, puis verts) : 131 tests backend verts. Non testé en jeu par Claude ; **le backend doit être
+  redémarré**.

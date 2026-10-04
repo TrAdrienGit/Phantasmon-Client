@@ -173,6 +173,9 @@ public final class BattleVisuals {
 		pokemon.setForcedAspects(new HashSet<>(dto.getAspects()));
 		pokemon.updateAspects();
 		PokemonEntity entity = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
+		// The renderer reads the entity's synched ASPECTS, normally filled by Cobblemon's server delegate; a
+		// client-only entity has none, so special forms rendered as the base model (TODO-12). Same as the Ghosts.
+		entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), new HashSet<>(dto.getAspects()));
 		entity.setNoAi(true);
 		entity.setInvulnerable(true);
 		entity.setPos(placement.position().x, placement.position().y, placement.position().z);

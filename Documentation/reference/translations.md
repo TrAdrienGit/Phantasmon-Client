@@ -27,7 +27,7 @@
 | `phantasmon.battle.*` | 29 | Invitations, chrono, fin de combat, erreurs |
 | `phantasmon.pokemon.*` | 24 | Commandes Pokémon, import, export, erreurs de légalité et de place |
 | `phantasmon.auth.*` | 13 | Connexion, version, erreurs Mojang |
-| `phantasmon.ghost.*` | 9 | Sortie/rappel, connexion WebSocket |
+| `phantasmon.ghost.*` | 10 | Sortie/rappel, connexion WebSocket |
 | `phantasmon.error.*` | 4 | Erreurs génériques (`not_authenticated`, `network`, `ownership_mismatch`, `unknown`) |
 | `key.phantasmon.*`, `key.categories.phantasmon` | 5 | Touches et leur catégorie |
 | `phantasmon.ping.*` | 2 | Ping de santé |

@@ -18,6 +18,7 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_POKEMON_PC_FULL", "phantasmon.pokemon.error.pc_full"),
 			Map.entry("ERROR_POKEMON_SLOT_OCCUPIED", "phantasmon.pokemon.error.slot_occupied"),
 			Map.entry("ERROR_POKEMON_NOT_IN_TEAM", "phantasmon.ghost.error.not_in_team"),
+			Map.entry("ERROR_GHOST_IN_BATTLE", "phantasmon.ghost.error.in_battle"),
 			Map.entry("ERROR_POKEMON_INCOMPLETE_BOX_DESTINATION", "phantasmon.pokemon.error.incomplete_box_destination"),
 			Map.entry("ERROR_LEGALITY_IV_OUT_OF_RANGE", "phantasmon.pokemon.error.legality_iv"),
 			Map.entry("ERROR_LEGALITY_EV_OUT_OF_RANGE", "phantasmon.pokemon.error.legality_ev"),

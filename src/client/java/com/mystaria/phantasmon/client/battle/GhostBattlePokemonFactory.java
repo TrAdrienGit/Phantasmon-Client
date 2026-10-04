@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import com.cobblemon.mod.common.api.Priority;
 import com.cobblemon.mod.common.api.abilities.Abilities;
@@ -55,8 +56,6 @@ public final class GhostBattlePokemonFactory {
 		FormData form = PokemonGuiRendering.resolveForm(species, dto.form());
 		if (form != null) {
 			pokemon.setForm(form);
-			pokemon.setForcedAspects(new HashSet<>(form.getAspects()));
-			pokemon.updateAspects();
 		}
 		pokemon.setLevel(Math.max(1, Math.min(100, dto.level())));
 		pokemon.setShiny(dto.isShiny());
@@ -110,6 +109,21 @@ public final class GhostBattlePokemonFactory {
 		if (nickname != null && !nickname.toString().isBlank()) {
 			pokemon.setNickname(Component.literal(nickname.toString()));
 		}
+		if (form != null) {
+			// The form's aspects select its model (Arceus plates, Rotom appliances, Ogerpon masks...) and travel to
+			// both clients in the battle packets. Forcing them replaces the computed aspects, so shiny and gender
+			// must be part of the forced set and forced last — same rule as GhostEntityManager (TODO-12).
+			Set<String> forced = new HashSet<>(form.getAspects());
+			if (dto.isShiny()) {
+				forced.add("shiny");
+			}
+			String genderAspect = PokemonGuiRendering.genderAspect(species, dto.form(), gender);
+			if (genderAspect != null) {
+				forced.add(genderAspect);
+			}
+			pokemon.setForcedAspects(forced);
+		}
+		pokemon.updateAspects();
 		pokemon.heal();
 		return pokemon;
 	}

@@ -52,6 +52,7 @@
   "phantasmon.ghost.sendout_confirmed": "[Phantasmon] %s is out.",
   "phantasmon.ghost.recall_confirmed": "[Phantasmon] Ghost recalled.",
   "phantasmon.ghost.error.not_in_team": "[Phantasmon] Only Pokémon in your active team can be sent out (not PC-only ones).",
+  "phantasmon.ghost.error.in_battle": "[Phantasmon] No Ghost can be sent out during a Ghost battle — wait until it ends.",
   "phantasmon.ghost.error.no_team_lead": "[Phantasmon] No Pokémon in team slot 1 — use /phantasmon pokemon team set <uuid> 1.",
   "phantasmon.trade.propose.done": "[Phantasmon] Trade proposed (%s).",
   "phantasmon.trade.accept.done": "[Phantasmon] Trade accepted — Pokémon swapped.",

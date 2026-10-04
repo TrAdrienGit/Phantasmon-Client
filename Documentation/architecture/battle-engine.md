@@ -37,6 +37,7 @@ flowchart LR
 |---|---|---|
 | Invitation | Touche **B**, roue Cobblemon (« Combat Ghost », Nord-Ouest), ou `/phantasmon battle invite <joueur>` ; l'invité accepte par [Accepter] (`/phantasmon battle join`) ou refuse (`decline`) | |
 | Démarrage | Reçoit `BattleSessionStarted` (rôle `HOST`, deux équipes) → `GhostBattles.startHostedBattle` | Reçoit `BattleSessionStarted` (rôle `GUEST`, sa propre équipe) |
+| Ghost sortis | Rappelés par le backend au démarrage (les deux joueurs) ; toute sortie est refusée jusqu'à la fin (`ERROR_GHOST_IN_BATTLE`) | Idem |
 | Pokémon | `GhostBattlePokemonFactory` construit un `Pokemon` Cobblemon **jetable** par Ghost (forme et aspects, niveau, nature, talent, IV/EV, attaques, objet, sexe, Téra, surnom). Le Ghost stocké n'est jamais modifié. | |
 | Paquets | Les paquets destinés à l'invité sont encodés avec leur codec Cobblemon (`CobblemonPackets.encode`) et envoyés en `BattlePacket` | Décode et remet chaque paquet au gestionnaire client de Cobblemon (`CobblemonPackets.dispatchLocally`), comme s'il venait du serveur |
 | Choix | Les choix de son UI sont interceptés par un Mixin et appliqués au moteur | Ses choix (`BattleSelectActionsPacket`) sont interceptés et envoyés en `BattleChoice` ; l'hôte les applique (`GhostBattles.applyChoice`) |
@@ -73,6 +74,11 @@ l'adversaire, à 3 blocs au plus sur la ligne entre les deux joueurs), avec les 
 son de lancer, faisceau de sortie (`BEAM_MODE = 1`, 0,5 s + 1,5 s), cri, anneau chromatique ; au changement ou au
 K.O., faisceau de rappel puis sortie du suivant. Piloté uniquement par les paquets reçus : hôte et invité
 construisent la même scène sans trafic supplémentaire.
+
+Forme, chromatique et sexe : comme pour les Ghost dans le monde, les **aspects** reçus dans le paquet sont écrits à
+la main dans `PokemonEntity.ASPECTS` (le moteur de rendu ne lit que ces données synchronisées, qu'aucun serveur ne
+remplit ici). Côté hôte, `GhostBattlePokemonFactory` force les aspects de la forme **en dernier**, avec `shiny` et
+`male`/`female`, pour qu'ils partent complets dans les paquets.
 
 ## 6. Animations d'attaque
 
