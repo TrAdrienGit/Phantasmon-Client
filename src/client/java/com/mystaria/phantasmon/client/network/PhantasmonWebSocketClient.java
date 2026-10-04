@@ -58,6 +58,11 @@ public final class PhantasmonWebSocketClient {
 		ws.sendText(GSON.toJson(new Envelope(type, data)), true);
 	}
 
+	/** The socket was closed by the other side: stop using it (later sends are dropped, not written to a dead socket). */
+	public void forget() {
+		webSocket = null;
+	}
+
 	public void close() {
 		WebSocket ws = webSocket;
 		webSocket = null;

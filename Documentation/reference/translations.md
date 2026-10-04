@@ -25,10 +25,10 @@
 | `phantasmon.trade.*` | 71 | Échange en direct (écran, invitations) et asynchrone, erreurs d'échange |
 | `phantasmon.pc.*` | 72 | Écran PC et éditeur (libellés, boutons, aide, confirmations) |
 | `phantasmon.battle.*` | 29 | Invitations, chrono, fin de combat, erreurs |
-| `phantasmon.pokemon.*` | 27 | Commandes Pokémon, import, export, erreurs de légalité et de place |
+| `phantasmon.pokemon.*` | 28 | Commandes Pokémon, import, export, erreurs de légalité et de place |
 | `phantasmon.auth.*` | 15 | Connexion, version, erreurs Mojang |
 | `phantasmon.ghost.*` | 10 | Sortie/rappel, connexion WebSocket |
-| `phantasmon.error.*` | 6 | Erreurs génériques (`not_authenticated`, `network`, `ownership_mismatch`, `unknown`, `request_reused`, `rate_limited`) |
+| `phantasmon.error.*` | 8 | Erreurs génériques (`not_authenticated`, `network`, `ownership_mismatch`, `unknown`, `request_reused`, `rate_limited`, `validation_failed`, `malformed_request`) |
 | `key.phantasmon.*`, `key.categories.phantasmon` | 5 | Touches et leur catégorie |
 | `phantasmon.ping.*` | 2 | Ping de santé |
 | `phantasmon.wheel.*` | 2 | Entrées de la roue Cobblemon |

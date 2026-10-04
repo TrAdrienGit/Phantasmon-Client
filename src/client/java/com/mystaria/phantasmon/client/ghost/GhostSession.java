@@ -56,7 +56,20 @@ public final class GhostSession {
 	/** Only for {@link #onClientTick()}'s dimension-change detection — do not reuse this for "have I joined the group yet" (that was a real bug: {@code onClientTick()} runs ~20x/s and sets this almost immediately, long before the 1s {@link #tick()} scheduler's own check could ever see it as unset). Use {@link #joinedGroup} for that. */
 	private net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> lastKnownDimension;
 	private volatile boolean joinedGroup;
-	private boolean connected;
+	private volatile boolean connected;
+	/** Between {@link #start()} and {@link #stop()}: while true, a dropped connection is re-opened automatically. */
+	private volatile boolean running;
+	private volatile boolean connecting;
+	/** Bumped on every attempt and close, so callbacks of an older socket (late close, late open) are ignored. */
+	private int connectionGeneration;
+	private long reconnectDelayMillis;
+	private long nextConnectAttemptMillis;
+	/** A loss (or a failed first attempt) was reported in chat: the next successful connection says so too. */
+	private boolean connectionLossReported;
+
+	/** Retry backoff after a lost or failed connection: 2 s, doubled each time, capped at 30 s. */
+	private static final long RECONNECT_FIRST_DELAY_MILLIS = 2_000;
+	private static final long RECONNECT_MAX_DELAY_MILLIS = 30_000;
 	private TradeNotificationListener tradeListener = new TradeNotificationListener() {
 		@Override
 		public void onTradeProposed(Map<String, Object> data) {
@@ -114,57 +127,152 @@ public final class GhostSession {
 		return connected;
 	}
 
+	/**
+	 * Called once authenticated: opens the presence WebSocket and keeps it open — a connection lost while running
+	 * (backend restart, network drop) is re-opened automatically with a growing delay (2 s → 30 s), as long as the
+	 * session is authenticated. Calling it again while running only re-opens a dropped connection right away.
+	 */
 	public synchronized void start() {
-		if (connected) {
+		running = true;
+		if (scheduler == null) {
+			scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
+				Thread thread = new Thread(runnable, "phantasmon-ghost-session");
+				thread.setDaemon(true);
+				return thread;
+			});
+			scheduler.scheduleAtFixedRate(this::tick, TICK_INTERVAL_SECONDS, TICK_INTERVAL_SECONDS, TimeUnit.SECONDS);
+		}
+		reconnectDelayMillis = 0;
+		connectNow();
+	}
+
+	/**
+	 * {@code /phantasmon login} while authenticated: re-opens a dropped connection now instead of waiting for the
+	 * next retry. Returns whether an attempt was started (false if already connected/connecting or not running).
+	 */
+	public synchronized boolean reconnectNow() {
+		if (!running || connected || connecting || !authSession.isAuthenticated()) {
+			return false;
+		}
+		reconnectDelayMillis = 0;
+		connectNow();
+		return true;
+	}
+
+	private synchronized void connectNow() {
+		if (!running || connected || connecting || !authSession.isAuthenticated()) {
 			return;
 		}
+		connecting = true;
+		int generation = ++connectionGeneration;
 		LOG.info("Connecting Ghost presence WebSocket to {}", BackendConfig.BASE_URL);
 		webSocketClient.connect(BackendConfig.BASE_URL, authSession.accessToken(), new PhantasmonWebSocketClient.Listener() {
 			@Override
 			public void onMessage(String type, Map<String, Object> data) {
-				handleMessage(type, data);
+				if (generation == connectionGeneration) {
+					handleMessage(type, data);
+				}
 			}
 
 			@Override
 			public void onClose() {
-				LOG.info("Ghost presence WebSocket closed");
-				connected = false;
-				notifyLiveTradeConnectionLost();
+				onConnectionClosed(generation);
 			}
-		}).thenRun(() -> {
-			LOG.info("Ghost presence WebSocket connected");
-			connected = true;
-		}).exceptionally(ex -> {
-			LOG.warn("Ghost presence WebSocket failed to connect", ex);
-			report("phantasmon.ghost.connection_failed");
-			connected = false;
+		}).thenRun(() -> onConnected(generation)).exceptionally(ex -> {
+			onConnectFailed(generation, ex);
 			return null;
 		});
+	}
 
-		scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
-			Thread thread = new Thread(runnable, "phantasmon-ghost-session");
-			thread.setDaemon(true);
-			return thread;
-		});
-		scheduler.scheduleAtFixedRate(this::tick, TICK_INTERVAL_SECONDS, TICK_INTERVAL_SECONDS, TimeUnit.SECONDS);
+	private synchronized void onConnected(int generation) {
+		if (generation != connectionGeneration) {
+			return;
+		}
+		connecting = false;
+		connected = true;
+		joinedGroup = false;
+		reconnectDelayMillis = 0;
+		LOG.info("Ghost presence WebSocket connected");
+		if (connectionLossReported) {
+			connectionLossReported = false;
+			report("phantasmon.ghost.reconnected");
+		}
+		// Join right away, on this connection: the group must never be skipped because a tick fired a moment
+		// before the socket was open (the message used to be dropped and never re-sent).
+		joinGroupIfNeeded();
+	}
+
+	private synchronized void onConnectFailed(int generation, Throwable ex) {
+		if (generation != connectionGeneration) {
+			return;
+		}
+		connecting = false;
+		connected = false;
+		LOG.warn("Ghost presence WebSocket failed to connect (retrying in {} s)", nextDelayMillis() / 1000, ex);
+		if (!connectionLossReported) {
+			connectionLossReported = true;
+			report("phantasmon.ghost.connection_failed");
+		}
+		scheduleRetry();
+	}
+
+	private synchronized void onConnectionClosed(int generation) {
+		if (generation != connectionGeneration) {
+			return;
+		}
+		connectionGeneration++;
+		boolean wasConnected = connected;
+		connected = false;
+		connecting = false;
+		joinedGroup = false;
+		webSocketClient.forget();
+		// The backend dropped this player's presence and Ghost with the connection; a reconnection replays every
+		// Ghost still out in the group, so nothing stale is kept meanwhile.
+		activeGhostPokemonUuid = null;
+		Minecraft.getInstance().execute(entityManager::despawnAll);
+		if (wasConnected) {
+			LOG.info("Ghost presence WebSocket closed");
+			notifyLiveTradeConnectionLost();
+		}
+		if (running) {
+			if (!connectionLossReported) {
+				connectionLossReported = true;
+				report("phantasmon.ghost.connection_lost_reconnecting");
+			}
+			scheduleRetry();
+		}
+	}
+
+	private long nextDelayMillis() {
+		return reconnectDelayMillis == 0 ? RECONNECT_FIRST_DELAY_MILLIS : Math.min(reconnectDelayMillis * 2, RECONNECT_MAX_DELAY_MILLIS);
+	}
+
+	private void scheduleRetry() {
+		reconnectDelayMillis = nextDelayMillis();
+		nextConnectAttemptMillis = System.currentTimeMillis() + reconnectDelayMillis;
 	}
 
 	public synchronized void stop() {
-		if (!connected && scheduler == null) {
-			return;
-		}
-		connected = false;
+		running = false;
+		connectionGeneration++;
+		connecting = false;
+		connectionLossReported = false;
+		reconnectDelayMillis = 0;
 		if (scheduler != null) {
 			scheduler.shutdownNow();
 			scheduler = null;
 		}
-		if (activeGhostPokemonUuid != null) {
+		boolean wasConnected = connected;
+		connected = false;
+		if (wasConnected && activeGhostPokemonUuid != null) {
 			webSocketClient.send("RecallGhost", Map.of());
-			activeGhostPokemonUuid = null;
 		}
+		activeGhostPokemonUuid = null;
 		webSocketClient.close();
 		entityManager.despawnAll();
-		notifyLiveTradeConnectionLost();
+		if (wasConnected) {
+			notifyLiveTradeConnectionLost();
+		}
 		lastKnownDimension = null;
 		joinedGroup = false;
 	}
@@ -215,20 +323,33 @@ public final class GhostSession {
 	}
 
 	private void tick() {
+		if (!connected) {
+			if (running && !connecting && System.currentTimeMillis() >= nextConnectAttemptMillis) {
+				connectNow();
+			}
+			return;
+		}
 		Minecraft client = Minecraft.getInstance();
 		Player player = client.player;
 		if (player == null) {
 			return;
 		}
-		if (!joinedGroup) {
-			joinServerGroup(player);
-			joinedGroup = true;
-		}
+		joinGroupIfNeeded();
 		Vec3 position = player.position();
 		webSocketClient.send("PositionUpdate", Map.of(
 				"x", position.x, "y", position.y, "z", position.z,
 				"dimension", player.level().dimension().location().toString()));
 		webSocketClient.send("Heartbeat", Map.of());
+	}
+
+	/** Sends {@code JoinServerGroup} once per connection, and only once that connection is actually open. */
+	private synchronized void joinGroupIfNeeded() {
+		Player player = Minecraft.getInstance().player;
+		if (!connected || joinedGroup || player == null) {
+			return;
+		}
+		joinServerGroup(player);
+		joinedGroup = true;
 	}
 
 	private void joinServerGroup(Player player) {

@@ -16,22 +16,23 @@ import java.util.Map;
  * empty destination is a plain move, an occupied one swaps the two Pokémon.
  */
 public record PokemonUpdateRequestDto(Map<String, Object> data, Integer level, String nature, String ability,
-		Boolean isShiny, Integer teamSlot, Integer boxId, Integer boxSlot) {
+		Boolean isShiny, Integer teamSlot, Integer boxId, Integer boxSlot, String cobblemonDataVersion) {
 
 	public static PokemonUpdateRequestDto setLevel(int level) {
-		return new PokemonUpdateRequestDto(null, level, null, null, null, null, null, null);
+		return new PokemonUpdateRequestDto(null, level, null, null, null, null, null, null, null);
 	}
 
 	public static PokemonUpdateRequestDto movingToTeamSlot(int teamSlot) {
-		return new PokemonUpdateRequestDto(null, null, null, null, null, teamSlot, null, null);
+		return new PokemonUpdateRequestDto(null, null, null, null, null, teamSlot, null, null, null);
 	}
 
 	public static PokemonUpdateRequestDto movingToPcSlot(int boxId, int boxSlot) {
-		return new PokemonUpdateRequestDto(null, null, null, null, null, null, boxId, boxSlot);
+		return new PokemonUpdateRequestDto(null, null, null, null, null, null, boxId, boxSlot, null);
 	}
 
 	/** Full-form edit (HUD editor, 2026-09-27): everything the edit screen can change in one PATCH — never touches location. */
 	public static PokemonUpdateRequestDto editing(Map<String, Object> data, int level, String nature, String ability, boolean isShiny) {
-		return new PokemonUpdateRequestDto(data, level, nature, ability, isShiny, null, null, null);
+		// An edit records the Cobblemon version it was made with (CAD Partie 2 §6.1: "created or last modified").
+		return new PokemonUpdateRequestDto(data, level, nature, ability, isShiny, null, null, null, CobblemonDataVersion.local());
 	}
 }

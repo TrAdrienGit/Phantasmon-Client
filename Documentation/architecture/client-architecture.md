@@ -53,7 +53,8 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 |---|---|
 | Initialisation | `AuthService.setOnAuthenticated(GhostSession::start)` ; enregistrement des écouteurs WebSocket (échanges asynchrones, échange en direct, combat) ; roue Cobblemon ; touches ; commandes |
 | `ClientPlayConnectionEvents.JOIN` (entrée dans un monde) | Ping de santé si activé ; démarrage du renouvellement de jeton ; `autoLoginIfBackendHealthy()` (un `GET /health`, connexion seulement si `UP`/`UP`, silencieux sinon) |
-| Connexion réussie | `GhostSession.start()` : ouverture du WebSocket, puis `JoinServerGroup` |
+| Connexion réussie | `GhostSession.start()` : ouverture du WebSocket, puis `JoinServerGroup` **dès que la socket est ouverte** (une fois par connexion) |
+| WebSocket perdu (backend redémarré, réseau) | Ghost des autres retirés, échange / combat en cours terminés, message « reconnexion automatique » ; nouvel essai après 2 s, puis 4, 8… jusqu'à 30 s, tant que la session est authentifiée ; à la reconnexion, `JoinServerGroup` renvoyé et « Reconnecté au backend ». `/phantasmon login` relance l'essai tout de suite |
 | `END_CLIENT_TICK` (20 fois par seconde) | `GhostSession.onClientTick()` (détection dimension/mort, déplacement des Ghost), ouverture différée des écrans, touches |
 | `ClientPlayConnectionEvents.DISCONNECT` | Arrêt du ping et du renouvellement, fermeture du WebSocket, nettoyage des visuels de combat, effacement du JWT |
 

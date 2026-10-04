@@ -212,6 +212,11 @@ public final class PhantasmonCommands {
 
 			dispatcher.register(ClientCommandManager.literal("phantasmon")
 					.then(ClientCommandManager.literal("login").executes(context -> {
+						// Still authenticated but the presence connection dropped: re-open it now (no new login needed).
+						if (ghostSession.reconnectNow()) {
+							context.getSource().sendFeedback(Component.translatable("phantasmon.ghost.reconnecting"));
+							return Command.SINGLE_SUCCESS;
+						}
 						authService.login();
 						return Command.SINGLE_SUCCESS;
 					}))

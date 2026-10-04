@@ -11,7 +11,8 @@
 | Échec de la vérification Mojang | Jeu lancé hors mode premium, ou API Mojang indisponible | Réessayer plus tard |
 | `Backend injoignable` (ping activé) | Backend arrêté, mauvaise adresse, pare-feu | Vérifier `backend_url` dans `config/phantasmon.json` (et l'avertissement éventuel `Invalid 'backend_url'` dans le log), puis le backend |
 | `UUID non valide à la position N` | UUID tapé incomplet | Utiliser l'UUID complet (cliquer dessus dans le chat l'insère) |
-| « Pas encore connecté au service de présence Ghost » | WebSocket pas encore ouvert | Réessayer quelques secondes après la connexion |
+| « Pas encore connecté au service de présence Ghost » | WebSocket pas encore ouvert, ou perdu (backend redémarré) | Le client se reconnecte seul (message « Reconnecté au backend ») ; `/phantasmon login` relance l'essai tout de suite. Si la session a expiré pendant la coupure, `/phantasmon login` refait la connexion complète |
+| Déconnexion de tous les joueurs d'un coup, log backend coupé net sans message d'arrêt, pics de lag | Le backend a perdu son disque ou son processus a été tué (2026-10-04 : disque D: externe en USB remonté par Windows, événements `disk` 51 / `Ntfs` 50, 140, 98) | Journal Système de Windows ; garder le backend sur un disque interne (TODO-17) |
 | Le Ghost d'un autre joueur n'apparaît pas | Dimension différente, autre backend, empreinte différente (test LAN), ou espèce inconnue (`Cannot render Ghost: unresolved species` dans le log) | Même dimension, même backend, `/phantasmon debug fingerprint` en test LAN |
 | « Ce joueur n'est pas connecté à Phantasmon » (échange ou combat) | L'autre client n'a pas de session WebSocket avec **ce** backend | Il doit être connecté (`/phantasmon login`) au même backend |
 | L'écran d'échange ne s'ouvre pas après [Accepter] | Invitation expirée (60 s) ou inviteur déjà occupé | Relancer l'invitation |

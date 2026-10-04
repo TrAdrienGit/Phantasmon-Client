@@ -89,6 +89,8 @@
 | §4.57 | 2026-10-04 | TODO-13 : nom des Ghost toujours affiché (pas de « ??? ») |
 | §4.58 | 2026-10-04 | TODO-15 : audit de sécurité |
 | §4.59 | 2026-10-04 | Corrections de sécurité SEC-1 à SEC-5, SEC-7 à SEC-9 |
+| §4.60 | 2026-10-04 | Analyse des logs : coupure en combat, reconnexion, présence jamais rejointe |
+| §4.61 | 2026-10-04 | Dette technique : DEBT-2, DEBT-4, DEBT-5 |
 
 ---
 
@@ -1774,3 +1776,47 @@ Accord d'Adrien pour tout corriger ; chaque correction a son test écrit d'abord
 - **SEC-6** : Adrien choisit l'option 3 (limite assumée et documentée, serveurs entre joueurs de confiance) :
   décision D-21, limite LIM-9, note dans `websocket-protocol.md` §3. D-20 mis à jour (débit WebSocket désormais
   limité). Aucun changement de code.
+
+### 4.60 Analyse des logs : coupure en combat, reconnexion (2026-10-04)
+
+Retour d'Adrien : pics de lag, déconnexion en plein combat, pas de reconnexion possible après relance du backend.
+
+- **Chronologie** (logs backend, deux clients, journal Système Windows) : combat lancé à 16h31:00 ; Showdown
+  démarré chez l'hôte en 4,6 s ; à 16h31:25 les deux WebSocket tombent ensemble et le log du backend s'arrête net
+  (ni fermeture, ni arrêt, ni `hs_err`) ; Windows remonte le volume D: à 16h31:41.
+- **Cause de la coupure : matériel.** D: est un disque externe **USB** (« URBAN 1TB ») qui porte les dépôts, le
+  backend et ses logs ; erreurs de contrôleur (12h22), erreurs de pagination et écritures NTFS perdues au réveil de
+  veille (15h35), remontages à 15h36 et 16h31. Le backend a perdu son disque. → TODO-17.
+- **Bug client 1** : un WebSocket perdu n'était jamais rouvert (`connected = false` et plus rien) ; `/phantasmon
+  login` répondait « Déjà connecté » (jeton toujours valide). Désormais `GhostSession` se reconnecte seule tant
+  qu'elle tourne et que la session est authentifiée (2 s, puis doublé jusqu'à 30 s), avec un numéro de génération
+  qui ignore les rappels d'une ancienne socket ; à la perte : Ghost des autres retirés, échange / combat terminés,
+  message « reconnexion automatique » ; à la reprise : « Reconnecté au backend ». `/phantasmon login` relance un
+  essai immédiat (`reconnectNow`).
+- **Bug client 2** : `JoinServerGroup` pouvait partir quelques millisecondes avant l'ouverture de la socket ; il était
+  jeté (« not connected yet ») mais marqué comme envoyé : joueur connecté mais hors de tout groupe. Désormais
+  envoyé dans `onConnected` (et par le tick seulement si la socket est ouverte), une fois par connexion.
+- **Backend** : `UserDetailsServiceAutoConfiguration` exclue (utilisateur en mémoire inutile, mot de passe généré
+  écrit dans le log à chaque démarrage). 144 tests verts.
+- Limite : si le jeton expire pendant une longue coupure (échec du renouvellement), il faut `/phantasmon login`.
+- **Validé en jeu par Adrien (2026-10-04)** : la reconnexion fonctionne, et tous ses tests en jeu passent (corrections
+  de sécurité SEC-1 à SEC-9 et TODO-11 à TODO-14 compris).
+
+### 4.61 Dette technique : DEBT-2, DEBT-4, DEBT-5 (2026-10-04)
+
+Choix d'Adrien parmi les pistes proposées. Tests écrits d'abord (rouges, puis verts) : 149 tests backend, 54 client.
+
+- **DEBT-2** (backend) : `ApiExceptionHandler` traite aussi les erreurs que Spring lève avant le contrôleur —
+  validation (`ERROR_VALIDATION_FAILED`, champs fautifs en snake_case), corps illisible, UUID de chemin invalide,
+  paramètre manquant (`ERROR_MALFORMED_REQUEST`). Client : deux traductions.
+- **DEBT-4** (backend) : `IdempotencyKeyRepository.claim` (`INSERT … ON CONFLICT DO NOTHING`) réserve la clé avant
+  l'action, dans la même transaction. PostgreSQL fait attendre le doublon simultané jusqu'à la fin du premier, qui
+  relit alors la réponse ; une action en échec annule aussi la réservation. Avant : la seconde requête exécutait
+  l'action une deuxième fois puis échouait en 500 (clé dupliquée). Pas de migration (`response_snapshot` nullable).
+- **DEBT-5** (les deux) : `CobblemonDataVersion` lit la version installée via Fabric (`1.8.1+1.21.1` → `1.8.1`) au
+  lieu de la constante ; `PATCH /pokemon` accepte `cobblemon_data_version`, envoyé par l'éditeur. `PokemonRecognition`
+  vérifie espèce, forme et attaques : Pokémon non reconnu signalé à la sélection dans le PC (barre d'état), refusé à
+  la sortie (touche O / commande) et écarté des combats (l'hôte est prévenu), sans rien modifier en base
+  (CAD Partie 2 §6.1).
+- DEBT-1 (renommage des clés camelCase de `data`) reste ouvert : il demande une migration des données.
+- Non testé en jeu par Claude.

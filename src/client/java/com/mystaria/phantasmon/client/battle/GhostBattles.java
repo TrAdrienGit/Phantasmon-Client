@@ -235,12 +235,20 @@ public final class GhostBattles {
 		});
 	}
 
+	/** Pokémon this client's Cobblemon doesn't recognize sit the battle out; the host is told which (DEBT-5). */
 	static List<BattlePokemon> battleTeam(List<PokemonDto> team) {
 		List<BattlePokemon> result = new ArrayList<>();
 		for (PokemonDto dto : team) {
-			Pokemon pokemon = GhostBattlePokemonFactory.create(dto);
+			net.minecraft.network.chat.Component unrecognized = com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(dto);
+			Pokemon pokemon = unrecognized == null ? GhostBattlePokemonFactory.create(dto) : null;
 			if (pokemon != null) {
 				result.add(new BattlePokemon(pokemon, pokemon, new ArrayList<>(), new ArrayList<>()));
+			} else if (unrecognized != null) {
+				Minecraft.getInstance().execute(() -> {
+					if (Minecraft.getInstance().player != null) {
+						Minecraft.getInstance().player.displayClientMessage(unrecognized, false);
+					}
+				});
 			}
 		}
 		return result;

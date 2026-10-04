@@ -263,7 +263,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		for (ShowdownPokemon set : parsed) {
 			PokemonCreateRequestDto request;
 			try {
-				request = ShowdownImportMapper.toCreateRequest(set, PokemonCommandHandler.COBBLEMON_DATA_VERSION);
+				request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local());
 			} catch (ShowdownParseException ex) {
 				setStatus(Component.translatable("phantasmon.pokemon.import.parse_error_for", set.speciesToken(), ex.getMessage()).getString(), true);
 				continue;
@@ -396,6 +396,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		if (ref != null) {
 			PokemonDto pokemon = pokemonAt(ref);
 			selectedUuid = pokemon == null ? null : pokemon.uuid();
+			Component unrecognized = pokemon == null ? null : com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(pokemon);
+			if (unrecognized != null) {
+				setStatus(unrecognized.getString(), true);
+			}
 			if (pokemon != null && !loading) {
 				dragged = pokemon;
 				dragSource = ref;

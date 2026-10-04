@@ -32,9 +32,6 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  */
 public final class PokemonCommandHandler {
 
-	/** Matches Cobblemon's targeted version (see client conventions) — stamped on every Pokémon this client creates. Public: also used by {@link PhantasmonPcScreen}'s own clipboard import. */
-	public static final String COBBLEMON_DATA_VERSION = "1.8.1";
-
 	private final PokemonClient pokemonClient;
 	private final AuthSession session;
 
@@ -70,7 +67,7 @@ public final class PokemonCommandHandler {
 	private void importOne(FabricClientCommandSource source, String bearerToken, ShowdownPokemon set) {
 		PokemonCreateRequestDto request;
 		try {
-			request = ShowdownImportMapper.toCreateRequest(set, COBBLEMON_DATA_VERSION);
+			request = ShowdownImportMapper.toCreateRequest(set, CobblemonDataVersion.local());
 		} catch (ShowdownParseException ex) {
 			source.sendError(Component.translatable("phantasmon.pokemon.import.parse_error_for",
 					set.speciesToken(), ex.getMessage()));
@@ -316,8 +313,16 @@ public final class PokemonCommandHandler {
 						chatMessage(Component.translatable("phantasmon.ghost.error.no_team_lead"));
 						return;
 					}
-					UUID uuid = lead.get().uuid();
-					Minecraft.getInstance().execute(() -> onFound.accept(uuid));
+					PokemonDto leadPokemon = lead.get();
+					Minecraft.getInstance().execute(() -> {
+						// Not recognized by this Cobblemon version: kept out of the world, data left intact (DEBT-5).
+						Component unrecognized = PokemonRecognition.problem(leadPokemon);
+						if (unrecognized != null) {
+							chatMessage(unrecognized);
+							return;
+						}
+						onFound.accept(leadPokemon.uuid());
+					});
 				})
 				.exceptionally(ex -> {
 					Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
