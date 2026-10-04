@@ -24,7 +24,7 @@
 |---|---|---|
 | `phantasmon.trade.*` | 71 | Échange en direct (écran, invitations) et asynchrone, erreurs d'échange |
 | `phantasmon.pc.*` | 72 | Écran PC et éditeur (libellés, boutons, aide, confirmations) |
-| `phantasmon.battle.*` | 29 | Invitations, chrono, fin de combat, erreurs |
+| `phantasmon.battle.*` | 38 | Invitations, chrono, fin de combat, erreurs |
 | `phantasmon.pokemon.*` | 28 | Commandes Pokémon, import, export, erreurs de légalité et de place |
 | `phantasmon.auth.*` | 15 | Connexion, version, erreurs Mojang |
 | `phantasmon.ghost.*` | 10 | Sortie/rappel, connexion WebSocket |

@@ -82,21 +82,28 @@ public final class LiveBattleController implements LiveBattleListener {
 		GhostBattles.setLocalChoiceListener(this::onLocalChoiceMade);
 	}
 
+	/** Team a player brings (CAD Partie 1 §31): their Ghosts, or a copy of their real Cobblemon party. */
+	public enum TeamChoice { GHOST, COBBLEMON }
+
 	// ---- Player actions ----
 
 	public void inviteByName(String playerName) {
+		inviteByName(playerName, TeamChoice.GHOST);
+	}
+
+	public void inviteByName(String playerName, TeamChoice team) {
 		ClientPacketListener connection = Minecraft.getInstance().getConnection();
 		PlayerInfo info = connection == null ? null : connection.getPlayerInfo(playerName);
 		if (info == null) {
 			chat(Component.translatable("phantasmon.trade.live.error.player_not_found", playerName).withStyle(ChatFormatting.RED));
 			return;
 		}
-		invite(info.getProfile().getId());
+		invite(info.getProfile().getId(), team);
 	}
 
 	public void inviteTargetedPlayer() {
 		if (Minecraft.getInstance().crosshairPickEntity instanceof Player target && target != Minecraft.getInstance().player) {
-			invite(target.getUUID());
+			invite(target.getUUID(), TeamChoice.GHOST);
 		} else {
 			chat(Component.translatable("phantasmon.battle.error.no_target").withStyle(ChatFormatting.RED));
 		}
@@ -104,10 +111,10 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	/** Cobblemon's interaction wheel ("Ghost Battle"): invites the player the wheel is open on. */
 	public void invitePlayer(UUID targetUuid) {
-		invite(targetUuid);
+		invite(targetUuid, TeamChoice.GHOST);
 	}
 
-	private void invite(UUID targetUuid) {
+	private void invite(UUID targetUuid, TeamChoice team) {
 		if (!requireReady()) {
 			return;
 		}
@@ -115,18 +122,45 @@ public final class LiveBattleController implements LiveBattleListener {
 			chat(Component.translatable("phantasmon.battle.error.already_battling").withStyle(ChatFormatting.RED));
 			return;
 		}
-		send("BattleInvite", Map.of("target_uuid", targetUuid));
+		Map<String, Object> message = withTeam(team);
+		if (message == null) {
+			return;
+		}
+		message.put("target_uuid", targetUuid);
+		send("BattleInvite", message);
 	}
 
 	public void acceptInvite() {
-		respond(true);
+		acceptInvite(TeamChoice.GHOST);
+	}
+
+	public void acceptInvite(TeamChoice team) {
+		respond(true, team);
 	}
 
 	public void declineInvite() {
-		respond(false);
+		respond(false, TeamChoice.GHOST);
 	}
 
-	private void respond(boolean accept) {
+	/**
+	 * The team fields of an invite / answer: nothing for Ghosts (the backend reads the active team), else
+	 * {@code team: COBBLEMON} and a copy of the party. {@code null} (and a chat message) if the party is empty.
+	 */
+	private static Map<String, Object> withTeam(TeamChoice team) {
+		Map<String, Object> message = new java.util.HashMap<>();
+		if (team == TeamChoice.COBBLEMON) {
+			List<Map<String, Object>> party = CobblemonPartySnapshot.current();
+			if (party.isEmpty()) {
+				chat(Component.translatable("phantasmon.battle.error.empty_cobblemon_party").withStyle(ChatFormatting.RED));
+				return null;
+			}
+			message.put("team", "COBBLEMON");
+			message.put("party", party);
+		}
+		return message;
+	}
+
+	private void respond(boolean accept, TeamChoice team) {
 		if (!requireReady()) {
 			return;
 		}
@@ -134,9 +168,15 @@ public final class LiveBattleController implements LiveBattleListener {
 			chat(Component.translatable("phantasmon.battle.error.no_invite").withStyle(ChatFormatting.RED));
 			return;
 		}
+		Map<String, Object> message = accept ? withTeam(team) : new java.util.HashMap<>();
+		if (message == null) {
+			return; // empty Cobblemon party: the invitation stays open, the player can still answer with Ghosts
+		}
 		UUID inviteUuid = pendingInviteUuid;
 		pendingInviteUuid = null;
-		send("BattleInviteResponse", Map.of("invite_uuid", inviteUuid, "accept", accept));
+		message.put("invite_uuid", inviteUuid);
+		message.put("accept", accept);
+		send("BattleInviteResponse", message);
 		if (!accept) {
 			chat(Component.translatable("phantasmon.battle.invite.you_declined", pendingInviteFrom));
 		}
@@ -219,9 +259,12 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		pendingInviteUuid = inviteUuid;
 		pendingInviteFrom = string(data.get("from_name"));
-		chat(Component.translatable("phantasmon.battle.invite.received", pendingInviteFrom)
+		boolean cobblemon = "COBBLEMON".equals(data.get("from_team"));
+		chat(Component.translatable(cobblemon ? "phantasmon.battle.invite.received_cobblemon" : "phantasmon.battle.invite.received", pendingInviteFrom)
 				.append(" ")
-				.append(chatButton("phantasmon.trade.live.invite.accept_button", "/phantasmon battle join", ChatFormatting.GREEN))
+				.append(chatButton("phantasmon.battle.invite.accept_ghost_button", "/phantasmon battle join", ChatFormatting.GREEN))
+				.append(" ")
+				.append(chatButton("phantasmon.battle.invite.accept_cobblemon_button", "/phantasmon battle join cobblemon", ChatFormatting.GOLD))
 				.append(" ")
 				.append(chatButton("phantasmon.trade.live.invite.decline_button", "/phantasmon battle decline", ChatFormatting.RED)));
 	}
@@ -236,7 +279,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		cobblemonBattleId = null;
 		enforcedDeadlines.clear();
 		clearLocalCountdown();
-		chat(Component.translatable("phantasmon.battle.started", opponentName)
+		chat(Component.translatable("phantasmon.battle.started_teams", opponentName,
+						teamLabel(data.get("own_team_source")), teamLabel(data.get("opponent_team_source")))
 				.append(" ")
 				.append(chatButton("phantasmon.battle.timer.button", "/phantasmon battle timer", ChatFormatting.AQUA)));
 		if (!host) {
@@ -518,6 +562,10 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		team.sort((a, b) -> Integer.compare(a.teamSlot() == null ? 99 : a.teamSlot(), b.teamSlot() == null ? 99 : b.teamSlot()));
 		return team;
+	}
+
+	private static Component teamLabel(Object source) {
+		return Component.translatable("COBBLEMON".equals(source) ? "phantasmon.battle.team.cobblemon" : "phantasmon.battle.team.ghost");
 	}
 
 	private static MutableComponent chatButton(String labelKey, String command, ChatFormatting color) {

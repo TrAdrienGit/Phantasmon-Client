@@ -196,11 +196,31 @@ public final class PhantasmonCommands {
 									.executes(context -> {
 										liveBattle.inviteByName(StringArgumentType.getString(context, "player"));
 										return Command.SINGLE_SUCCESS;
-									})))
-					.then(ClientCommandManager.literal("join").executes(context -> {
-						liveBattle.acceptInvite();
-						return Command.SINGLE_SUCCESS;
-					}))
+									})
+									// Ghost vs normal Pokémon (CAD Partie 1 §31): bring a copy of the real Cobblemon party.
+									.then(ClientCommandManager.literal("ghost").executes(context -> {
+										liveBattle.inviteByName(StringArgumentType.getString(context, "player"),
+												com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.GHOST);
+										return Command.SINGLE_SUCCESS;
+									}))
+									.then(ClientCommandManager.literal("cobblemon").executes(context -> {
+										liveBattle.inviteByName(StringArgumentType.getString(context, "player"),
+												com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.COBBLEMON);
+										return Command.SINGLE_SUCCESS;
+									}))))
+					.then(ClientCommandManager.literal("join")
+							.executes(context -> {
+								liveBattle.acceptInvite();
+								return Command.SINGLE_SUCCESS;
+							})
+							.then(ClientCommandManager.literal("ghost").executes(context -> {
+								liveBattle.acceptInvite(com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.GHOST);
+								return Command.SINGLE_SUCCESS;
+							}))
+							.then(ClientCommandManager.literal("cobblemon").executes(context -> {
+								liveBattle.acceptInvite(com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.COBBLEMON);
+								return Command.SINGLE_SUCCESS;
+							})))
 					.then(ClientCommandManager.literal("decline").executes(context -> {
 						liveBattle.declineInvite();
 						return Command.SINGLE_SUCCESS;

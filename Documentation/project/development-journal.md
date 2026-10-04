@@ -94,6 +94,7 @@
 | §4.62 | 2026-10-04 | DEBT-1 : clés de `data` en snake_case (migration V9) |
 | §4.63 | 2026-10-04 | Puissance Cachée (type Eau partout) et combat hébergé par un client pur |
 | §4.64 | 2026-10-04 | Match nul si le backend est perdu en combat (CAD Partie 1 §44) |
+| §4.65 | 2026-10-04 | Ghost contre Pokémon normal : combat avec une copie de l'équipe Cobblemon |
 
 ---
 
@@ -1877,3 +1878,22 @@ CAD Partie 1 §44 : backend perdu → combat interrompu, aucun vainqueur, match 
   et « Connexion au backend perdue — combat interrompu : match nul, aucun vainqueur ».
 - La déconnexion d'un seul joueur reste un combat annulé (`ABORTED`, `PARTNER_DISCONNECTED`).
 - 154 tests backend verts (2 nouveaux). **Validé en jeu par Adrien (2026-10-04)** : arrêt propre et arrêt brutal.
+
+### 4.65 Ghost contre Pokémon normal (2026-10-04)
+
+Choix d'Adrien parmi les formes possibles (décision D-22) : chaque joueur combat avec ses Ghost **ou une copie** de sa
+vraie équipe Cobblemon. La Partie 3 §A (prioritaire) exclut le Pokémon sauvage réel ; une copie ne touche à rien côté
+serveur.
+
+- **Client** : `CobblemonPartySnapshot` lit l'équipe que Cobblemon garde côté client (son codec client transporte
+  espèce, forme, niveau, IV/EV, nature et nature de menthe, talent, capacités, objet, Tera, chromatique, sexe, surnom,
+  bonheur) et la met au format d'un Ghost. `/phantasmon battle invite <joueur> [ghost|cobblemon]`,
+  `/phantasmon battle join [ghost|cobblemon]`, boutons [Accepter avec mes Ghost] / [Accepter avec mon équipe
+  Cobblemon] ; message de début « (Ghost contre équipe Cobblemon) ». Touche B et roue : Ghost.
+- **Backend** : `BattleInvite` / `BattleInviteResponse` acceptent `team` + `party` ; `CobblemonPartyParser` valide
+  (1 à 6 membres, UUID distincts, champs bornés, légalité de `PokemonLegalityService`) → `ERROR_BATTLE_INVALID_PARTY`.
+  `BattleInviteReceived.from_team`, `BattleSessionStarted.own_team_source` / `opponent_team_source`. Le reste
+  (hôte, relais, garde-fous, nul, rappel des Ghost) est inchangé : la copie suit exactement le chemin d'un Ghost.
+- **Limite** : la copie vient du client (LIM-10).
+- Tests d'abord (3 nouveaux, rouges puis verts) : 157 tests backend verts ; client compilé et déployé. Non testé en jeu
+  par Claude.

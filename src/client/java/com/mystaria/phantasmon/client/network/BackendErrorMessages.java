@@ -30,6 +30,7 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_POKEMON_DATA_TOO_LARGE", "phantasmon.pokemon.error.data_too_large"),
 			Map.entry("ERROR_IDEMPOTENCY_KEY_REUSED", "phantasmon.error.request_reused"),
 			Map.entry("ERROR_WS_RATE_LIMITED", "phantasmon.error.rate_limited"),
+			Map.entry("ERROR_BATTLE_INVALID_PARTY", "phantasmon.battle.error.invalid_party"),
 			Map.entry("ERROR_VALIDATION_FAILED", "phantasmon.error.validation_failed"),
 			Map.entry("ERROR_MALFORMED_REQUEST", "phantasmon.error.malformed_request"),
 			Map.entry("ERROR_TRADE_SELF", "phantasmon.trade.error.self"),
