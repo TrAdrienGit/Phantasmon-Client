@@ -397,6 +397,9 @@ public final class LiveBattleController implements LiveBattleListener {
 		Component message;
 		if ("PARTNER_DISCONNECTED".equals(reason)) {
 			message = Component.translatable("phantasmon.battle.ended.disconnected").withStyle(ChatFormatting.GOLD);
+		} else if ("BACKEND_LOST".equals(reason)) {
+			// The backend is stopping (CAD Partie 1 §44): draw, no winner.
+			message = Component.translatable("phantasmon.battle.ended.backend_lost").withStyle(ChatFormatting.GOLD);
 		} else if (winner == null) {
 			message = Component.translatable("phantasmon.battle.ended.draw").withStyle(ChatFormatting.GOLD);
 		} else if (winner.equals(localUuid())) {

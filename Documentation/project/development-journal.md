@@ -93,6 +93,7 @@
 | §4.61 | 2026-10-04 | Dette technique : DEBT-2, DEBT-4, DEBT-5 |
 | §4.62 | 2026-10-04 | DEBT-1 : clés de `data` en snake_case (migration V9) |
 | §4.63 | 2026-10-04 | Puissance Cachée (type Eau partout) et combat hébergé par un client pur |
+| §4.64 | 2026-10-04 | Match nul si le backend est perdu en combat (CAD Partie 1 §44) |
 
 ---
 
@@ -1858,3 +1859,21 @@ implémentée » (liste de l'éditeur, et attaque inutilisable en combat).
   contexte MoLang fait `server()!!`. `GhostBattlePokemonFactory` pose désormais l'objet par le setter interne
   (`setHeldItem$common`), sans événement.
 - 152 tests backend verts ; client compilé et déployé. **Validé en jeu par Adrien (2026-10-04)**, ainsi que DEBT-1, 2, 4 et 5.
+
+### 4.64 Match nul si le backend est perdu en combat (2026-10-04)
+
+CAD Partie 1 §44 : backend perdu → combat interrompu, aucun vainqueur, match nul, Ghost intacts, états nettoyés.
+
+- Déjà en place : à la perte de connexion, le client arrête le moteur (hôte), ferme l'interface de combat et nettoie
+  visuels et chronos ; les Ghost ne sont jamais modifiés (copies jetables).
+- **Manquait 1 — résultat en base** : le combat ne vit qu'en mémoire du backend ; s'il s'arrêtait, la ligne
+  `battle_sessions` restait `ACTIVE` pour toujours.
+  - Arrêt propre : `LiveBattleService.onBackendStopping` (sur `ContextClosedEvent`, publié **avant** que Tomcat ferme
+    les WebSocket) conclut chaque combat en nul — `FINISHED`, sans vainqueur, motif `BACKEND_LOST` — et envoie
+    `BattleEnded` aux deux joueurs. Sinon les fermetures de connexion l'auraient classé en simple déconnexion.
+  - Plantage : `closeOrphanedBattles` (sur `ApplicationReadyEvent`) conclut de même toute session encore `ACTIVE` qui
+    n'est pas un combat réellement en cours.
+- **Manquait 2 — le mot « nul »** : messages client « Le backend s'arrête — match nul, aucun vainqueur » (`BACKEND_LOST`)
+  et « Connexion au backend perdue — combat interrompu : match nul, aucun vainqueur ».
+- La déconnexion d'un seul joueur reste un combat annulé (`ABORTED`, `PARTNER_DISCONNECTED`).
+- 154 tests backend verts (2 nouveaux). **Validé en jeu par Adrien (2026-10-04)** : arrêt propre et arrêt brutal.
