@@ -35,6 +35,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
+import com.mystaria.phantasmon.client.ghost.PhantasmonEntities;
+
 /**
  * Puts each side's active Pokémon in the world in front of its trainer during a Ghost battle, with Cobblemon's
  * own send-out and recall animations (Adrien 2026-10-03): the trainer swings, the ball is thrown
@@ -176,6 +178,8 @@ public final class BattleVisuals {
 		// The renderer reads the entity's synched ASPECTS, normally filled by Cobblemon's server delegate; a
 		// client-only entity has none, so special forms rendered as the base model (TODO-12). Same as the Ghosts.
 		entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), new HashSet<>(dto.getAspects()));
+		// Same for the label's level (default 1).
+		entity.getEntityData().set(PokemonEntity.Companion.getLABEL_LEVEL(), pokemon.getLevel());
 		entity.setNoAi(true);
 		entity.setInvulnerable(true);
 		entity.setPos(placement.position().x, placement.position().y, placement.position().z);
@@ -192,6 +196,7 @@ public final class BattleVisuals {
 		}
 		entity.setBeamMode(BEAM_SEND_OUT);
 		level.addEntity(entity);
+		PhantasmonEntities.register(entity);
 		entities.put(pnx, entity);
 
 		boolean shiny = dto.getAspects().contains("shiny");

@@ -9,7 +9,9 @@
 		"ActionEffectInstructionsMixin",
 		"MoveInstructionMixin",
 		"InteractWheelGuiAccessor",
-		"InteractWheelGuiFactoryMixin"
+		"InteractWheelGuiFactoryMixin",
+		"PokemonEntityMixin",
+		"PokemonRendererMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -86,6 +86,7 @@
 | §4.54 | 2026-10-03 | TODO-11 : export Showdown vers le presse-papiers |
 | §4.55 | 2026-10-04 | TODO-12 : formes spéciales en combat |
 | §4.56 | 2026-10-04 | TODO-14 : Ghost rappelés et bloqués pendant un combat |
+| §4.57 | 2026-10-04 | TODO-13 : nom des Ghost toujours affiché (pas de « ??? ») |
 
 ---
 
@@ -1708,3 +1709,32 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   arrive par le `GhostEntityDespawn` habituel (message « rappelé » et touche O remise à zéro).
 - Tests d'abord (rouges, puis verts) : 131 tests backend verts. Non testé en jeu par Claude ; **le backend doit être
   redémarré**.
+
+### 4.57 Nom des Ghost toujours affiché — TODO-13 (2026-10-04)
+
+- Demande d'Adrien : les Ghost doivent être connus d'office ; Cobblemon affiche « ??? » au-dessus d'un Pokémon dont
+  l'espèce n'est pas au Pokédex du joueur.
+- Seul endroit concerné : l'étiquette dans le monde (`PokemonRenderer.resolveBaseLabel`). En combat, Cobblemon ne
+  consulte le Pokédex que pour un Pokémon **sauvage**, jamais dans un combat Ghost entre joueurs.
+- Écarté : marquer les espèces comme vues dans le Pokédex du client (synchronisé par le serveur, et cela aurait aussi
+  dévoilé les vrais Pokémon non scannés).
+- Retenu : `PhantasmonEntities` (ensemble faible des entités créées par le mod, alimenté par `GhostEntityManager` et
+  `BattleVisuals`) + `PokemonRendererMixin` (8e Mixin, `@Inject` HEAD sur la méthode privée `resolveBaseLabel`,
+  `remap = false`) qui renvoie le nom réel pour ces entités, si le serveur autorise l'affichage des noms.
+- Non testé en jeu par Claude (un Mixin ne s'applique qu'au lancement) : vérifier que le jeu démarre, qu'un Ghost
+  d'une espèce non scannée affiche `[Ghost] <nom>`, et qu'un vrai Pokémon non scanné affiche toujours « ??? ».
+- **Premier essai raté (retour d'Adrien, capture)** : toujours « ??? ♀ N. 1 ». Le Mixin s'appliquait bien, mais renvoyait
+  `entity.getTitledName()` ; le mod **catchindicator** du modpack se branche sur `PokemonEntity.getName()` /
+  `getTitledName()` (et `Entity.getDisplayName()`) et y remet « ??? » + ses suffixes (sexe, chromatique) pour une
+  espèce absente du Pokédex. Trouvé en cherchant dans les jars du modpack les références à `PokemonRenderer`, au
+  Pokédex client et au caractère « ♀ ». Correction : le nom est construit depuis le `Pokemon` (surnom `[Ghost] …`,
+  sinon nom traduit de l'espèce), sans passer par ces méthodes.
+- **« N. 1 »** : le niveau de l'étiquette vient de la donnée synchronisée `PokemonEntity.LABEL_LEVEL` (1 par défaut,
+  remplie par le serveur normalement) ; écrite à la main dans `GhostEntityManager` et `BattleVisuals`, comme les
+  aspects (TODO-12).
+- Validé par Adrien (nom et niveau corrects).
+- « Appuyez sur R pour lancer le combat » sous l'étiquette des Ghost : Cobblemon les prend pour des Pokémon
+  sauvages (pas de propriétaire côté serveur). Masqué à la demande d'Adrien par `PokemonEntityMixin` (9e Mixin) :
+  `canBattle` renvoie `false` pour les entités Phantasmon. Ce test pilote aussi la touche R (`PartySendBinding`) :
+  R ne tente plus de défier un Ghost (entité inexistante côté serveur) ; les combats Ghost passent par l'invitation
+  (B, roue, commande). Non testé en jeu par Claude.

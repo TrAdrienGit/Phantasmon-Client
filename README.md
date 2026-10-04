@@ -66,7 +66,7 @@ src/client/java/com/mystaria/phantasmon/client/
 ├── command/     # /phantasmon … (Brigadier, client-side)
 ├── ghost/       # presence WebSocket session, client-only Ghost entities
 ├── gui/         # PC, editor and trade screens on a shared canvas "design system"
-├── mixin/       # 7 Mixins (battle choices, pure-client Showdown, move animations, interaction wheel)
+├── mixin/       # 9 Mixins (battle choices, pure-client Showdown, move animations, interaction wheel, Ghost labels)
 ├── network/     # REST + WebSocket clients, error-code translation
 ├── pokemon/     # DTOs, Showdown parser/mapper, natures, Hidden Power, gender
 ├── trade/       # live trade state/controller, async trade commands

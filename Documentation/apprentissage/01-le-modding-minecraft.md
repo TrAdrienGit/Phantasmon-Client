@@ -94,7 +94,7 @@ flowchart TD
     CMD --> PC["gui : écrans PC, éditeur, échange"]
     PC --> REST["network : REST"]
     LB --> COB["Cobblemon : moteur et interface de combat"]
-    MIX["mixin : 7 Mixins"] -.-> COB
+    MIX["mixin : 9 Mixins"] -.-> COB
 ```
 
 ## À retenir

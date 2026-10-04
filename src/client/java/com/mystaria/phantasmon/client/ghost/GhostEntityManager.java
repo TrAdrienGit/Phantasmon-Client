@@ -232,6 +232,8 @@ public final class GhostEntityManager {
 		entity.setYBodyRot(anchorYaw);
 		entity.setYHeadRot(anchorYaw);
 		syncAspects(entity, pokemon, shiny, genderAspect);
+		// The label's level is synched entity data too (default 1, normally filled by the server delegate).
+		entity.getEntityData().set(PokemonEntity.Companion.getLABEL_LEVEL(), pokemon.getLevel());
 		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), anchorYaw);
 
 		boolean flyer = canFly(entity);
@@ -249,6 +251,7 @@ public final class GhostEntityManager {
 		entity.setBeamMode(BEAM_SEND_OUT);
 		ghost.busyUntilMillis = System.currentTimeMillis() + (long) (SEND_OUT_DURATION * 1000);
 		clientLevel.addEntity(entity);
+		PhantasmonEntities.register(entity);
 		activeGhosts.put(ownerUuid, ghost);
 
 		later(THROW_DURATION, () -> entity.setPhasingTargetId(-1));

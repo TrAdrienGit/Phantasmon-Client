@@ -46,6 +46,9 @@ serveur renvoie l'événement au propriétaire.
 3. **Aspects forcés** : le modèle d'une forme (plaques d'Arceus, appareils de Motisma, masques d'Ogerpon…) et la
    variante chromatique ou sexuée sont choisis par les **aspects**. Sur une entité purement cliente, personne ne
    les synchronise : ils sont écrits à la main dans `PokemonEntity.ASPECTS` (forme + `shiny` + `male`/`female`).
+   L'entité est enregistrée dans `PhantasmonEntities` : son étiquette (`[Ghost] <nom>`) s'affiche même si l'espèce
+   n'est pas au Pokédex du joueur (`PokemonRendererMixin`, TODO-13). Le niveau de l'étiquette est lui aussi une donnée
+   synchronisée (`PokemonEntity.LABEL_LEVEL`, 1 par défaut) : écrit à la main, comme les aspects.
 4. Entité : `setNoAi(true)` (aucune IA Cobblemon), `setInvulnerable(true)`, `noPhysics = true` (ne pousse pas et
    n'est pas poussée ; remis à faux uniquement pendant notre propre `Entity.move` pour garder les collisions avec
    les blocs).
