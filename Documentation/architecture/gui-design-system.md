@@ -67,6 +67,10 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 - Glisser-déposer entre deux cases quelconques (équipe ou PC) : le backend déplace ou échange (décision D-04) ;
   le modèle suit la souris ; molette, flèches ← → ou ◀ ▶ changent de boîte, **même pendant un glisser**.
 - IMPORTER : texte Showdown du presse-papiers, un ou plusieurs Pokémon créés dans les premières cases libres.
+- EXPORTER (à droite d'IMPORTER) : copie l'équipe active au format Showdown dans le presse-papiers.
+- En-tête du PC et de l'éditeur : la paire IMPORTER / EXPORTER (170 px chacun, 10 px d'écart) est centrée sur x = 800 ;
+  les deux bandeaux d'en-tête sont raccourcis d'autant (598 px au lieu de 688), même marge de 12 px qu'autour du
+  bouton unique de l'écran d'échange (`renderHeaderPlates(g, largeur)`, constantes `HEADER_*`).
 - SUPPRIMER (ou touche Suppr) : fenêtre de confirmation.
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).
 
@@ -78,6 +82,7 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   rouge au-delà de 510, Puissance Cachée recalculée en direct), 4 attaques (recherche, sans doublon).
 - Recherche par mots, dans n'importe quel ordre, sur l'identifiant **et** le nom traduit.
 - IMPORTER remplit le formulaire depuis un texte Showdown sans enregistrer et sans changer l'espèce.
+- EXPORTER copie le Pokémon tel qu'affiché (modifications non enregistrées comprises) au format Showdown.
 - Clavier : Tab / Maj+Tab, Entrée = enregistrer, Ctrl+V, Ctrl+Retour arrière, ↑↓ ou molette sur un nombre = ±1
   (Maj : ±10), Échap ferme la liste, le champ, puis l'éditeur (confirmation s'il y a des modifications).
 - ENREGISTRER envoie un seul `PATCH /pokemon/{uuid}` avec `data` complet (clés inconnues conservées), `level`,

@@ -83,6 +83,7 @@
 | §4.51 | 2026-10-03 | TODO-8 : commentaires de code vers les nouveaux noms de documentation |
 | §4.52 | 2026-10-03 | TODO-9 : javadocs obsolètes corrigées |
 | §4.53 | 2026-10-03 | TODO-10 : textures inutilisées du PC supprimées |
+| §4.54 | 2026-10-03 | TODO-11 : export Showdown vers le presse-papiers |
 
 ---
 
@@ -1660,3 +1661,20 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
   2026-10-02. Vérifié avant : aucune référence, ni littérale ni construite (`"pc/" + …`).
 - Gardé : `star.png` (`PhantasmonCanvasScreen.SPRITE_STAR`). Jar : 372 Kio au lieu de 380.
 - `design/trade-screen/SPEC_ECRAN_ECHANGE.md` cite encore ce dossier : document de maquette historique, laissé tel quel.
+
+### 4.54 Export Showdown vers le presse-papiers — TODO-11 (2026-10-03)
+
+- **Côté client seulement** (cohérent avec D-09 pour l'import) : pas d'endpoint `GET /pokemon/{uuid}/export`, le
+  backend n'a ni les noms anglais ni les données Cobblemon.
+- `ShowdownExporter` (pur, testé) + `ShowdownNames` (identifiant → nom anglais) ; en jeu `CobblemonShowdownNames`
+  charge exprès les traductions `en_us` de Cobblemon (`ClientLanguage.loadFrom`), même si le jeu est en français.
+- Points d'entrée : EXPORTER dans l'en-tête du PC (équipe active) et de l'éditeur (Pokémon tel qu'affiché),
+  `/phantasmon pokemon export [uuid]`. 6 nouvelles clés de traduction (fr/en).
+- Import corrigé au passage : `Hidden Power [Fire]` donnait l'identifiant inexistant `hiddenpowerfire` ; il devient
+  `hiddenpower` (le type vient des IV).
+- Tests : 6 nouveaux dont l'aller-retour export → import (50 tests client verts). Non testé en jeu par Claude : à
+  vérifier, boutons EXPORTER (placement, libellé, glyphe `⇪`), texte collé dans Showdown, et noms anglais avec le jeu
+  en français.
+- Retour d'Adrien (2026-10-04) : fonctionnel, mais IMPORTER / EXPORTER décentrés (la paire partait de x = 715, place
+  prévue pour un seul bouton). Paire centrée sur x = 800 (625-795 et 805-975), bandeaux d'en-tête du PC et de
+  l'éditeur raccourcis à 598 px de chaque côté ; l'écran d'échange garde ses bandeaux de 688 px.

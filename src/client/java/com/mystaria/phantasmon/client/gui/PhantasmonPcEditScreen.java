@@ -37,6 +37,8 @@ import com.mystaria.phantasmon.client.pokemon.PokemonClient;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonGender;
 import com.mystaria.phantasmon.client.pokemon.PokemonUpdateRequestDto;
+import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownExporter;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParseException;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParser;
@@ -374,6 +376,15 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	 * Same Showdown parser/mapper as every other import, but it only fills this
 	 * form (species/form untouched) — nothing is written until ENREGISTRER.
 	 */
+	/** Copies the Pokémon as currently shown — unsaved edits included — as Showdown text (CAD Partie 1 §11, TODO-11). */
+	private void exportToClipboard() {
+		PokemonDto shown = new PokemonDto(original.uuid(), original.ownerUuid(), original.species(), original.form(), level(),
+				NATURES[natureIndex], abilityId == null ? null : abilityId.toLowerCase(Locale.ROOT), shiny,
+				original.boxId(), original.boxSlot(), original.teamSlot(), original.cobblemonDataVersion(), buildData());
+		Minecraft.getInstance().keyboardHandler.setClipboard(ShowdownExporter.export(shown, CobblemonShowdownNames.INSTANCE));
+		setStatus(Component.translatable("phantasmon.pc.edit.export_done").getString(), false);
+	}
+
 	private void importFromClipboard() {
 		String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
 		if (clipboard == null || clipboard.isBlank()) {
@@ -618,8 +629,12 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			return true;
 		}
 
-		if (inside(x, y, 715, 15, 170, 48)) {
+		if (inside(x, y, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48)) {
 			importFromClipboard();
+			return true;
+		}
+		if (inside(x, y, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48)) {
+			exportToClipboard();
 			return true;
 		}
 		if (inside(x, y, CANCEL_X, FOOTER_BUTTON_Y, CANCEL_W, FOOTER_BUTTON_H)) {
@@ -850,22 +865,23 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void renderHeader(GuiGraphics g, double mx, double my) {
-		renderHeaderPlates(g);
+		renderHeaderPlates(g, HEADER_PAIR_PLATE_W);
 		String title = upper(Component.translatable("phantasmon.pc.editor.header", displayName(original)).getString());
-		drawText(g, fitText(title, 650, 2f, true, 1.5f), 31, 32, 2f, WHITE, true, 1.5f);
+		drawText(g, fitText(title, HEADER_PAIR_TITLE_W, 2f, true, 1.5f), 31, 32, 2f, WHITE, true, 1.5f);
 
 		String state = upper(Component.translatable(dirty ? "phantasmon.pc.editor.dirty" : "phantasmon.pc.editor.clean").getString());
 		drawText(g, state, 1569 - textWidth(state, 2f, false, 1f), 32, 2f, dirty ? ERROR_TEXT : DIM, false, 1f);
 
-		boolean hovered = inside(mx, my, 715, 15, 170, 48);
-		renderPrimaryButtonFrame(g, 715, 15, 170, 48, hovered, false);
+		boolean hovered = inside(mx, my, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48);
+		renderPrimaryButtonFrame(g, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48, hovered, false);
 		String plus = "+";
 		String label = upper(Component.translatable("phantasmon.pc.screen.import").getString());
 		float plusWidth = textWidth(plus, 2f, true, 0f);
 		float labelWidth = textWidth(label, 2f, true, 1f);
-		float startX = 715 + (170 - plusWidth - 8 - labelWidth) / 2f;
+		float startX = HEADER_IMPORT_X + (HEADER_PAIR_W - plusWidth - 8 - labelWidth) / 2f;
 		drawText(g, plus, startX, 32, 2f, CYAN, true, 0f);
 		drawText(g, label, startX + plusWidth + 8, 32, 2f, CYAN, true, 1f);
+		renderExportButton(g, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48, inside(mx, my, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48));
 	}
 
 	private void renderForm(GuiGraphics g, double mx, double my) {

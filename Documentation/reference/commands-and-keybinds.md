@@ -39,6 +39,7 @@ dans la barre de saisie.
 |---|---|
 | `/phantasmon pc` | Ouvre l'écran PC |
 | `/phantasmon pokemon import` | Crée un ou plusieurs Pokémon depuis le texte Showdown du presse-papiers |
+| `/phantasmon pokemon export [uuid]` | Copie l'équipe active (ou le Pokémon donné) au format Showdown dans le presse-papiers |
 | `/phantasmon pokemon list` | Liste tous ses Pokémon (espèce, niveau, UUID) |
 | `/phantasmon pokemon pc <boîte 1-16>` | Contenu d'une boîte |
 | `/phantasmon pokemon pc move <uuid> <boîte 1-16> <case 1-30>` | Déplace vers une case du PC (échange si occupée) |

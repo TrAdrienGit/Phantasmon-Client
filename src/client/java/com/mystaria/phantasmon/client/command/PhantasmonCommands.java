@@ -36,6 +36,7 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  *
  * <p>{@code /phantasmon pokemon *} (CAD Phase 6, all-commands approach, Adrien:
  * 2026-09-26): {@code import} (reads a Showdown block from the clipboard),
+ * {@code export [uuid]} (copies the team, or one Pokémon, as Showdown text — TODO-11),
  * {@code list}, {@code pc <box>}, {@code delete <uuid>}, {@code clone <uuid>},
  * {@code edit <uuid> level <n>} — see {@link PokemonCommandHandler}.
  *
@@ -70,6 +71,15 @@ public final class PhantasmonCommands {
 						pokemonCommands.importFromClipboard(context.getSource());
 						return Command.SINGLE_SUCCESS;
 					}))
+					.then(ClientCommandManager.literal("export")
+							.executes(context -> {
+								pokemonCommands.exportToClipboard(context.getSource(), null);
+								return Command.SINGLE_SUCCESS;
+							})
+							.then(ClientCommandManager.argument("uuid", UuidArgument.uuid()).executes(context -> {
+								pokemonCommands.exportToClipboard(context.getSource(), context.getArgument("uuid", UUID.class));
+								return Command.SINGLE_SUCCESS;
+							})))
 					.then(ClientCommandManager.literal("list").executes(context -> {
 						pokemonCommands.list(context.getSource());
 						return Command.SINGLE_SUCCESS;

@@ -21,6 +21,8 @@ import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
 import com.mystaria.phantasmon.client.pokemon.PokemonCreateRequestDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonUpdateRequestDto;
+import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownExporter;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParseException;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParser;
@@ -77,10 +79,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final int CLOSE_SIZE = 36;
 	private static final int CLOSE_X = 1585 - 6 - CLOSE_SIZE;
 	private static final int CLOSE_Y = 15 + (48 - CLOSE_SIZE) / 2;
-	private static final int IMPORT_X = 715;
+	private static final int IMPORT_X = HEADER_IMPORT_X;
 	private static final int IMPORT_Y = 15;
-	private static final int IMPORT_W = 170;
+	private static final int IMPORT_W = HEADER_PAIR_W;
 	private static final int IMPORT_H = 48;
+	private static final int EXPORT_X = HEADER_EXPORT_X;
 	/** Footer buttons: scale-2 labels, so they're as tall as the footer allows (Adrien 2026-10-02: too small, pixelated). */
 	private static final int DELETE_W = 170;
 	private static final int DELETE_X = 1576 - DELETE_W;
@@ -230,6 +233,17 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	 * the clipboard and creates each via the backend, exactly mirroring
 	 * {@code /phantasmon pokemon import}'s logic — just triggered from the HUD.
 	 */
+	/** Copies the active team (slot order) as Showdown text (CAD Partie 1 §11, TODO-11). */
+	private void exportTeamToClipboard() {
+		List<PokemonDto> team = Arrays.stream(teamSlots).filter(p -> p != null).toList();
+		if (team.isEmpty()) {
+			setStatus(Component.translatable("phantasmon.pc.screen.export_empty").getString(), true);
+			return;
+		}
+		Minecraft.getInstance().keyboardHandler.setClipboard(ShowdownExporter.exportTeam(team, CobblemonShowdownNames.INSTANCE));
+		setStatus(Component.translatable("phantasmon.pc.screen.exported", team.size()).getString(), false);
+	}
+
 	private void importFromClipboard() {
 		String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
 		if (clipboard == null || clipboard.isBlank()) {
@@ -354,6 +368,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		}
 		if (inside(x, y, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
 			importFromClipboard();
+			return true;
+		}
+		if (inside(x, y, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
+			exportTeamToClipboard();
 			return true;
 		}
 		if (inside(x, y, PREV_X, NAV_Y, NAV_W, NAV_H)) {
@@ -540,9 +558,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	/** Header plates: who's PC this is (left), IMPORTER as the primary action (center, ÉCHANGER's spot), totals (right). */
 	private void renderHeader(GuiGraphics g, double mx, double my) {
-		renderHeaderPlates(g);
+		renderHeaderPlates(g, HEADER_PAIR_PLATE_W);
 		String title = upper(Component.translatable("phantasmon.pc.screen.header", playerName()).getString());
-		drawText(g, fitText(title, 650, 2f, true, 1.5f), 31, 32, 2f, WHITE, true, 1.5f);
+		drawText(g, fitText(title, HEADER_PAIR_TITLE_W, 2f, true, 1.5f), 31, 32, 2f, WHITE, true, 1.5f);
 
 		long teamCount = Arrays.stream(teamSlots).filter(p -> p != null).count();
 		long pcCount = allPokemon.size() - teamCount;
@@ -560,6 +578,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		float startX = IMPORT_X + (IMPORT_W - plusWidth - 8 - labelWidth) / 2f;
 		drawText(g, plus, startX, IMPORT_Y + 17, 2f, CYAN, true, 0f);
 		drawText(g, label, startX + plusWidth + 8, IMPORT_Y + (IMPORT_H - 7 * labelScale) / 2f, labelScale, CYAN, true, 1f);
+		renderExportButton(g, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, inside(mx, my, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H));
 	}
 
 	private void renderTeamRail(GuiGraphics g, double mx, double my) {

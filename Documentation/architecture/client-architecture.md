@@ -33,7 +33,7 @@ Racine : `com.mystaria.phantasmon.client`.
 | `network` | Client REST JSON, client WebSocket, DTO communs, traduction des codes d'erreur, ping de santé | `BackendConfig`, `BackendJsonClient`, `PhantasmonWebSocketClient`, `BackendErrorMessages`, `BackendHealthPinger`, `PingToggle` |
 | `command` | Arbre Brigadier `/phantasmon …` | `PhantasmonCommands` |
 | `pokemon` | REST Pokémon, logique des commandes, natures, Puissance Cachée, sexe, objets de combat | `PokemonClient`, `PokemonCommandHandler`, `NatureModifiers`, `HiddenPowerCalculator`, `PokemonGender`, `CobblemonHeldItems` |
-| `pokemon.showdown` | Analyse du format Showdown et conversion en identifiants Cobblemon | `ShowdownParser`, `ShowdownImportMapper`, `CobblemonIdentifiers` |
+| `pokemon.showdown` | Analyse du format Showdown et conversion en identifiants Cobblemon ; export Showdown (noms anglais) | `ShowdownParser`, `ShowdownImportMapper`, `CobblemonIdentifiers` |
 | `ghost` | Session WebSocket de présence, entités Ghost locales | `GhostSession`, `GhostEntityManager` |
 | `gui` | Écrans PC, éditeur, échange et leur socle commun | `PhantasmonCanvasScreen`, `PhantasmonPcScreen`, `PhantasmonPcEditScreen`, `PhantasmonTradeScreen`, `PokemonGuiRendering` |
 | `trade` | Échange en direct (état + contrôleur) et échange asynchrone (commandes) | `LiveTradeController`, `LiveTradeState`, `TradeCommandHandler`, `TradeClient` |

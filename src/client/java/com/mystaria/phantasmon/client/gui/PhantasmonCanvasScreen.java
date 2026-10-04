@@ -227,11 +227,29 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Z02 / Z04: the two outward-gradient header plates. */
 	protected void renderHeaderPlates(GuiGraphics g) {
-		blitTexture(g, TEX_HEAD_LEFT, 15, 15, 688, 48);
-		outline(g, 15, 15, 688, 48, CYAN2);
-		blitTexture(g, TEX_HEAD_RIGHT, 897, 15, 688, 48);
-		outline(g, 897, 15, 688, 48, CYAN2);
+		renderHeaderPlates(g, 688);
 	}
+
+	/**
+	 * Header plates: left one from x=15, right one ending at x=1585, each {@code plateWidth} wide, so the free gap
+	 * between them stays centered on the canvas (x=800) whatever the width.
+	 */
+	protected void renderHeaderPlates(GuiGraphics g, int plateWidth) {
+		blitTexture(g, TEX_HEAD_LEFT, 15, 15, plateWidth, 48);
+		outline(g, 15, 15, plateWidth, 48, CYAN2);
+		blitTexture(g, TEX_HEAD_RIGHT, 1585 - plateWidth, 15, plateWidth, 48);
+		outline(g, 1585 - plateWidth, 15, plateWidth, 48, CYAN2);
+	}
+
+	/** IMPORTER + EXPORTER pair (PC and editor headers), centered on x=800 between narrower header plates. */
+	protected static final int HEADER_PAIR_W = 170;
+	protected static final int HEADER_PAIR_GAP = 10;
+	protected static final int HEADER_IMPORT_X = 800 - HEADER_PAIR_GAP / 2 - HEADER_PAIR_W;
+	protected static final int HEADER_EXPORT_X = 800 + HEADER_PAIR_GAP / 2;
+	/** Same 12 px margin between plate and button as the single centered ÉCHANGER button. */
+	protected static final int HEADER_PAIR_PLATE_W = HEADER_IMPORT_X - 12 - 15;
+	/** Room left for the title inside the narrower left plate. */
+	protected static final int HEADER_PAIR_TITLE_W = HEADER_PAIR_PLATE_W - 38;
 
 	/** Z03-style primary action button (ÉCHANGER / IMPORTER): glow, gradient, cyan border. */
 	protected void renderPrimaryButtonFrame(GuiGraphics g, int x, int y, int w, int h, boolean hovered, boolean green) {
@@ -965,5 +983,18 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	protected static int asInt(Object value) {
 		return value instanceof Number number ? number.intValue() : 0;
+	}
+
+	/** Secondary header action next to IMPORTER (same frame, "⇪" glyph): EXPORTER, Showdown text to the clipboard. */
+	protected void renderExportButton(GuiGraphics g, int x, int y, int w, int h, boolean hovered) {
+		renderPrimaryButtonFrame(g, x, y, w, h, hovered, false);
+		String glyph = "⇪";
+		String label = upper(Component.translatable("phantasmon.pc.screen.export").getString());
+		float glyphWidth = textWidth(glyph, 2f, true, 0f);
+		float labelScale = textWidth(label, 2f, true, 1f) + glyphWidth + 8 <= w - 16 ? 2f : 1f;
+		float labelWidth = textWidth(label, labelScale, true, 1f);
+		float startX = x + (w - glyphWidth - 8 - labelWidth) / 2f;
+		drawText(g, glyph, startX, y + 17, 2f, CYAN, true, 0f);
+		drawText(g, label, startX + glyphWidth + 8, y + (h - 7 * labelScale) / 2f, labelScale, CYAN, true, 1f);
 	}
 }

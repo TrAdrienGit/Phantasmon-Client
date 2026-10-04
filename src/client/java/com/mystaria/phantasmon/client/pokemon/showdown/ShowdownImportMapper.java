@@ -36,7 +36,7 @@ public final class ShowdownImportMapper {
 		Map<String, Object> data = new HashMap<>();
 		data.put("ivs", filledStatMap(parsed.ivs(), DEFAULT_IV));
 		data.put("evs", filledStatMap(parsed.evs(), DEFAULT_EV));
-		data.put("moves", parsed.moves().stream().map(CobblemonIdentifiers::slugConcat).toList());
+		data.put("moves", parsed.moves().stream().map(ShowdownImportMapper::moveId).toList());
 		if (parsed.nickname() != null) {
 			data.put("nickname", parsed.nickname());
 		}
@@ -64,6 +64,15 @@ public final class ShowdownImportMapper {
 				null, null, null,
 				cobblemonDataVersion,
 				data);
+	}
+
+	/**
+	 * Showdown writes Hidden Power with its type ({@code Hidden Power [Fire]}); Cobblemon has a single
+	 * {@code hiddenpower} move whose type comes from the IVs, so the bracketed type is dropped.
+	 */
+	static String moveId(String showdownMove) {
+		String id = CobblemonIdentifiers.slugConcat(showdownMove);
+		return id.startsWith("hiddenpower") ? "hiddenpower" : id;
 	}
 
 	private static Map<String, Integer> filledStatMap(Map<String, Integer> explicit, int defaultValue) {

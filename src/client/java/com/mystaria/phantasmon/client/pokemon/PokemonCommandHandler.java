@@ -15,6 +15,8 @@ import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.gui.PhantasmonPcScreen;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
+import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames;
+import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownExporter;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownImportMapper;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParseException;
 import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownParser;
@@ -197,6 +199,35 @@ public final class PokemonCommandHandler {
 		pokemonClient.update(session.accessToken(), pokemonUuid, PokemonUpdateRequestDto.movingToPcSlot(boxId, boxSlot))
 				.thenAccept(updated -> feedback(source, Component.translatable(
 						"phantasmon.pokemon.pc.move_done", updated.species(), boxId, boxSlot)))
+				.exceptionally(ex -> {
+					reportFailure(source, ex, null);
+					return null;
+				});
+	}
+
+	/**
+	 * Copies Showdown text to the clipboard (CAD Partie 1 §11): the given Pokémon, or the whole active team (in slot
+	 * order) when {@code pokemonUuid} is null.
+	 */
+	public void exportToClipboard(FabricClientCommandSource source, UUID pokemonUuid) {
+		if (!requireAuthenticated(source)) {
+			return;
+		}
+		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+				.thenAccept(pokemons -> Minecraft.getInstance().execute(() -> {
+					List<PokemonDto> selected = java.util.Arrays.stream(pokemons)
+							.filter(pokemon -> pokemonUuid == null ? pokemon.teamSlot() != null : pokemon.uuid().equals(pokemonUuid))
+							.sorted(java.util.Comparator.comparingInt(pokemon -> pokemon.teamSlot() == null ? 0 : pokemon.teamSlot()))
+							.toList();
+					if (selected.isEmpty()) {
+						source.sendError(Component.translatable(pokemonUuid == null
+								? "phantasmon.pokemon.team.empty" : "phantasmon.pokemon.export.not_found"));
+						return;
+					}
+					Minecraft.getInstance().keyboardHandler.setClipboard(
+							ShowdownExporter.exportTeam(selected, CobblemonShowdownNames.INSTANCE));
+					feedback(source, Component.translatable("phantasmon.pokemon.export.done", selected.size()));
+				}))
 				.exceptionally(ex -> {
 					reportFailure(source, ex, null);
 					return null;

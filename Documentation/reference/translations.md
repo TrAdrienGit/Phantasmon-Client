@@ -23,9 +23,9 @@
 | Préfixe | Nombre de clés | Usage |
 |---|---|---|
 | `phantasmon.trade.*` | 71 | Échange en direct (écran, invitations) et asynchrone, erreurs d'échange |
-| `phantasmon.pc.*` | 68 | Écran PC et éditeur (libellés, boutons, aide, confirmations) |
+| `phantasmon.pc.*` | 72 | Écran PC et éditeur (libellés, boutons, aide, confirmations) |
 | `phantasmon.battle.*` | 29 | Invitations, chrono, fin de combat, erreurs |
-| `phantasmon.pokemon.*` | 22 | Commandes Pokémon, import, erreurs de légalité et de place |
+| `phantasmon.pokemon.*` | 24 | Commandes Pokémon, import, export, erreurs de légalité et de place |
 | `phantasmon.auth.*` | 13 | Connexion, version, erreurs Mojang |
 | `phantasmon.ghost.*` | 9 | Sortie/rappel, connexion WebSocket |
 | `phantasmon.error.*` | 4 | Erreurs génériques (`not_authenticated`, `network`, `ownership_mismatch`, `unknown`) |

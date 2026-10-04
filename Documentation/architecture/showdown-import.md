@@ -1,7 +1,9 @@
-# Import Showdown et identifiants Cobblemon
+# Import / export Showdown et identifiants Cobblemon
 
-> Paquet `pokemon/showdown` : `ShowdownParser`, `ShowdownImportMapper`, `CobblemonIdentifiers`, `ShowdownPokemon`.
-> Tests : `ShowdownParserTest`, `ShowdownImportMapperTest`, `CobblemonIdentifiersTest`. Décision : D-14.
+> Paquet `pokemon/showdown` : `ShowdownParser`, `ShowdownImportMapper`, `CobblemonIdentifiers`, `ShowdownPokemon`,
+> `ShowdownExporter`, `ShowdownNames`, `CobblemonShowdownNames`.
+> Tests : `ShowdownParserTest`, `ShowdownImportMapperTest`, `CobblemonIdentifiersTest`, `ShowdownExporterTest`.
+> Décisions : D-09, D-14.
 > Vérifié le 2026-10-03.
 
 ## 1. Chaîne de traitement
@@ -72,7 +74,31 @@ Pokémon Showdown pour les espèces et attaques) :
 Les identifiants ne sont **pas** vérifiés contre les données de Cobblemon à l'import : une espèce inconnue sera
 créée, puis signalée à l'affichage (modèle absent, `WARN` dans le log). Le backend ne vérifie que les IV/EV.
 
-## 5. Données Cobblemon utiles à connaître
+## 5. Export (CAD Partie 1 §11)
+
+Côté client uniquement, comme l'import (D-09) : le client a déjà les Pokémon et les données Cobblemon.
+
+| Point d'entrée | Ce qui est copié dans le presse-papiers |
+|---|---|
+| Bouton EXPORTER du PC (à droite d'IMPORTER) | L'équipe active, dans l'ordre des emplacements |
+| Bouton EXPORTER de l'éditeur | Le Pokémon **tel qu'affiché**, modifications non enregistrées comprises |
+| `/phantasmon pokemon export` | L'équipe active |
+| `/phantasmon pokemon export <uuid>` | Un de ses Pokémon (PC ou équipe) |
+
+- `ShowdownExporter` écrit les lignes dans l'ordre de l'export de Showdown et omet ses valeurs implicites : `Level`
+  à 100, `Happiness` à 255, EV à 0, IV à 31. Plusieurs Pokémon sont séparés par une ligne vide.
+- **Noms anglais** (`CobblemonShowdownNames`) : Showdown ne comprend que l'anglais, donc les traductions `en_us` de
+  Cobblemon sont chargées exprès, quelle que soit la langue du jeu (`ClientLanguage.loadFrom`) :
+  `cobblemon.species.<id>.name`, `cobblemon.move.<id>`, `cobblemon.ability.<id sans _>`, `item.cobblemon.<id>` puis
+  `item.minecraft.<id>`, `cobblemon.nature.<id>`, `cobblemon.type.<id>`. Suffixe de forme : nom de la forme dans les
+  données de l'espèce (`Samurott-Hisui`). Sans traduction : identifiant mis en majuscules (`flash_fire` →
+  `Flash Fire`), que Showdown relit quand même (il normalise tous les noms).
+- **Capacité cachée** : écrite `Hidden Power [Fire]` (type en anglais, calculé depuis les IV).
+  À l'import, `Hidden Power [Type]` redevient l'identifiant Cobblemon unique `hiddenpower` (le type vient des IV).
+- **Aller-retour garanti par test** (`exportReimportsToTheSamePokemon`) : espèce, forme, niveau, nature, talent,
+  chromatique, surnom, sexe, objet, Tera, bonheur, EV, IV, capacités.
+
+## 6. Données Cobblemon utiles à connaître
 
 - Objets de combat : tag `#cobblemon:held/is_held_item` (inclut les Gemmes de type et les Graines de terrain).
   Cobblemon 1.8.1 n'a ni Méga-Gemmes, ni Cristaux Z, ni Energy Booster.
