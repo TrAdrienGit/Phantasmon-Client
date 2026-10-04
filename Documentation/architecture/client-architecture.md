@@ -78,8 +78,9 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 - **WebSocket** : `PhantasmonWebSocketClient` (WebSocket du JDK, sans dépendance), enveloppe
   `{"type", "data"}`, reconstitution des messages fragmentés. **Une seule connexion**, détenue par `GhostSession`,
   qui répartit les messages vers les Ghost, les échanges et les combats.
-- **Authentification** : `AuthService` → `GET /version` → `MinecraftSessionService.joinServer(UUID, accessToken,
-  serverId)` → `POST /auth/session`. Les comptes hors-ligne (`User.Type.LEGACY`) sont refusés avant tout appel.
+- **Authentification** : `AuthService` → `GET /version` → `POST /auth/challenge` →
+  `MinecraftSessionService.joinServer(UUID, accessToken, défi)` → `POST /auth/session` (le `serverId` est toujours un
+  défi à usage unique du backend, SEC-1). Les comptes hors-ligne (`User.Type.LEGACY`) sont refusés avant tout appel.
   Le JWT vit dans `AuthSession` (mémoire, jamais sur disque) ; renouvellement si l'expiration est à moins de 30 s.
 
 ## 6. Internationalisation

@@ -312,8 +312,13 @@ public final class LiveBattleController implements LiveBattleListener {
 		if (host || battleUuid == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
 			return;
 		}
+		String id = string(data.get("id"));
+		if (!RelayedPacketPolicy.guestAccepts(id)) {
+			LOG.warn("Dropped a non-battle packet relayed by the host: {}", id);
+			return;
+		}
 		try {
-			if (ActionEffectEvent.PACKET_ID.equals(data.get("id"))) {
+			if (ActionEffectEvent.PACKET_ID.equals(id)) {
 				ActionEffectPlayer.play(ActionEffectEvent.fromBytes(Base64.getDecoder().decode(string(data.get("payload")))), null);
 				return;
 			}

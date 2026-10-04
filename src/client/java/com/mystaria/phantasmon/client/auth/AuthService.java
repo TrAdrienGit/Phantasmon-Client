@@ -1,7 +1,5 @@
 package com.mystaria.phantasmon.client.auth;
 
-import java.math.BigInteger;
-import java.security.SecureRandom;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
@@ -15,6 +13,7 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 
+import com.mystaria.phantasmon.client.network.AuthChallengeResponseDto;
 import com.mystaria.phantasmon.client.network.AuthSessionRequestDto;
 import com.mystaria.phantasmon.client.network.AuthSessionResponseDto;
 import com.mystaria.phantasmon.client.network.BackendApiException;
@@ -133,7 +132,10 @@ public final class AuthService {
 			report("phantasmon.auth.version_outdated", version.currentVersion());
 		}
 
-		return CompletableFuture.supplyAsync(() -> joinMojangServer(user, client))
+		// The serverId must be a one-time challenge from our backend: a join proof made for any other server
+		// (which that server could replay to us) is refused (SEC-1).
+		return httpClient.postNoBody(BackendConfig.BASE_URL.resolve("/auth/challenge"), null, AuthChallengeResponseDto.class)
+				.thenApplyAsync(challenge -> joinMojangServer(user, client, challenge.challenge()))
 				.thenCompose(serverId -> httpClient.post(BackendConfig.BASE_URL.resolve("/auth/session"),
 						new AuthSessionRequestDto(user.getProfileId(), user.getName(), serverId),
 						AuthSessionResponseDto.class))
@@ -144,8 +146,7 @@ public final class AuthService {
 				});
 	}
 
-	private static String joinMojangServer(User user, Minecraft client) {
-		String serverId = randomServerId();
+	private static String joinMojangServer(User user, Minecraft client, String serverId) {
 		try {
 			client.getMinecraftSessionService().joinServer(user.getProfileId(), user.getAccessToken(), serverId);
 		} catch (AuthenticationException ex) {
@@ -164,10 +165,6 @@ public final class AuthService {
 			report("phantasmon.auth.network_error");
 		}
 		return null;
-	}
-
-	private static String randomServerId() {
-		return new BigInteger(130, new SecureRandom()).toString(32);
 	}
 
 	private static String modVersion() {

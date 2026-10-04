@@ -88,6 +88,7 @@
 | §4.56 | 2026-10-04 | TODO-14 : Ghost rappelés et bloqués pendant un combat |
 | §4.57 | 2026-10-04 | TODO-13 : nom des Ghost toujours affiché (pas de « ??? ») |
 | §4.58 | 2026-10-04 | TODO-15 : audit de sécurité |
+| §4.59 | 2026-10-04 | Corrections de sécurité SEC-1 à SEC-5, SEC-7 à SEC-9 |
 
 ---
 
@@ -1747,3 +1748,29 @@ La roue qui s'ouvre avec **R** sur un autre joueur gagne deux entrées, en plus 
 - Deux points hauts : authentification usurpable par un serveur Minecraft tiers (`serverId` choisi par le client) ;
   l'invité d'un combat exécute tout paquet Cobblemon relayé par l'hôte.
 - Non couvert : CVE des dépendances, tests d'intrusion, machine serveur.
+
+### 4.59 Corrections de sécurité (2026-10-04)
+
+Accord d'Adrien pour tout corriger ; chaque correction a son test écrit d'abord (rouge, puis vert). Détail dans
+`project/security-audit.md`.
+
+- **SEC-1** (backend + client) : `POST /auth/challenge` ; le client utilise ce défi comme `serverId` de
+  `joinServer` ; `/auth/session` refuse tout autre `server_id` sans appeler Mojang. Les anciens clients ne peuvent
+  plus se connecter (normal : ils tiraient leur `serverId` au hasard).
+- **SEC-2** (client) : `RelayedPacketPolicy`, liste blanche `cobblemon:battle_*` + `phantasmon:action_effect` avant
+  décodage. Vérifié dans Cobblemon que tout ce que le moteur envoie à un acteur est un `Battle*Packet`.
+- **SEC-3** (backend) : routes REST `POST /battles` et `POST /battles/{uuid}/result` retirées, ainsi que leurs DTO ;
+  D-08 caduque.
+- **SEC-4** (backend) : validation de l'empreinte et de la dimension ; `Objects.equals` dans `groupMembers`.
+- **SEC-5** (backend) : bornes `data` / surnom / chaînes ; `MessageRateLimiter` par connexion.
+- **SEC-7** (backend) : idempotence cloisonnée par joueur et route.
+- **SEC-8** (backend) : une connexion par joueur, l'ancienne est fermée ; `afterConnectionClosed` ne nettoie que la
+  connexion encore enregistrée ; `expire()` fait le nettoyage complet (la fermeture retire d'abord la session).
+- **SEC-9** (backend) : `ERROR_LEGALITY_INVALID_DATA`.
+- Client : traductions des nouveaux codes ; pas de reconnexion automatique, donc pas de ping-pong entre deux jeux
+  ouverts sur le même compte.
+- Résultat : 144 tests backend verts, tests client verts. **SEC-6** (positions visibles par tout membre du groupe)
+  reste ouvert : décision de conception. **Le backend doit être redémarré et les deux clients mis à jour ensemble.**
+- **SEC-6** : Adrien choisit l'option 3 (limite assumée et documentée, serveurs entre joueurs de confiance) :
+  décision D-21, limite LIM-9, note dans `websocket-protocol.md` §3. D-20 mis à jour (débit WebSocket désormais
+  limité). Aucun changement de code.

@@ -71,7 +71,8 @@ public void login() {
 private CompletableFuture<Void> handleVersion(VersionResponseDto version, User user, Minecraft client) {
     VersionCompatibility.Status status = VersionCompatibility.evaluate(modVersion(), version.minSupportedVersion(), version.currentVersion());
     if (status == VersionCompatibility.Status.INCOMPATIBLE) { reportVersionIncompatible(…); return CompletableFuture.completedFuture(null); }
-    return CompletableFuture.supplyAsync(() -> joinMojangServer(user, client))                         // 2. preuve Mojang
+    return httpClient.postNoBody(BackendConfig.BASE_URL.resolve("/auth/challenge"), null, AuthChallengeResponseDto.class)
+            .thenApplyAsync(challenge -> joinMojangServer(user, client, challenge.challenge()))        // 2. preuve Mojang
             .thenCompose(serverId -> httpClient.post(BackendConfig.BASE_URL.resolve("/auth/session"),  // 3. jetons
                     new AuthSessionRequestDto(user.getProfileId(), user.getName(), serverId), AuthSessionResponseDto.class))
             .thenAccept(response -> {
@@ -81,15 +82,18 @@ private CompletableFuture<Void> handleVersion(VersionResponseDto version, User u
             });
 }
 
-private static String joinMojangServer(User user, Minecraft client) {
-    String serverId = new BigInteger(130, new SecureRandom()).toString(32);       // identifiant aléatoire
+private static String joinMojangServer(User user, Minecraft client, String serverId) {    // serverId = défi du backend
     client.getMinecraftSessionService().joinServer(user.getProfileId(), user.getAccessToken(), serverId);
     return serverId;
 }
 ```
 
 - `joinServer` est l'appel que le jeu fait en rejoignant n'importe quel serveur en ligne : il prouve à Mojang que ce
-  client détient le compte. Il est **bloquant** (requête réseau) : d'où `supplyAsync`, hors du thread client.
+  client détient le compte. Il est **bloquant** (requête réseau) : d'où `thenApplyAsync`, hors du thread client.
+- Le `serverId` n'est **pas** tiré au hasard par le client : c'est un défi à usage unique fourni par le backend
+  (`POST /auth/challenge`). Sinon, n'importe quel serveur Minecraft rejoint par le joueur, qui reçoit le même genre
+  de preuve pour son propre `serverId`, pourrait la rejouer chez nous et se connecter à sa place (audit de sécurité,
+  SEC-1).
 - Le jeton d'accès Minecraft (`getAccessToken()`) part chez Mojang, **jamais** chez notre backend.
 - `onAuthenticated` est un `Runnable` fourni par `PhantasmonClient` : `AuthService` ne connaît pas `GhostSession`,
   il prévient simplement « c'est fait ». Ce découplage évite que les classes dépendent toutes les unes des autres.
@@ -187,6 +191,7 @@ backend les regroupe ainsi sans rien savoir du serveur Minecraft.
 ## À retenir
 
 - Un client REST générique asynchrone ; une classe d'appels et des DTO par domaine ; erreurs typées puis traduites.
-- Connexion : version → `joinServer` chez Mojang → `POST /auth/session` → JWT en mémoire → WebSocket.
+- Connexion : version → défi (`POST /auth/challenge`) → `joinServer` chez Mojang avec ce défi → `POST /auth/session`
+  → JWT en mémoire → WebSocket.
 - Les contrôles automatiques sont silencieux ; les actions explicites du joueur affichent leurs erreurs.
 - Une seule connexion WebSocket, un aiguillage, des écouteurs par fonctionnalité.
