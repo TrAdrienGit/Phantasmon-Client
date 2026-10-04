@@ -96,12 +96,22 @@ public final class BattleVisuals {
 						trainers.put(actor.getShowdownId(), actor.getUuid());
 					}
 				}
+				// Right after the launch intro, the send-outs are staged for the camera: the opponent's first, then ours.
+				boolean staged = stageSendOuts();
+				UUID self = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
+						boolean local = actor.getUuid().equals(self);
+						float delay = !staged ? 0f : local ? BattleCinematic.LOCAL_SEND_OUT_DELAY : BattleCinematic.OPPONENT_SEND_OUT_DELAY;
 						char slot = 'a';
 						for (var active : actor.getActivePokemon()) {
 							if (active != null) {
-								sendOut(actor.getShowdownId() + slot, active);
+								String pnx = actor.getShowdownId() + slot;
+								if (delay > 0f) {
+									later(delay, () -> sendOut(pnx, active));
+								} else {
+									sendOut(pnx, active);
+								}
 							}
 							slot++;
 						}
@@ -126,6 +136,29 @@ public final class BattleVisuals {
 			// Never let a cosmetic failure break the battle UI.
 			LOG.warn("Ghost battle visuals failed for {}", packet.getId(), ex);
 		}
+	}
+
+	/** Tells the cinematic where both sides' Pokémon will stand; true if it films their send-outs. */
+	private static boolean stageSendOuts() {
+		ClientLevel level = Minecraft.getInstance().level;
+		Player self = Minecraft.getInstance().player;
+		if (level == null || self == null) {
+			return false;
+		}
+		Vec3 localSpot = null;
+		Vec3 opponentSpot = null;
+		for (Map.Entry<String, UUID> entry : trainers.entrySet()) {
+			Placement placement = placement(level, self, entry.getKey());
+			if (placement == null) {
+				continue;
+			}
+			if (entry.getValue().equals(self.getUUID())) {
+				localSpot = placement.position();
+			} else {
+				opponentSpot = placement.position();
+			}
+		}
+		return BattleCinematic.beginSendOuts(localSpot, opponentSpot);
 	}
 
 	/** The client-side entity standing at a battle position ({@code p1a}...), if any — for {@link ActionEffectPlayer}. */

@@ -129,6 +129,10 @@ public final class BattleLobbyState {
 		return index >= 0 && index < opponentTeam.size() ? opponentTeam.get(index) : null;
 	}
 
+	public int opponentTeamSize() {
+		return opponentTeam.size();
+	}
+
 	public int ownTeamSize() {
 		return ownTeam.size();
 	}

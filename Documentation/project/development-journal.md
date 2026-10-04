@@ -1922,3 +1922,20 @@ le combat, dans la DA de l'écran d'échange. L'animation de lancement et la mus
   verts ; client compilé, 54 tests verts, déployé (instance locale + repli « Cobblemon 2 », serveur injoignable en
   SSH). Non testé en jeu par Claude.
 
+### 4.67 Cinématique de lancement de combat (2026-10-04)
+
+Demande d'Adrien, d'après une vidéo de l'intro des combats de dresseurs de Pokémon X/Y (images extraites avec OpenCV
+dans un environnement temporaire pour l'analyser).
+
+- `BattleCinematic` : horloge de l'intro (5,5 s) et des sorties ; pose de caméra par plan, appliquée par `CameraMixin`
+  (injection en fin de `Camera.setup`, priorité haute pour passer après ShoulderSurfing ; `detached` pour voir son
+  propre corps) ; « ! » dessiné dans le monde (`WorldRenderEvents.AFTER_ENTITIES`) ; flash blanc dans le HUD ; HUD
+  masqué (`hideGui`) pendant les plans, rétabli ensuite.
+- `PhantasmonBattleIntroScreen` : bulle « regards croisés » tapée à la machine, balayage en losanges, panneau du
+  challenger (dégradés et traînées procédurales, adversaire en `RemotePlayer` jamais ajouté au monde : son skin, son
+  équipement, une Poké Ball en main, animation de course puis silhouette → couleurs via la couleur de shader),
+  balles de son équipe (taille connue par l'aperçu du lobby), flash. Quelques sons vanilla en attendant la musique.
+- Synchronisation : l'hôte diffère `startHostedBattle` à la fin de l'intro ; l'invité met en attente les
+  `BattlePacket` jusque-là. `BattleVisuals` échelonne les premières sorties (adverse à 0,3 s, la nôtre à 2,1 s).
+- Client compilé et déployé. Non testé en jeu par Claude.
+

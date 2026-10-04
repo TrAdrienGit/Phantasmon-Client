@@ -11,7 +11,8 @@
 		"InteractWheelGuiAccessor",
 		"InteractWheelGuiFactoryMixin",
 		"PokemonEntityMixin",
-		"PokemonRendererMixin"
+		"PokemonRendererMixin",
+		"CameraMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

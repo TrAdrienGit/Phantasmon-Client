@@ -3,6 +3,8 @@ package com.mystaria.phantasmon.client;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 
 import com.mystaria.phantasmon.client.auth.AuthService;
 import com.mystaria.phantasmon.client.auth.AuthSession;
@@ -51,6 +53,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			refreshScheduler.stop();
 			ghostSession.stop();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
+			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
 			authSession.clear();
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -58,8 +61,12 @@ public class PhantasmonClient implements ClientModInitializer {
 			pokemonCommands.tick();
 			liveTrade.tick();
 			liveBattle.tick();
+			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
 			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade, liveBattle);
 		});
+
+		WorldRenderEvents.AFTER_ENTITIES.register(com.mystaria.phantasmon.client.battle.BattleCinematic::renderWorld);
+		HudRenderCallback.EVENT.register((graphics, tickCounter) -> com.mystaria.phantasmon.client.battle.BattleCinematic.renderHud(graphics));
 
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();

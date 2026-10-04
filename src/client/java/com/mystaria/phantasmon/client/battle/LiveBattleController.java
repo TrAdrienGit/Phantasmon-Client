@@ -69,6 +69,17 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	private BattleLobbyState lobby;
 	private boolean lobbyScreenRequested;
+	/** Opponent's team size, from the lobby preview — the guest gets no other way to know it before the battle. */
+	private int lastOpponentTeamSize = 6;
+
+	/**
+	 * Battle launch cinematic ({@link BattleCinematic}): the host starts its engine only once the intro is over, and
+	 * the guest holds whatever the host relays until then, so both clients see the intro, then the same battle.
+	 */
+	private Runnable pendingEngineStart;
+	private long engineStartAt;
+	private long holdRelayedUntil;
+	private final List<Map<String, Object>> heldPackets = new ArrayList<>();
 
 	private UUID battleUuid;
 	private boolean host;
@@ -276,6 +287,17 @@ public final class LiveBattleController implements LiveBattleListener {
 				Minecraft.getInstance().setScreen(new PhantasmonBattleLobbyScreen(this));
 			}
 		}
+		long nowMillis = System.currentTimeMillis();
+		if (pendingEngineStart != null && nowMillis >= engineStartAt) {
+			Runnable start = pendingEngineStart;
+			pendingEngineStart = null;
+			start.run();
+		}
+		if (!heldPackets.isEmpty() && nowMillis >= holdRelayedUntil) {
+			List<Map<String, Object>> held = new ArrayList<>(heldPackets);
+			heldPackets.clear();
+			held.forEach(this::playRelayedPacket);
+		}
 		if (battleUuid == null || !timerEnabled) {
 			return;
 		}
@@ -364,6 +386,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			lobbyScreenRequested = true;
 		}
 		lobby.apply(data);
+		lastOpponentTeamSize = lobby.opponentTeamSize();
 	}
 
 	private void onLobbyCancelled(Map<String, Object> data) {
@@ -411,15 +434,20 @@ public final class LiveBattleController implements LiveBattleListener {
 						teamLabel(data.get("own_team_source")), teamLabel(data.get("opponent_team_source")))
 				.append(" ")
 				.append(chatButton("phantasmon.battle.timer.button", "/phantasmon battle timer", ChatFormatting.AQUA)));
+		List<PokemonDto> opponentTeam = host ? team(data.get("opponent_team")) : List.of();
+		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize);
+		heldPackets.clear();
 		if (!host) {
-			return; // the host's engine will send us the battle through BattlePacket
+			// The host's engine will send us the battle through BattlePacket, once its intro is over too.
+			holdRelayedUntil = BattleCinematic.introEndsAt();
+			return;
 		}
 		UUID self = localUuid();
 		String selfName = localName();
 		List<PokemonDto> ownTeam = team(data.get("own_team"));
-		List<PokemonDto> opponentTeam = team(data.get("opponent_team"));
 		UUID currentBattle = battleUuid;
-		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
+		engineStartAt = BattleCinematic.introEndsAt();
+		pendingEngineStart = () -> GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
 				this::relayToGuest, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
@@ -481,6 +509,17 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	/** Guest: a packet from the host's engine, played into this client's Cobblemon UI. */
 	private void onRelayedPacket(Map<String, Object> data) {
+		if (host || battleUuid == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
+			return;
+		}
+		if (System.currentTimeMillis() < holdRelayedUntil || !heldPackets.isEmpty()) {
+			heldPackets.add(data); // our intro is still playing: played in order right after it
+			return;
+		}
+		playRelayedPacket(data);
+	}
+
+	private void playRelayedPacket(Map<String, Object> data) {
 		if (host || battleUuid == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
 			return;
 		}
@@ -611,6 +650,10 @@ public final class LiveBattleController implements LiveBattleListener {
 			}
 		}
 		BattleVisuals.clear();
+		BattleCinematic.stop();
+		pendingEngineStart = null;
+		heldPackets.clear();
+		holdRelayedUntil = 0;
 		battleUuid = null;
 		cobblemonBattleId = null;
 		opponentUuid = null;
