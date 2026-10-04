@@ -44,8 +44,8 @@ class ShowdownExporterTest {
 		Map<String, Object> data = new HashMap<>();
 		data.put("nickname", "Bichou");
 		data.put("gender", "F");
-		data.put("heldItem", "choice_scarf");
-		data.put("teraType", "water");
+		data.put("held_item", "choice_scarf");
+		data.put("tera_type", "water");
 		data.put("friendship", 70.0); // Gson hands JSON numbers over as Double
 		data.put("evs", Map.of("hp", 0.0, "atk", 252.0, "def", 0.0, "spa", 4.0, "spd", 0.0, "spe", 252.0));
 		data.put("ivs", Map.of("hp", 31.0, "atk", 31.0, "def", 31.0, "spa", 0.0, "spd", 31.0, "spe", 31.0));
@@ -107,8 +107,8 @@ class ShowdownExporterTest {
 		Map<String, Object> data = new HashMap<>();
 		data.put("nickname", "Bichou");
 		data.put("gender", "M");
-		data.put("heldItem", "choice_scarf");
-		data.put("teraType", "water");
+		data.put("held_item", "choice_scarf");
+		data.put("tera_type", "water");
 		data.put("friendship", 70);
 		data.put("evs", Map.of("hp", 4, "atk", 252, "def", 0, "spa", 0, "spd", 0, "spe", 252));
 		data.put("ivs", Map.of("hp", 31, "atk", 30, "def", 31, "spa", 30, "spd", 31, "spe", 30));
@@ -126,8 +126,8 @@ class ShowdownExporterTest {
 		assertEquals(true, back.isShiny());
 		assertEquals("Bichou", back.data().get("nickname"));
 		assertEquals("M", back.data().get("gender"));
-		assertEquals("choice_scarf", back.data().get("heldItem"));
-		assertEquals("water", back.data().get("teraType"));
+		assertEquals("choice_scarf", back.data().get("held_item"));
+		assertEquals("water", back.data().get("tera_type"));
 		assertEquals(70, back.data().get("friendship"));
 		assertEquals(data.get("evs"), back.data().get("evs"));
 		assertEquals(data.get("ivs"), back.data().get("ivs"));

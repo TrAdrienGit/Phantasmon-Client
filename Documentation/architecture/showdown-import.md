@@ -69,7 +69,7 @@ Pokémon Showdown pour les espèces et attaques) :
 | `cobblemon_data_version` | `"1.8.1"` (constante `PokemonCommandHandler.COBBLEMON_DATA_VERSION`) |
 | `data.ivs`, `data.evs` | Les 6 stats, complétées par les valeurs par défaut |
 | `data.moves` | Identifiants d'attaque |
-| `data.nickname`, `data.gender` (`M`/`F`), `data.heldItem`, `data.teraType`, `data.friendship` | Seulement si présents dans le texte |
+| `data.nickname`, `data.gender` (`M`/`F`), `data.held_item`, `data.tera_type`, `data.friendship` | Seulement si présents dans le texte |
 
 Les identifiants ne sont **pas** vérifiés contre les données de Cobblemon à l'import : une espèce inconnue sera
 créée, puis signalée à l'affichage (modèle absent, `WARN` dans le log). Le backend ne vérifie que les IV/EV.
@@ -94,6 +94,11 @@ Côté client uniquement, comme l'import (D-09) : le client a déjà les Pokémo
   données de l'espèce (`Samurott-Hisui`). Sans traduction : identifiant mis en majuscules (`flash_fire` →
   `Flash Fire`), que Showdown relit quand même (il normalise tous les noms).
 - **Capacité cachée** : écrite `Hidden Power [Fire]` (type en anglais, calculé depuis les IV).
+- **Une seule Puissance Cachée dans Cobblemon** : les 16 variantes de Showdown (`Hidden Power Fire`…) ont toutes
+  l'identifiant `hiddenpower` (`realMove`), si bien que l'entrée `hiddenpower` du registre de Cobblemon garde le type
+  de la dernière, **Eau**. En combat le type vient bien des IV (Showdown) ; à l'affichage (fiche du PC, éditeur), le
+  badge est calculé depuis les IV (`PhantasmonCanvasScreen.moveType`). Les identifiants `hiddenpower<type>` n'existent
+  pas dans Cobblemon : l'import les ramène à `hiddenpower`, et la migration V10 a corrigé les anciens Pokémon.
   À l'import, `Hidden Power [Type]` redevient l'identifiant Cobblemon unique `hiddenpower` (le type vient des IV).
 - **Aller-retour garanti par test** (`exportReimportsToTheSamePokemon`) : espèce, forme, niveau, nature, talent,
   chromatique, surnom, sexe, objet, Tera, bonheur, EV, IV, capacités.

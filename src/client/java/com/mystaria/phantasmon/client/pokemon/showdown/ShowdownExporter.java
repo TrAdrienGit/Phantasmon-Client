@@ -52,7 +52,7 @@ public final class ShowdownExporter {
 		if ("M".equals(gender) || "F".equals(gender)) {
 			header.append(" (").append(gender).append(')');
 		}
-		String item = string(data.get("heldItem"));
+		String item = string(data.get("held_item"));
 		if (item != null) {
 			header.append(" @ ").append(names.item(item));
 		}
@@ -71,7 +71,7 @@ public final class ShowdownExporter {
 		if (friendship != null && friendship != 255) {
 			lines.add("Happiness: " + friendship);
 		}
-		String tera = string(data.get("teraType"));
+		String tera = string(data.get("tera_type"));
 		if (tera != null) {
 			lines.add("Tera Type: " + names.type(tera));
 		}

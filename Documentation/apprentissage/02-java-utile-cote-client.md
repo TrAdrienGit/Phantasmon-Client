@@ -132,7 +132,8 @@ private static final Gson GSON = new GsonBuilder()
 ```
 
 Les DTO sont des records Java en camelCase ; Gson s'occupe du snake_case. Comme Jackson, il ne renomme pas les clés
-d'une `Map` (le champ `data` des Pokémon garde `heldItem`, `teraType`).
+d'une `Map` : les clés du champ `data` des Pokémon sont donc écrites directement en snake_case (`held_item`,
+`tera_type`).
 
 ## À retenir
 

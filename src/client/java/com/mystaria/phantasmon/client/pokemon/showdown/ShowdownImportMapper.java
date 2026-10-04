@@ -44,10 +44,10 @@ public final class ShowdownImportMapper {
 			data.put("gender", parsed.gender());
 		}
 		if (parsed.item() != null) {
-			data.put("heldItem", CobblemonIdentifiers.slugUnderscore(parsed.item()));
+			data.put("held_item", CobblemonIdentifiers.slugUnderscore(parsed.item()));
 		}
 		if (parsed.teraType() != null) {
-			data.put("teraType", CobblemonIdentifiers.slugUnderscore(parsed.teraType()));
+			data.put("tera_type", CobblemonIdentifiers.slugUnderscore(parsed.teraType()));
 		}
 		if (parsed.happiness() != null) {
 			data.put("friendship", parsed.happiness());

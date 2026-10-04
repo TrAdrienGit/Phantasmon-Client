@@ -206,10 +206,10 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		shiny = original.isShiny();
 		gender = normalizeGender(data.get("gender"));
 		natureIndex = Math.max(0, indexOf(NATURES, original.nature()));
-		Object teraRaw = data.get("teraType");
+		Object teraRaw = data.get("tera_type");
 		teraType = teraRaw != null ? Look.safeType(teraRaw.toString()) : null;
 		abilityId = original.ability();
-		heldItemId = stringOf(data.get("heldItem"));
+		heldItemId = stringOf(data.get("held_item"));
 		List<Object> initialMoves = asList(data.get("moves"));
 		for (int i = 0; i < 4; i++) {
 			moveIds[i] = i < initialMoves.size() ? String.valueOf(initialMoves.get(i)) : "";
@@ -250,6 +250,15 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 
 	private static int fieldMin(int field) {
 		return field == F_LEVEL ? 1 : 0;
+	}
+
+	/** The IVs as currently typed in the form, so Hidden Power's badge follows them live. */
+	private Map<String, Object> liveIvs() {
+		Map<String, Object> ivs = new HashMap<>();
+		for (int i = 0; i < 6; i++) {
+			ivs.put(STAT_KEYS[i], clamp(fieldInt(F_IV + i, 31), 0, 31));
+		}
+		return ivs;
 	}
 
 	private int fieldInt(int field, int fallback) {
@@ -302,14 +311,14 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		String item = heldItemId == null ? "" : heldItemId.trim().toLowerCase(Locale.ROOT);
 		if (item.isEmpty()) {
-			data.remove("heldItem");
+			data.remove("held_item");
 		} else {
-			data.put("heldItem", item);
+			data.put("held_item", item);
 		}
 		if (teraType != null) {
-			data.put("teraType", teraType.getName().toLowerCase(Locale.ROOT));
+			data.put("tera_type", teraType.getName().toLowerCase(Locale.ROOT));
 		} else {
-			data.remove("teraType");
+			data.remove("tera_type");
 		}
 		if (genderEditable()) {
 			if (gender.isEmpty()) {
@@ -400,7 +409,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		var request = ShowdownImportMapper.toCreateRequest(parsed, original.cobblemonDataVersion());
 		fields[F_NICKNAME] = stringOf(request.data().get("nickname"));
-		heldItemId = stringOf(request.data().get("heldItem"));
+		heldItemId = stringOf(request.data().get("held_item"));
 		abilityId = request.ability();
 		if (!abilityOptions.contains(abilityId)) {
 			abilityOptions.add(abilityId);
@@ -411,7 +420,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			gender = normalizeGender(request.data().get("gender"));
 		}
 		natureIndex = Math.max(0, indexOf(NATURES, request.nature()));
-		Object tera = request.data().get("teraType");
+		Object tera = request.data().get("tera_type");
 		teraType = tera != null ? Look.safeType(tera.toString()) : null;
 		Map<String, Object> ivs = asMap(request.data().get("ivs"));
 		Map<String, Object> evs = asMap(request.data().get("evs"));
@@ -1105,14 +1114,15 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 
 			String moveId = moveIds[i] == null ? "" : moveIds[i];
 			MoveTemplate template = moveId.isEmpty() ? null : Moves.getByName(moveId);
-			boolean hasType = template != null && template.getElementalType() != null;
+			ElementalType moveType = moveType(moveId, template, liveIvs());
+			boolean hasType = moveType != null;
 			int badgeHeight = typeBadgeHeight(VALUE_SCALE);
 			float nameHeight = 7 * snapTextScale(VALUE_SCALE);
 			float blockTop = rowY + (MOVE_ROW_H - nameHeight - (hasType ? 8 + badgeHeight : 0)) / 2f;
 			drawText(g, fitText(moveDisplayName(moveId), rowW - 60, VALUE_SCALE, false, 0f), rowX + 12, blockTop,
 					VALUE_SCALE, moveId.isEmpty() ? DIM : TEXT2, false, 0f);
 			if (hasType) {
-				drawTypeBadge(g, template.getElementalType(), rowX + 12, blockTop + nameHeight + 8, VALUE_SCALE);
+				drawTypeBadge(g, moveType, rowX + 12, blockTop + nameHeight + 8, VALUE_SCALE);
 			}
 		}
 	}
@@ -1238,10 +1248,11 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			}
 			case MOVE -> {
 				MoveTemplate template = value.isEmpty() ? null : Moves.getByName(value);
+				ElementalType optionType = moveType(value, template, liveIvs());
 				float reserved = 0;
-				if (template != null && template.getElementalType() != null) {
-					int badgeWidth = typeBadgeWidth(template.getElementalType(), 1f);
-					drawTypeBadge(g, template.getElementalType(), x + w - badgeWidth, rowY + (DROPDOWN_ROW_H - typeBadgeHeight(1f)) / 2f, 1f);
+				if (optionType != null) {
+					int badgeWidth = typeBadgeWidth(optionType, 1f);
+					drawTypeBadge(g, optionType, x + w - badgeWidth, rowY + (DROPDOWN_ROW_H - typeBadgeHeight(1f)) / 2f, 1f);
 					reserved = badgeWidth + 10;
 				}
 				drawText(g, fitText(moveDisplayName(value), w - reserved, VALUE_SCALE, false, 0f), x, textY, VALUE_SCALE,

@@ -85,11 +85,14 @@ public final class GhostBattlePokemonFactory {
 			}
 		}
 
-		Object item = data.get("heldItem");
+		Object item = data.get("held_item");
 		if (item != null) {
 			ItemStack stack = PokemonGuiRendering.heldItemStack(item.toString());
 			if (!stack.isEmpty()) {
-				pokemon.swapHeldItem(stack, false, false);
+				// Set directly, not via swapHeldItem: that posts HeldItemEvent, whose MoLang context calls server()!! and
+				// crashed the battle start when the host is a pure client (LAN guest, Adrien 2026-10-04). A throwaway
+				// battle copy needs no event. setHeldItem$common is the JVM name of Kotlin's internal setter.
+				pokemon.setHeldItem$common(stack);
 			}
 		}
 		Object gender = data.get("gender");
@@ -98,7 +101,7 @@ public final class GhostBattlePokemonFactory {
 		} else if ("F".equalsIgnoreCase(String.valueOf(gender))) {
 			pokemon.setGender(Gender.FEMALE);
 		}
-		Object tera = data.get("teraType");
+		Object tera = data.get("tera_type");
 		if (tera != null) {
 			TeraType teraType = TeraTypes.get(tera.toString().toLowerCase(Locale.ROOT));
 			if (teraType != null) {

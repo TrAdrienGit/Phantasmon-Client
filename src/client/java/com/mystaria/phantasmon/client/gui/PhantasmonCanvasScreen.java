@@ -465,7 +465,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			valueX += 26;
 			itemText = item.getHoverName().getString();
 		} else {
-			Object raw = data.get("heldItem");
+			Object raw = data.get("held_item");
 			itemText = raw != null && !raw.toString().isBlank() ? raw.toString()
 					: Component.translatable("phantasmon.trade.screen.no_item").getString();
 		}
@@ -521,14 +521,15 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			// had to stay tiny to leave room for the name (Adrien 2026-10-02).
 			String moveId = moves.get(i).toString();
 			MoveTemplate template = Moves.INSTANCE.getByName(moveId);
-			boolean hasType = template != null && template.getElementalType() != null;
+			ElementalType type = moveType(moveId, template, asMap(data.get("ivs")));
+			boolean hasType = type != null;
 			int badgeHeight = typeBadgeHeight(VALUE_SCALE);
 			float nameHeight = 7 * snapTextScale(VALUE_SCALE);
 			float blockTop = rowY + (rowH - nameHeight - (hasType ? 6 + badgeHeight : 0)) / 2f;
 			String move = fitText(template != null ? template.getDisplayName().getString() : moveId, 265, VALUE_SCALE, false, 0f);
 			drawText(g, move, 247 + dx, blockTop, VALUE_SCALE, TEXT2, false, 0f);
 			if (hasType) {
-				drawTypeBadge(g, template.getElementalType(), 247 + dx, blockTop + nameHeight + 6, VALUE_SCALE);
+				drawTypeBadge(g, type, 247 + dx, blockTop + nameHeight + 6, VALUE_SCALE);
 			}
 		}
 
@@ -916,8 +917,23 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		return id.isEmpty() ? id : id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1);
 	}
 
+	/**
+	 * A move's type as the player sees it. Hidden Power's comes from the IVs: Cobblemon has one "hiddenpower" move,
+	 * and its registry entry carries the type of Showdown's last per-type variant (Water), since all 17 share that
+	 * id. Battles are unaffected (Showdown computes the type from the IVs); only the displayed badge was wrong.
+	 */
+	protected static ElementalType moveType(String moveId, MoveTemplate template, Map<String, Object> ivs) {
+		if ("hiddenpower".equals(moveId)) {
+			ElementalType fromIvs = Look.safeType(HiddenPowerCalculator.type(ivs));
+			if (fromIvs != null) {
+				return fromIvs;
+			}
+		}
+		return template == null ? null : template.getElementalType();
+	}
+
 	protected static ItemStack heldItem(PokemonDto pokemon) {
-		Object raw = pokemon.data() == null ? null : pokemon.data().get("heldItem");
+		Object raw = pokemon.data() == null ? null : pokemon.data().get("held_item");
 		return raw == null ? ItemStack.EMPTY : PokemonGuiRendering.heldItemStack(raw.toString());
 	}
 
@@ -946,7 +962,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 				types.add(secondary);
 			}
 			Map<String, Object> data = pokemon.data() != null ? pokemon.data() : Map.of();
-			Object teraRaw = data.get("teraType");
+			Object teraRaw = data.get("tera_type");
 			// Every Pokémon has an inherent Tera Type (its own primary type) until changed.
 			ElementalType tera = teraRaw != null ? safeType(teraRaw.toString()) : primary;
 			Float maleRatio = form != null ? Float.valueOf(form.getMaleRatio()) : species != null ? Float.valueOf(species.getMaleRatio()) : null;

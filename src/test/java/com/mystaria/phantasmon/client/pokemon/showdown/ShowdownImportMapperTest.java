@@ -48,8 +48,8 @@ class ShowdownImportMapperTest {
 		assertEquals(31, ivs.get("hp"));
 		assertEquals(31, ivs.get("spe"));
 
-		assertEquals("assault_vest", request.data().get("heldItem"));
-		assertEquals("grass", request.data().get("teraType"));
+		assertEquals("assault_vest", request.data().get("held_item"));
+		assertEquals("grass", request.data().get("tera_type"));
 		assertEquals("Bichou", request.data().get("nickname"));
 	}
 

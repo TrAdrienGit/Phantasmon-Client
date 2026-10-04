@@ -91,6 +91,8 @@
 | §4.59 | 2026-10-04 | Corrections de sécurité SEC-1 à SEC-5, SEC-7 à SEC-9 |
 | §4.60 | 2026-10-04 | Analyse des logs : coupure en combat, reconnexion, présence jamais rejointe |
 | §4.61 | 2026-10-04 | Dette technique : DEBT-2, DEBT-4, DEBT-5 |
+| §4.62 | 2026-10-04 | DEBT-1 : clés de `data` en snake_case (migration V9) |
+| §4.63 | 2026-10-04 | Puissance Cachée (type Eau partout) et combat hébergé par un client pur |
 
 ---
 
@@ -1820,3 +1822,39 @@ Choix d'Adrien parmi les pistes proposées. Tests écrits d'abord (rouges, puis 
   (CAD Partie 2 §6.1).
 - DEBT-1 (renommage des clés camelCase de `data`) reste ouvert : il demande une migration des données.
 - Non testé en jeu par Claude.
+
+### 4.62 Clés de `data` en snake_case — DEBT-1 (2026-10-04)
+
+- `heldItem` → `held_item`, `teraType` → `tera_type` (`friendship` est déjà en un mot). Les stratégies de nommage
+  (Jackson, Gson) ne renomment pas les clés d'une `Map`, d'où l'écart historique.
+- **Backend** : migration `V9__pokemon_data_snake_case_keys.sql`, rejouable (chaque requête ne touche que les lignes qui
+  ont encore l'ancienne clé) ; elle traite aussi `idempotency_keys.response_snapshot` (réponses de `POST /pokemon`
+  rejouées). Le code backend n'utilisait pas ces clés (`data` est opaque).
+- **Test** : `SnakeCaseDataKeysMigrationTest` rejoue le script sur des lignes insérées à l'ancien format.
+- **Validation sur les vraies données, sans toucher la base** : sauvegarde, restauration dans un conteneur jetable,
+  V9 jouée : 25 `heldItem` et 10 `teraType` renommés, empreintes du reste des données et des valeurs identiques avant /
+  après, seconde exécution sans effet.
+- **Client** : 7 fichiers (lecture, écriture, import / export Showdown, combat, PC, éditeur) et leurs tests. Le
+  littéral `"heldItem"` de `BattleThread` est un nom de registre Showdown, sans rapport : inchangé.
+- **Déploiement** : backend (Flyway applique V9 au démarrage) et clients **ensemble** ; un ancien client ne verrait
+  plus objets tenus ni Téracristaux. 151 tests backend, 54 client verts. Non testé en jeu par Claude.
+
+### 4.63 Puissance Cachée et combat hébergé par un client pur (2026-10-04)
+
+Retour d'Adrien : « chaque type de Puissance Cachée est une capacité à part dans Cobblemon, seule Eau semble
+implémentée » (liste de l'éditeur, et attaque inutilisable en combat).
+
+- **Cause (Cobblemon / Showdown)** : les 16 variantes `hiddenpower<type>` des données Showdown ont `realMove: "Hidden
+  Power"`, donc toutes l'identifiant `hiddenpower`. Cobblemon indexe son registre par identifiant : les 17 entrées
+  s'écrasent et `hiddenpower` garde le type de la dernière, **Eau**. Il n'existe donc **qu'une** Puissance Cachée
+  dans Cobblemon, et aucune `hiddenpowerice`. En combat, rien de faux : Showdown calcule le type depuis les IV, et
+  l'interface de combat de Cobblemon aussi (`getEffectiveElementalType`).
+- **Chez nous** : la fiche du PC et l'éditeur lisaient le type du registre (Eau) → `moveType(...)` calcule celui de
+  Puissance Cachée depuis les IV (en direct dans l'éditeur). Démétéros importé avant la correction de l'import gardait
+  `hiddenpowerice` : « non reconnu » (DEBT-5), donc exclu des combats → migration **V10**, rejouable, testée
+  (`HiddenPowerMigrationTest`) ; un seul Pokémon concerné dans les données réelles. Son type devient celui de ses IV.
+- **Bug trouvé dans les mêmes logs** : quand TheMashen (client pur, invité LAN) héberge le combat — un sur deux avec
+  l'alternance —, « Hosted Ghost battle failed to start » : `Pokemon.swapHeldItem` publie `HeldItemEvent`, dont le
+  contexte MoLang fait `server()!!`. `GhostBattlePokemonFactory` pose désormais l'objet par le setter interne
+  (`setHeldItem$common`), sans événement.
+- 152 tests backend verts ; client compilé et déployé. **Validé en jeu par Adrien (2026-10-04)**, ainsi que DEBT-1, 2, 4 et 5.
