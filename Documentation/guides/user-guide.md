@@ -77,7 +77,11 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 ## 6. Combattre (touche B)
 
 1. Visez un joueur et appuyez sur **B** (ou roue **R** → « Combat Ghost », ou `/phantasmon battle invite <pseudo>`).
-2. L'autre joueur clique **[Accepter]**. Chacun combat avec son équipe actuelle.
+2. L'autre joueur clique **[Accepter]** : l'écran de préparation s'ouvre chez les deux. Vous y voyez votre équipe et
+   seulement les modèles et noms des Pokémon adverses. Choisissez vos Ghost ou votre équipe Cobblemon (bouton
+   ⇄), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
+   commence quand les deux joueurs sont prêts. **Timer** (en bas) : 150 s, ensuite le premier Pokémon est choisi
+   pour qui n'est pas prêt, et le chrono de combat s'active.
 3. Le combat utilise l'interface de Cobblemon, avec ses animations. Vos Pokémon apparaissent devant vous.
 4. Facultatif : **[Activer le chrono]** dans le chat (ou `/phantasmon battle timer`) impose 90 s par choix aux deux
    joueurs, jusqu'à la fin du combat. Passé ce délai, une action est jouée automatiquement.

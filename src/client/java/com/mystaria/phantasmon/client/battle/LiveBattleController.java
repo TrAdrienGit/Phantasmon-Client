@@ -32,11 +32,17 @@ import net.minecraft.world.entity.player.Player;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
+import com.mystaria.phantasmon.client.gui.PhantasmonBattleLobbyScreen;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 
 /**
- * Client side of a live Ghost battle (Phase 9) — invitation, role, relay, timer, end.
+ * Client side of a live Ghost battle (Phase 9) — invitation, lobby, role, relay, timer, end.
+ *
+ * <p><b>Lobby</b> (team preview, Showdown style): an accepted invitation opens {@link PhantasmonBattleLobbyScreen}
+ * for both players. Each one sees their own team and only the opponent's models and names, switches between
+ * their Ghosts and a copy of their Cobblemon party, picks a lead (never shown to the opponent) and gets ready;
+ * the battle starts when both are. The lobby timer (150 s) readies whoever is not, with their first Pokémon.
  *
  * <p><b>Host</b> (picked by the backend, alternating between the two players): runs Cobblemon's battle engine
  * locally ({@link GhostBattles#startHostedBattle}); its own actor feeds this client's Cobblemon UI, the guest's
@@ -60,6 +66,9 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	private UUID pendingInviteUuid;
 	private String pendingInviteFrom;
+
+	private BattleLobbyState lobby;
+	private boolean lobbyScreenRequested;
 
 	private UUID battleUuid;
 	private boolean host;
@@ -118,7 +127,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		if (!requireReady()) {
 			return;
 		}
-		if (battleUuid != null) {
+		if (battleUuid != null || lobby != null) {
 			chat(Component.translatable("phantasmon.battle.error.already_battling").withStyle(ChatFormatting.RED));
 			return;
 		}
@@ -182,8 +191,71 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
-	/** {@code /phantasmon battle timer}: turns the 90 s turn timer on for both players, for the rest of the battle. */
+	// ---- Lobby actions (PhantasmonBattleLobbyScreen) ----
+
+	public BattleLobbyState lobby() {
+		return lobby;
+	}
+
+	/** Click on one of our rail slots: that Pokémon leads. Only we are told (the opponent must not know). */
+	public void lobbySelectLead(int index) {
+		if (lobby != null && !lobby.ownReady() && lobby.ownSlot(index) != null && index != lobby.ownLead()) {
+			send("BattleLobbySetLead", Map.of("lobby_uuid", lobby.lobbyUuid(), "index", index));
+		}
+	}
+
+	public void lobbyToggleReady() {
+		if (lobby != null) {
+			send("BattleLobbySetReady", Map.of("lobby_uuid", lobby.lobbyUuid(), "ready", !lobby.ownReady()));
+		}
+	}
+
+	/** Ghosts ⇄ copy of the Cobblemon party. Unreadies the opponent (what they saw changed). */
+	public void lobbySwitchTeam() {
+		if (lobby == null || lobby.ownReady()) {
+			return;
+		}
+		Map<String, Object> message = withTeam(lobby.ownIsCobblemon() ? TeamChoice.GHOST : TeamChoice.COBBLEMON);
+		if (message == null) {
+			return;
+		}
+		message.put("lobby_uuid", lobby.lobbyUuid());
+		if (!message.containsKey("team")) {
+			message.put("team", "GHOST");
+		}
+		send("BattleLobbySetTeam", message);
+	}
+
+	public void lobbyEnableTimer() {
+		if (lobby != null && !lobby.timerOn()) {
+			send("BattleLobbyTimerEnable", Map.of("lobby_uuid", lobby.lobbyUuid()));
+		}
+	}
+
+	/** QUITTER confirmed: cancels the lobby for both players. */
+	public void lobbyLeave() {
+		if (lobby != null) {
+			UUID lobbyUuid = lobby.lobbyUuid();
+			lobby = null;
+			send("BattleLobbyLeave", Map.of("lobby_uuid", lobbyUuid));
+		}
+	}
+
+	/** Lobby screen removed by anything else than the battle starting or the lobby ending: same as leaving. */
+	public void onLobbyScreenRemoved() {
+		lobbyLeave();
+	}
+
+	public String localPlayerName() {
+		return localName();
+	}
+
+	/** {@code /phantasmon battle timer}: in the lobby, its timer; in battle, the 90 s turn timer for both players. */
 	public void enableTimer() {
+		if (lobby != null) {
+			lobbyEnableTimer();
+			return;
+		}
 		if (battleUuid == null) {
 			chat(Component.translatable("phantasmon.battle.error.not_battling").withStyle(ChatFormatting.RED));
 			return;
@@ -197,6 +269,13 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	/** Called every client tick: countdown display and (host) timer enforcement. */
 	public void tick() {
+		if (lobbyScreenRequested) {
+			// Opened from the tick, outside of any command dispatch (same chat-close race as the trade screen).
+			lobbyScreenRequested = false;
+			if (lobby != null) {
+				Minecraft.getInstance().setScreen(new PhantasmonBattleLobbyScreen(this));
+			}
+		}
 		if (battleUuid == null || !timerEnabled) {
 			return;
 		}
@@ -232,6 +311,8 @@ public final class LiveBattleController implements LiveBattleListener {
 			case "BattleInviteSent" -> chat(Component.translatable("phantasmon.battle.invite.sent", string(data.get("to_name"))));
 			case "BattleInviteDeclined" -> chat(Component.translatable("phantasmon.battle.invite.declined", string(data.get("by_name")))
 					.withStyle(ChatFormatting.GOLD));
+			case "BattleLobbyUpdated" -> onLobbyUpdated(data);
+			case "BattleLobbyCancelled" -> onLobbyCancelled(data);
 			case "BattleSessionStarted" -> onSessionStarted(data);
 			case "BattlePacket" -> onRelayedPacket(data);
 			case "BattleChoice" -> onRelayedChoice(data);
@@ -246,6 +327,11 @@ public final class LiveBattleController implements LiveBattleListener {
 	@Override
 	public void onConnectionLost() {
 		pendingInviteUuid = null;
+		if (lobby != null) {
+			lobby = null;
+			closeLobbyScreen();
+			chat(Component.translatable("phantasmon.battle.lobby.connection_lost").withStyle(ChatFormatting.RED));
+		}
 		if (battleUuid != null) {
 			endLocally();
 			chat(Component.translatable("phantasmon.battle.connection_lost").withStyle(ChatFormatting.RED));
@@ -259,14 +345,54 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		pendingInviteUuid = inviteUuid;
 		pendingInviteFrom = string(data.get("from_name"));
-		boolean cobblemon = "COBBLEMON".equals(data.get("from_team"));
-		chat(Component.translatable(cobblemon ? "phantasmon.battle.invite.received_cobblemon" : "phantasmon.battle.invite.received", pendingInviteFrom)
+		// The team is picked in the lobby: a plain accept / decline here.
+		chat(Component.translatable("phantasmon.battle.invite.received", pendingInviteFrom)
 				.append(" ")
-				.append(chatButton("phantasmon.battle.invite.accept_ghost_button", "/phantasmon battle join", ChatFormatting.GREEN))
-				.append(" ")
-				.append(chatButton("phantasmon.battle.invite.accept_cobblemon_button", "/phantasmon battle join cobblemon", ChatFormatting.GOLD))
+				.append(chatButton("phantasmon.trade.live.invite.accept_button", "/phantasmon battle join", ChatFormatting.GREEN))
 				.append(" ")
 				.append(chatButton("phantasmon.trade.live.invite.decline_button", "/phantasmon battle decline", ChatFormatting.RED)));
+	}
+
+	private void onLobbyUpdated(Map<String, Object> data) {
+		UUID lobbyUuid = uuid(data.get("lobby_uuid"));
+		if (lobbyUuid == null) {
+			return;
+		}
+		if (lobby == null || !lobby.lobbyUuid().equals(lobbyUuid)) {
+			lobby = new BattleLobbyState(lobbyUuid);
+			pendingInviteUuid = null;
+			lobbyScreenRequested = true;
+		}
+		lobby.apply(data);
+	}
+
+	private void onLobbyCancelled(Map<String, Object> data) {
+		UUID lobbyUuid = uuid(data.get("lobby_uuid"));
+		boolean ours = lobby != null && lobby.lobbyUuid().equals(lobbyUuid);
+		lobby = null;
+		closeLobbyScreen();
+		String reason = string(data.get("reason"));
+		String byName = data.get("by_name") == null ? null : data.get("by_name").toString();
+		if ("LEFT".equals(reason)) {
+			if (ours && byName != null && !byName.equals(localName())) {
+				chat(Component.translatable("phantasmon.battle.lobby.partner_left", byName).withStyle(ChatFormatting.GOLD));
+			} else {
+				chat(Component.translatable("phantasmon.battle.lobby.you_left"));
+			}
+		} else if ("PARTNER_DISCONNECTED".equals(reason)) {
+			chat(Component.translatable("phantasmon.battle.lobby.partner_disconnected").withStyle(ChatFormatting.GOLD));
+		} else if ("BACKEND_LOST".equals(reason)) {
+			chat(Component.translatable("phantasmon.battle.lobby.backend_lost").withStyle(ChatFormatting.GOLD));
+		} else {
+			chat(Component.translatable("phantasmon.battle.error.empty_team").withStyle(ChatFormatting.RED));
+		}
+	}
+
+	private static void closeLobbyScreen() {
+		Minecraft client = Minecraft.getInstance();
+		if (client.screen instanceof PhantasmonBattleLobbyScreen) {
+			client.setScreen(null);
+		}
 	}
 
 	private void onSessionStarted(Map<String, Object> data) {
@@ -275,6 +401,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		opponentUuid = uuid(data.get("opponent_uuid"));
 		opponentName = string(data.get("opponent_name"));
 		pendingInviteUuid = null;
+		lobby = null;
+		closeLobbyScreen();
 		timerEnabled = false;
 		cobblemonBattleId = null;
 		enforcedDeadlines.clear();
@@ -460,6 +588,10 @@ public final class LiveBattleController implements LiveBattleListener {
 		// packets (or the guest's last choice) crossed the end of the battle — nothing for the player to read.
 		if ("ERROR_BATTLE_NOT_IN_BATTLE".equals(errorCode)) {
 			LOG.debug("Battle message arrived after the battle ended");
+			return;
+		}
+		if (lobby != null && Minecraft.getInstance().screen instanceof PhantasmonBattleLobbyScreen) {
+			lobby.setLastErrorCode(errorCode); // shown in the lobby's footer, like the trade screen
 			return;
 		}
 		chat(Component.translatable(BackendErrorMessages.translationKey(errorCode)).withStyle(ChatFormatting.RED));

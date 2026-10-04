@@ -1897,3 +1897,28 @@ serveur.
 - **Limite** : la copie vient du client (LIM-10).
 - Tests d'abord (3 nouveaux, rouges puis verts) : 157 tests backend verts ; client compilé et déployé. Non testé en jeu
   par Claude.
+
+### 4.66 Lobby de combat : aperçu d'équipe et lead caché (2026-10-04)
+
+Demande d'Adrien (décision D-23) : un écran de préparation façon « Team Preview » de Showdown entre l'invitation et
+le combat, dans la DA de l'écran d'échange. L'animation de lancement et la musique viendront plus tard.
+
+- **Backend** (`LiveBattleService`) : une invitation acceptée crée un `Lobby` en mémoire (un côté par joueur : choix
+  d'équipe, équipe résolue en ordre d'équipe, lead, prêt). Messages `BattleLobbySetTeam` / `SetLead` / `SetReady` /
+  `TimerEnable` / `Leave` → `BattleLobbyUpdated` (vue propre à chaque joueur : équipe adverse réduite à espèce,
+  forme, chromatique, sexe ; lead adverse jamais envoyé ; changer de lead ne prévient que l'auteur) et
+  `BattleLobbyCancelled`. Prêt = équipe et lead verrouillés (`ERROR_BATTLE_LOBBY_LOCKED`) ; changer d'équipe retire le
+  « prêt » adverse. Les deux prêts → `startBattle` : Ghost relus, lead mis en tête, `team_slot` renumérotés, puis le
+  démarrage habituel. Timer du lobby (`phantasmon.battle.lobby-timer`, 150 s, `@Scheduled` chaque seconde) : à
+  expiration, premier Pokémon pour qui n'est pas prêt, et le chrono de combat est activé d'office. Ghost rappelés dès
+  l'ouverture du lobby ; lobby = occupé pour les invitations et les sorties de Ghost ; déconnexion et arrêt du
+  backend annulent le lobby. Le refus « équipe vide » se fait maintenant au moment de se déclarer prêt.
+- **Client** : `BattleLobbyState`, `PhantasmonBattleLobbyScreen` (rails : son équipe cliquable / aperçu adverse via
+  `renderSlot(..., details = false)` ; cartes centrales avec le modèle 3D de chaque joueur, tête de skin s'il n'est
+  pas chargé ; bouton Ghost ⇄ Cobblemon ; PRÊT ; Timer ; QUITTER + confirmation). L'invitation redevient
+  [Accepter] / [Refuser]. Fermer l'écran autrement = quitter le lobby. `/phantasmon battle timer` agit sur le lobby
+  quand on y est.
+- Tests d'abord : 7 nouveaux tests de lobby + tests existants adaptés (passage par le lobby) — 164 tests backend
+  verts ; client compilé, 54 tests verts, déployé (instance locale + repli « Cobblemon 2 », serveur injoignable en
+  SSH). Non testé en jeu par Claude.
+

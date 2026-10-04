@@ -79,10 +79,10 @@ dans la barre de saisie.
 
 | Commande | Effet |
 |---|---|
-| `/phantasmon battle invite <joueur> [ghost\|cobblemon]` | Invite à un combat ; `cobblemon` = vous combattez avec une copie de votre équipe Cobblemon (Ghost par défaut) |
-| `/phantasmon battle join [ghost\|cobblemon]` | Accepte avec vos Ghost (bouton [Accepter avec mes Ghost]) ou votre équipe Cobblemon (bouton [Accepter avec mon équipe Cobblemon]) |
+| `/phantasmon battle invite <joueur> [ghost\|cobblemon]` | Invite à un combat ; `cobblemon` présélectionne une copie de votre équipe Cobblemon dans le lobby (Ghost par défaut) |
+| `/phantasmon battle join [ghost\|cobblemon]` | Accepte (bouton [Accepter]) et ouvre le lobby ; `cobblemon` présélectionne votre équipe Cobblemon (modifiable dans le lobby) |
 | `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
-| `/phantasmon battle timer` | Active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
+| `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
 
 ### Test uniquement
 

@@ -301,6 +301,12 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	 * the cursor instead).
 	 */
 	protected void renderSlot(GuiGraphics g, int x, int y, int w, int h, PokemonDto pokemon, SlotLook look, SlotLayout layout) {
+		renderSlot(g, x, y, w, h, pokemon, look, layout, true);
+	}
+
+	/** {@code details} false = team preview (battle lobby): model and name only — no gender icon, level or held item. */
+	protected void renderSlot(GuiGraphics g, int x, int y, int w, int h, PokemonDto pokemon, SlotLook look, SlotLayout layout,
+			boolean details) {
 		switch (look) {
 			case SELECTED -> {
 				g.fill(x, y, x + w, y + h, SLOT_SELECTED_BG);
@@ -326,9 +332,11 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		}
 		Look info = Look.of(pokemon);
 
-		drawGender(g, info.gender(), x + 6, y + 6, 1f);
-		String level = Component.translatable("phantasmon.trade.screen.level_short", pokemon.level()).getString();
-		drawText(g, level, x + w - 6 - textWidth(level, 1f, false, 0f), y + 6, 1f, SLOT_TOP, false, 0f);
+		if (details) {
+			drawGender(g, info.gender(), x + 6, y + 6, 1f);
+			String level = Component.translatable("phantasmon.trade.screen.level_short", pokemon.level()).getString();
+			drawText(g, level, x + w - 6 - textWidth(level, 1f, false, 0f), y + 6, 1f, SLOT_TOP, false, 0f);
+		}
 
 		int modelTop = y + layout.modelTop();
 		g.flush();
@@ -346,7 +354,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		}
 		drawText(g, name, nameStart + starWidth, y + layout.nameY(), 1f, WHITE, true, 0f);
 
-		ItemStack item = heldItem(pokemon);
+		ItemStack item = details ? heldItem(pokemon) : ItemStack.EMPTY;
 		if (!item.isEmpty()) {
 			PokemonGuiRendering.renderItemIcon(g, item, x + layout.itemX(), y + layout.itemY(), layout.itemSize());
 		}
