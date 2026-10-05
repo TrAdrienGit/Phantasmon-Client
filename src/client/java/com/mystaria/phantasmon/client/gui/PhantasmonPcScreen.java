@@ -41,6 +41,7 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  * ÉDITER / SUPPRIMER for the selection.
  *
  * <p>Behavior unchanged from the previous PC, server-side semantics included:
+ * double click moves a Pokémon between team and PC (first free slot, TODO-19);
  * drag &amp; drop between any two slots (team or PC) is a move to an empty
  * slot or a swap with the occupant, resolved by the backend from the
  * destination only ({@link PokemonUpdateRequestDto}); the whole Pokémon list
@@ -118,6 +119,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private double pressY;
 	private double cursorX = -1;
 	private double cursorY = -1;
+
+	/** Double click (TODO-19): the last click's Pokémon and time. */
+	private UUID lastClickUuid;
+	private long lastClickTime;
+	private static final long DOUBLE_CLICK_MS = 350;
 
 	private boolean loading;
 	private String statusMessage;
@@ -209,9 +215,45 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	/** Same backend move/swap as before: only the destination is sent, the backend resolves any occupant. */
 	private void handleDrop(PokemonDto moving, SlotRef to) {
-		PokemonUpdateRequestDto request = to.kind() == SlotRef.Kind.TEAM
+		move(moving, to.kind() == SlotRef.Kind.TEAM
 				? PokemonUpdateRequestDto.movingToTeamSlot(to.index() + 1)
-				: PokemonUpdateRequestDto.movingToPcSlot(currentBox, to.index() + 1);
+				: PokemonUpdateRequestDto.movingToPcSlot(currentBox, to.index() + 1));
+	}
+
+	/**
+	 * Double click (TODO-19): a boxed Pokémon joins the team in its first free slot; a team member goes to the
+	 * first free PC slot (box 1 slot 1 onward). Full team / full PC: said in the footer, nothing moves.
+	 */
+	private void quickMove(PokemonDto moving, SlotRef from) {
+		if (from.kind() == SlotRef.Kind.PC) {
+			for (int i = 0; i < TEAM_SIZE; i++) {
+				if (teamSlots[i] == null) {
+					move(moving, PokemonUpdateRequestDto.movingToTeamSlot(i + 1));
+					return;
+				}
+			}
+			setStatus(Component.translatable("phantasmon.pc.screen.team_full").getString(), true);
+			return;
+		}
+		boolean[][] taken = new boolean[BOX_COUNT + 1][SLOTS_PER_BOX + 1];
+		for (PokemonDto pokemon : allPokemon) {
+			if (pokemon.teamSlot() == null && pokemon.boxId() != null && pokemon.boxSlot() != null
+					&& pokemon.boxId() >= 1 && pokemon.boxId() <= BOX_COUNT && pokemon.boxSlot() >= 1 && pokemon.boxSlot() <= SLOTS_PER_BOX) {
+				taken[pokemon.boxId()][pokemon.boxSlot()] = true;
+			}
+		}
+		for (int box = 1; box <= BOX_COUNT; box++) {
+			for (int slot = 1; slot <= SLOTS_PER_BOX; slot++) {
+				if (!taken[box][slot]) {
+					move(moving, PokemonUpdateRequestDto.movingToPcSlot(box, slot));
+					return;
+				}
+			}
+		}
+		setStatus(Component.translatable("phantasmon.pc.screen.pc_full").getString(), true);
+	}
+
+	private void move(PokemonDto moving, PokemonUpdateRequestDto request) {
 		loading = true;
 		pokemonClient.update(session.accessToken(), moving.uuid(), request)
 				.thenAccept(updated -> Minecraft.getInstance().execute(() -> {
@@ -395,6 +437,19 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		SlotRef ref = slotAt(x, y);
 		if (ref != null) {
 			PokemonDto pokemon = pokemonAt(ref);
+			long now = System.currentTimeMillis();
+			if (pokemon != null && pokemon.uuid().equals(lastClickUuid) && now - lastClickTime <= DOUBLE_CLICK_MS) {
+				lastClickUuid = null;
+				dragged = null;
+				dragSource = null;
+				dragging = false;
+				if (!loading) {
+					quickMove(pokemon, ref);
+				}
+				return true;
+			}
+			lastClickUuid = pokemon == null ? null : pokemon.uuid();
+			lastClickTime = now;
 			selectedUuid = pokemon == null ? null : pokemon.uuid();
 			Component unrecognized = pokemon == null ? null : com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(pokemon);
 			if (unrecognized != null) {

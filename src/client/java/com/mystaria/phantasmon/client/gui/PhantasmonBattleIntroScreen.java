@@ -313,8 +313,8 @@ public final class PhantasmonBattleIntroScreen extends Screen {
 		}
 		PlayerInfo info = mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(uuid);
 		GameProfile profile = info != null ? info.getProfile() : new GameProfile(uuid, BattleCinematic.opponentName());
-		trainer = new RemotePlayer(mc.level, profile);
 		Player real = mc.level.getPlayerByUUID(uuid);
+		trainer = new IntroTrainer(mc.level, profile, real);
 		if (real != null) {
 			for (EquipmentSlot slot : EquipmentSlot.values()) {
 				trainer.setItemSlot(slot, real.getItemBySlot(slot).copy());
@@ -323,6 +323,19 @@ public final class PhantasmonBattleIntroScreen extends Screen {
 		ItemStack ball = new ItemStack(BuiltInRegistries.ITEM.get(ResourceLocation.fromNamespaceAndPath("cobblemon", "poke_ball")));
 		trainer.setItemSlot(EquipmentSlot.MAINHAND, ball);
 		return trainer;
+	}
+
+	/**
+	 * The stand-in's shown skin parts (outer layer: hat, jacket, sleeves, trousers; cape) are synced entity data,
+	 * all off on a fresh entity — they come from the real player when loaded, else all on (Adrien 2026-10-05: the
+	 * intro showed neither the outer layer nor the cape). A subclass, for the protected accessor.
+	 */
+	private static final class IntroTrainer extends RemotePlayer {
+		IntroTrainer(net.minecraft.client.multiplayer.ClientLevel level, GameProfile profile, Player real) {
+			super(level, profile);
+			byte parts = real != null ? real.getEntityData().get(DATA_PLAYER_MODE_CUSTOMISATION) : (byte) 0x7F;
+			getEntityData().set(DATA_PLAYER_MODE_CUSTOMISATION, parts);
+		}
 	}
 
 	private static String sequenceText(FormattedCharSequence sequence) {

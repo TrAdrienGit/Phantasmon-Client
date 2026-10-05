@@ -1965,3 +1965,36 @@ Retour d'Adrien : le premier overlay était laid ; il faut le design de Cobblemo
 - Ghost sans PV hors combat : barre toujours pleine, en cyan. Petit libellé « ÉQUIPE GHOST » au-dessus.
 - Client compilé et déployé. Non testé en jeu par Claude.
 
+### 4.70 PC : double-clic équipe ⇄ PC — TODO-19 (2026-10-05)
+
+- Double-clic (350 ms, même Pokémon) dans `PhantasmonPcScreen` : un Pokémon d'une boîte va dans le premier emplacement
+  libre de l'équipe ; un membre de l'équipe va dans le premier emplacement libre du PC (boîte 1 → 16, emplacement 1 →
+  fin). Même requête que le glisser-déposer (`movingToTeamSlot` / `movingToPcSlot`), liste rechargée ensuite. Équipe
+  pleine ou PC plein : message dans le pied de page.
+- TODO-18 clos (validé en jeu par Adrien) ; TODO-23 ajouté (choisir le Ghost à sortir avec les touches d'équipe de
+  Cobblemon). Client compilé et déployé. Non testé en jeu par Claude.
+
+### 4.71 Choisir le Ghost à sortir avec les touches de Cobblemon — TODO-23 (2026-10-05)
+
+- `PartyShiftBindingMixin` (haut / bas) et `PartySendBindingMixin` (R, au relâchement comme Cobblemon) : actifs
+  seulement quand l'overlay Ghost est affiché, sans écran ouvert ni combat. Haut / bas déplacent la sélection
+  (emplacements vides sautés, bouclage) ; R sort le Ghost sélectionné (rappel de celui qui est dehors d'abord) ou le
+  rappelle. En visant une vraie entité à moins de 10 blocs (joueur, vrai Pokémon ; les Ghost ne comptent pas) ou en
+  monture, R est laissé à Cobblemon.
+- Overlay : la case mise en avant suit maintenant la sélection (comme chez Cobblemon) ; le Ghost sorti a sa Poké Ball
+  ouverte (2e image de la texture de balle de Cobblemon).
+- TODO-19 clos (validé en jeu). Client compilé et déployé. Non testé en jeu par Claude.
+- Correctif (retour d'Adrien) : après la sortie d'un Ghost, R ne faisait plus rien jusqu'à sortir / rentrer un vrai
+  Pokémon. Le mixin appelait `actioned()` de Cobblemon, qui ferme son verrou `canApplyChange` ; seul le
+  `onRelease` de Cobblemon le rouvre, et c'est justement la méthode annulée pour un Ghost (un vrai Pokémon passait par
+  elle, d'où le déblocage). R sur un Ghost ne lit ni ne
+  ferme plus ce verrou ; seul l'état « touche enfoncée » est remis à zéro.
+
+### 4.72 Cinématique : couche supérieure du skin et cape (2026-10-05)
+
+Retour d'Adrien : le dresseur du panneau de la cinématique n'avait ni la couche supérieure de son skin (chapeau,
+veste, manches, jambes) ni sa cape. Ces parties visibles sont une donnée synchronisée de l'entité joueur
+(`DATA_PLAYER_MODE_CUSTOMISATION`), toutes masquées sur une entité neuve : la copie (`IntroTrainer`, sous-classe de
+`RemotePlayer`) reprend celle du vrai joueur s'il est chargé, sinon les affiche toutes. La cape vient de son
+`PlayerInfo` (onglet joueurs). Client compilé et déployé. Non testé en jeu par Claude.
+

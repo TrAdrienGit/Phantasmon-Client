@@ -89,6 +89,8 @@ public final class GhostPartyHud {
 	private volatile boolean loaded;
 	private long lastRefresh;
 	private boolean refreshing;
+	/** Selected slot (TODO-23), moved by Cobblemon's up/down party keys; R sends it out. */
+	private int selected;
 
 	private final Map<String, ResourceLocation> recoloured = new HashMap<>();
 
@@ -144,12 +146,81 @@ public final class GhostPartyHud {
 						team = slots;
 						loaded = true;
 						refreshing = false;
+						if (slots[selected] == null) {
+							shift(1);
+						}
 					});
 				})
 				.exceptionally(ex -> {
 					Minecraft.getInstance().execute(() -> refreshing = false);
 					return null;
 				});
+	}
+
+	// ---- Selection and send-out (Cobblemon's up / down / R keys, TODO-23) ----
+
+	/** Whether Cobblemon's party keys act on the Ghost team right now (overlay shown, no screen, no battle). */
+	public boolean ownsPartyKeys() {
+		Minecraft mc = Minecraft.getInstance();
+		return mode == Mode.GHOST && mc.screen == null && mc.player != null && CobblemonClient.INSTANCE.getBattle() == null;
+	}
+
+	/**
+	 * Whether R is ours: party keys are, and the player is neither riding nor aiming at a real entity (a player,
+	 * a real Pokémon...) — those stay Cobblemon's (interaction wheel, challenge, dismount). Aiming at a Ghost is fine.
+	 */
+	public boolean ownsSendKey() {
+		Minecraft mc = Minecraft.getInstance();
+		if (!ownsPartyKeys() || mc.player.isSpectator() || mc.player.getVehicle() != null) {
+			return false;
+		}
+		var player = mc.player;
+		var eye = player.getEyePosition();
+		var reach = eye.add(player.getViewVector(1f).scale(10.0));
+		var box = player.getBoundingBox().expandTowards(player.getViewVector(1f).scale(10.0)).inflate(1.0);
+		var hit = net.minecraft.world.entity.projectile.ProjectileUtil.getEntityHitResult(player, eye, reach, box,
+				entity -> !entity.isSpectator() && entity.isPickable()
+						&& !(entity instanceof com.cobblemon.mod.common.entity.pokemon.PokemonEntity pokemon && PhantasmonEntities.isPhantasmon(pokemon)),
+				100.0);
+		return hit == null;
+	}
+
+	/** Up (-1) / down (+1): next Ghost in the team, wrapping around, empty slots skipped. */
+	public void shift(int delta) {
+		PokemonDto[] slots = team;
+		for (int step = 1; step <= SLOTS; step++) {
+			int index = Math.floorMod(selected + delta * step, SLOTS);
+			if (slots[index] != null) {
+				selected = index;
+				return;
+			}
+		}
+	}
+
+	/** R: sends the selected Ghost out — recalling whichever is out first — or recalls it if it already is. */
+	public void sendSelected() {
+		PokemonDto pokemon = team[selected];
+		if (pokemon == null) {
+			shift(1);
+			pokemon = team[selected];
+		}
+		if (pokemon == null || pokemon.uuid() == null) {
+			return;
+		}
+		UUID active = ghostSession.activeGhostPokemonUuid();
+		if (pokemon.uuid().equals(active)) {
+			ghostSession.recall();
+			return;
+		}
+		Component unrecognized = com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(pokemon);
+		if (unrecognized != null) {
+			Minecraft.getInstance().player.displayClientMessage(unrecognized, false);
+			return;
+		}
+		if (active != null) {
+			ghostSession.recall();
+		}
+		ghostSession.sendOut(pokemon.uuid());
 	}
 
 	// ---- Rendering ----
@@ -181,13 +252,16 @@ public final class GhostPartyHud {
 			if (pokemon == null) {
 				blitSlot(g, "party_slot_collapsed", COLLAPSED_PALETTE, 0, y);
 			} else {
-				renderSlot(g, font, pokemon, 0, y, pokemon.uuid() != null && pokemon.uuid().equals(active));
+				renderSlot(g, font, pokemon, 0, y, i == selected, pokemon.uuid() != null && pokemon.uuid().equals(active));
 			}
 		}
 	}
 
-	/** One slot, in Cobblemon's order: portrait background, model, frame, then texts and icons on top. */
-	private void renderSlot(GuiGraphics g, Font font, PokemonDto pokemon, int slotX, int y, boolean active) {
+	/**
+	 * One slot, in Cobblemon's order: portrait background, model, frame, then texts and icons on top. Like
+	 * Cobblemon: the selected slot sticks out, the Pokémon out in the world has its ball open.
+	 */
+	private void renderSlot(GuiGraphics g, Font font, PokemonDto pokemon, int slotX, int y, boolean active, boolean out) {
 		// Cobblemon's highlighted slot texture has its whole content 6 px further right (the slot "sticks out").
 		int x = slotX + (active ? 6 : 0);
 		g.blit(PORTRAIT_BACKGROUND, x + 22, y + 2, 0, 0, 21, 21, 21, 21);
@@ -224,11 +298,11 @@ public final class GhostPartyHud {
 		drawText(g, font, name, nameX, y + 25f, 0.5f, TEXT, true);
 		PokemonGender gender = gender(pokemon);
 		if (gender == PokemonGender.MALE || gender == PokemonGender.FEMALE) {
-			blitScaled(g, gender == PokemonGender.MALE ? GENDER_MALE : GENDER_FEMALE, x + 40f, y + 25f, 5, 7, 5, 7, 0.5f);
+			blitScaled(g, gender == PokemonGender.MALE ? GENDER_MALE : GENDER_FEMALE, x + 40f, y + 25f, 0, 0, 5, 7, 5, 7, 0.5f);
 		}
 
 		// Ball at the tip of the slot.
-		blitScaled(g, BALL, x + 43.5f, y + 22f, 18, 22, 18, 44, 0.5f);
+		blitScaled(g, BALL, x + 43.5f, y + 22f, 0, out ? 22 : 0, 18, 22, 18, 44, 0.5f);
 	}
 
 	private void blitSlot(GuiGraphics g, String name, Map<Integer, Integer> palette, int x, int y) {
@@ -295,13 +369,13 @@ public final class GhostPartyHud {
 		return palette.get(best);
 	}
 
-	private static void blitScaled(GuiGraphics g, ResourceLocation texture, float x, float y, int width, int height,
+	private static void blitScaled(GuiGraphics g, ResourceLocation texture, float x, float y, int u, int v, int width, int height,
 			int textureWidth, int textureHeight, float scale) {
 		PoseStack pose = g.pose();
 		pose.pushPose();
 		pose.translate(x, y, 0);
 		pose.scale(scale, scale, 1f);
-		g.blit(texture, 0, 0, 0, 0, width, height, textureWidth, textureHeight);
+		g.blit(texture, 0, 0, u, v, width, height, textureWidth, textureHeight);
 		pose.popPose();
 	}
 

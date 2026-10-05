@@ -223,6 +223,8 @@
   "phantasmon.battle.invite.declined": "[Phantasmon] %s a refusé votre défi.",
   "phantasmon.battle.invite.you_declined": "[Phantasmon] Défi de %s refusé.",
   "phantasmon.battle.started": "[Phantasmon] Combat contre %s !",
+  "phantasmon.pc.screen.team_full": "Votre équipe est pleine (6 Pokémon).",
+  "phantasmon.pc.screen.pc_full": "Le PC est plein.",
   "phantasmon.ghost.hud.level": "Nv.",
   "phantasmon.ghost.hud.title": "Équipe Ghost",
   "phantasmon.ghost.hud.offline": "Non connecté",

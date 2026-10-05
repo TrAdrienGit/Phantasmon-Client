@@ -18,7 +18,10 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
 Cobblemon → équipe Ghost (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
-Cobblemon. (`key.phantasmon.sendout` est passé de **O** à **H** par défaut pour ne plus la partager ; une touche déjà enregistrée dans `options.txt` est conservée.)
+Cobblemon. Quand l'équipe Ghost est affichée, les touches d'équipe de Cobblemon agissent sur elle : **haut / bas**
+choisissent un Ghost (case mise en avant), **R** le sort (en rappelant celui qui est dehors) ou le rappelle s'il est
+déjà sorti (Poké Ball ouverte). En visant un joueur ou un vrai Pokémon, ou en chevauchant une monture, R reste à
+Cobblemon (roue d'interaction, défi, descente). (`key.phantasmon.sendout` est passé de **O** à **H** par défaut pour ne plus la partager ; une touche déjà enregistrée dans `options.txt` est conservée.)
 
 **Roue d'interaction de Cobblemon** (touche **R** de Cobblemon sur un autre joueur) : deux entrées ajoutées,
 « Échange Ghost » (Est, cyan) et « Combat Ghost » (Nord-Ouest, rose-rouge), qui invitent le joueur sur lequel la

@@ -13,7 +13,9 @@
 		"PokemonEntityMixin",
 		"PokemonRendererMixin",
 		"CameraMixin",
-		"HidePartyBindingMixin"
+		"HidePartyBindingMixin",
+		"PartyShiftBindingMixin",
+		"PartySendBindingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -20,6 +20,8 @@ Automatique en entrant dans un monde si le service Phantasmon est disponible. Si
   boîte affichée (16 boîtes de 30 cases).
 - **Cliquer** sélectionne un Pokémon. **Glisser-déposer** le déplace ; si la case est occupée, les deux Pokémon
   échangent leur place (PC ou équipe, peu importe).
+- **Double-clic** : un Pokémon d'une boîte rejoint l'équipe (premier emplacement libre) ; un Pokémon de l'équipe
+  part dans le premier emplacement libre du PC (boîte 1 d'abord). Équipe ou PC plein : message en bas, rien ne bouge.
 - **Changer de boîte** : molette, flèches ← →, ou ◀ ▶. Fonctionne aussi pendant un glisser, pour déposer dans une
   autre boîte.
 - **IMPORTER** : copiez un ou plusieurs Pokémon au format Pokémon Showdown (depuis Showdown, un calculateur de
