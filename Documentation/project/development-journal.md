@@ -1939,3 +1939,29 @@ dans un environnement temporaire pour l'analyser).
   `BattlePacket` jusque-là. `BattleVisuals` échelonne les premières sorties (adverse à 0,3 s, la nôtre à 2,1 s).
 - Client compilé et déployé. Non testé en jeu par Claude.
 
+### 4.68 Overlay de l'équipe Ghost (2026-10-04)
+
+Demande d'Adrien : l'équivalent de l'overlay d'équipe de Cobblemon, dans la DA Phantasmon, pour l'équipe Ghost.
+
+- `GhostPartyHud` (HUD, à gauche, centré verticalement) : jusqu'à 6 cases avec nom (★ si chromatique), niveau, sexe,
+  objet tenu et modèle 3D ; le Ghost sorti est en surbrillance (« SORTI »). Équipe lue sur le backend à l'ouverture
+  puis toutes les 10 s tant que l'overlay est affiché ; masqué en combat et avec F1.
+- `HidePartyBindingMixin` : la touche « Cacher l'équipe » de Cobblemon fait défiler Cobblemon → Ghost → rien →
+  Cobblemon (l'overlay Cobblemon est piloté par son `shouldHide`).
+- `GhostSession.activeGhostPokemonUuid()` exposé. Client compilé et déployé. Non testé en jeu par Claude.
+
+### 4.69 Overlay de l'équipe Ghost repris sur celui de Cobblemon — TODO-18 (2026-10-05)
+
+Retour d'Adrien : le premier overlay était laid ; il faut le design de Cobblemon avec les couleurs Phantasmon.
+
+- Géométrie relevée dans `PartyOverlay` (bytecode) et mesurée sur une capture : cases 62×30 tous les 34 px, six
+  positions (vides = case repliée), même placement vertical que Cobblemon (rien ne bouge quand on passe de l'un à
+  l'autre), textes à l'échelle 0,5 (« Nv. » / niveau, nom, sexe), objet dans sa case, portrait dans sa fenêtre, barre
+  verticale, Poké Ball au bout de la case. La case mise en avant (Ghost sorti) décale son contenu de 6 px, comme chez
+  Cobblemon.
+- Cadres : les textures de Cobblemon, lues dans son jar au premier affichage, leurs niveaux de gris remplacés par la
+  palette Phantasmon (navy / cyan, blanc pour la case active) dans une `DynamicTexture`. Rien de Cobblemon n'est
+  copié dans le mod ; un resource pack qui modifie ces textures est suivi.
+- Ghost sans PV hors combat : barre toujours pleine, en cyan. Petit libellé « ÉQUIPE GHOST » au-dessus.
+- Client compilé et déployé. Non testé en jeu par Claude.
+

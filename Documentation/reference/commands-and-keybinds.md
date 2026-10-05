@@ -12,9 +12,13 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
-| `key.phantasmon.sendout` | **O** | Sortir / rappeler le Pokémon de l'emplacement 1 de l'équipe |
+| `key.phantasmon.sendout` | **H** | Sortir / rappeler le Pokémon de l'emplacement 1 de l'équipe |
 | `key.phantasmon.trade` | **G** | Inviter à un échange le joueur visé |
 | `key.phantasmon.battle` | **B** | Inviter à un combat le joueur visé |
+
+**Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
+Cobblemon → équipe Ghost (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
+Cobblemon. (`key.phantasmon.sendout` est passé de **O** à **H** par défaut pour ne plus la partager ; une touche déjà enregistrée dans `options.txt` est conservée.)
 
 **Roue d'interaction de Cobblemon** (touche **R** de Cobblemon sur un autre joueur) : deux entrées ajoutées,
 « Échange Ghost » (Est, cyan) et « Combat Ghost » (Nord-Ouest, rose-rouge), qui invitent le joueur sur lequel la

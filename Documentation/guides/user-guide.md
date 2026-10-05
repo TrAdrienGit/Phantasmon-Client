@@ -56,7 +56,7 @@ sauvegarde ; Échap ferme (avec confirmation s'il reste des modifications).
 
 ## 4. Faire sortir un Ghost (touche O)
 
-La touche **O** fait sortir le Pokémon placé en **emplacement 1** de votre équipe, avec l'animation de Poké Ball ;
+La touche **H** fait sortir le Pokémon placé en **emplacement 1** de votre équipe, avec l'animation de Poké Ball ;
 une seconde pression le rappelle. Il vous suit, se promène autour de vous quand vous restez immobile, et rentre
 automatiquement si vous mourez, changez de dimension ou vous déconnectez. Les joueurs qui ont le mod et sont
 dans la même dimension du même serveur le voient aussi.

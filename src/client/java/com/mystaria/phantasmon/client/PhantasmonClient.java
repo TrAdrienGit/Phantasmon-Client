@@ -29,8 +29,11 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final AuthSession authSession = new AuthSession();
 	private final AuthService authService = new AuthService(httpClient, authSession);
 	private final SessionRefreshScheduler refreshScheduler = new SessionRefreshScheduler(authService);
-	private final PokemonCommandHandler pokemonCommands = new PokemonCommandHandler(new PokemonClient(httpClient), authSession);
+	private final PokemonClient pokemonClient = new PokemonClient(httpClient);
+	private final PokemonCommandHandler pokemonCommands = new PokemonCommandHandler(pokemonClient, authSession);
 	private final GhostSession ghostSession = new GhostSession(authSession);
+	private final com.mystaria.phantasmon.client.ghost.GhostPartyHud ghostPartyHud =
+			new com.mystaria.phantasmon.client.ghost.GhostPartyHud(pokemonClient, authSession, ghostSession);
 	private final TradeCommandHandler tradeCommands = new TradeCommandHandler(new TradeClient(httpClient), authSession);
 	private final LiveTradeController liveTrade = new LiveTradeController(ghostSession, authSession);
 	private final com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle =
@@ -62,11 +65,15 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveTrade.tick();
 			liveBattle.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
+			ghostPartyHud.tick();
 			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade, liveBattle);
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(com.mystaria.phantasmon.client.battle.BattleCinematic::renderWorld);
-		HudRenderCallback.EVENT.register((graphics, tickCounter) -> com.mystaria.phantasmon.client.battle.BattleCinematic.renderHud(graphics));
+		HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
+			ghostPartyHud.render(graphics);
+			com.mystaria.phantasmon.client.battle.BattleCinematic.renderHud(graphics);
+		});
 
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();

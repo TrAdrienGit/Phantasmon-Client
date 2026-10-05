@@ -12,7 +12,8 @@
 		"InteractWheelGuiFactoryMixin",
 		"PokemonEntityMixin",
 		"PokemonRendererMixin",
-		"CameraMixin"
+		"CameraMixin",
+		"HidePartyBindingMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

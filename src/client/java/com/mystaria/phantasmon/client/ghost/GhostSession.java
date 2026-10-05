@@ -297,6 +297,11 @@ public final class GhostSession {
 		report("phantasmon.ghost.recall_sent");
 	}
 
+	/** The Ghost currently sent out by the local player, or null. */
+	public UUID activeGhostPokemonUuid() {
+		return activeGhostPokemonUuid;
+	}
+
 	public boolean hasActiveGhost() {
 		return activeGhostPokemonUuid != null;
 	}

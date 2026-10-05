@@ -56,7 +56,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 ### Ghost
 
-- [ ] **O** : animation de sortie, le Ghost suit ; **O** à nouveau : rappel animé.
+- [ ] **H** : animation de sortie, le Ghost suit ; **H** à nouveau : rappel animé.
 - [ ] Emplacement 1 vide : message d'erreur.
 - [ ] Tourner la caméra sur place : le Ghost ne bouge pas. Immobile 5 s : il se promène.
 - [ ] Gros Pokémon (Arceus, Rayquaza) : ne pousse pas le joueur, en marchant, en sprintant, en demi-tour.
