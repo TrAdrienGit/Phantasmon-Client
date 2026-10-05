@@ -656,6 +656,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			return;
 		}
 		if (packet instanceof BattleMakeChoicePacket) {
+			BattleCameraDirector.onChoosing();
 			localAwaitingChoice = true;
 			if (timerEnabled) {
 				localDeadline = System.currentTimeMillis() + timerSeconds * 1000L;

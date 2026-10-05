@@ -106,6 +106,7 @@ public final class ActionEffectPlayer {
 	/** On the client thread. {@code listener} may be null (guest). */
 	public static void play(ActionEffectEvent event, Listener listener) {
 		Listener safeListener = listener == null ? NONE : listener;
+		BattleCameraDirector.onAction(event.users(), event.targets());
 		try {
 			ClientActionEffects.ensureLoaded();
 			ResourceLocation id = event.effectId() == null ? null : ResourceLocation.tryParse(event.effectId());

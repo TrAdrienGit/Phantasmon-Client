@@ -98,6 +98,7 @@ public final class BattleVisuals {
 				}
 				// Right after the launch intro, the send-outs are staged for the camera: the opponent's first, then ours.
 				boolean staged = stageSendOuts();
+				BattleCameraDirector.start();
 				UUID self = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
@@ -122,13 +123,19 @@ public final class BattleVisuals {
 				String pnx = switchPacket.getPnx();
 				var incoming = switchPacket.getNewPokemon();
 				if (recalled) {
-					later(SEND_OUT_DURATION, () -> sendOut(pnx, incoming));
+					later(SEND_OUT_DURATION, () -> {
+						sendOut(pnx, incoming);
+						BattleCameraDirector.onFocus(pnx);
+					});
 				} else {
 					sendOut(pnx, incoming);
+					BattleCameraDirector.onFocus(pnx);
 				}
 			} else if (packet instanceof BattleFaintPacket faint) {
+				BattleCameraDirector.onFocus(faint.getPnx());
 				recall(faint.getPnx());
 			} else if (packet instanceof BattleEndPacket) {
+				BattleCameraDirector.stop();
 				new HashSet<>(entities.keySet()).forEach(BattleVisuals::recall);
 				trainers.clear();
 			}
@@ -172,9 +179,45 @@ public final class BattleVisuals {
 		return generation;
 	}
 
+	/** The first active Pokémon of the local player's side ({@code local}) or of the opponent's, if any. */
+	public static PokemonEntity activeEntity(boolean local) {
+		String actor = actorId(local);
+		if (actor == null) {
+			return null;
+		}
+		for (Map.Entry<String, PokemonEntity> entry : entities.entrySet()) {
+			if (entry.getKey().startsWith(actor) && !entry.getValue().isRemoved()) {
+				return entry.getValue();
+			}
+		}
+		return null;
+	}
+
+	/** Where a side's trainer stands, if loaded (the field before any Pokémon is out). */
+	public static Vec3 trainerPosition(boolean local) {
+		ClientLevel level = Minecraft.getInstance().level;
+		String actor = actorId(local);
+		Player trainer = level == null || actor == null ? null : trainerEntity(level, actor);
+		return trainer == null ? null : trainer.position();
+	}
+
+	private static String actorId(boolean local) {
+		Player self = Minecraft.getInstance().player;
+		if (self == null) {
+			return null;
+		}
+		for (Map.Entry<String, UUID> entry : trainers.entrySet()) {
+			if (entry.getValue().equals(self.getUUID()) == local) {
+				return entry.getKey();
+			}
+		}
+		return null;
+	}
+
 	/** World left / connection lost: drop everything at once, no animation. */
 	public static void clear() {
 		generation++;
+		BattleCameraDirector.stop();
 		ClientLevel level = Minecraft.getInstance().level;
 		Set<PokemonEntity> all = new HashSet<>(entities.values());
 		all.addAll(leaving);

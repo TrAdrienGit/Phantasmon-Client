@@ -12,6 +12,7 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
+| `key.phantasmon.battle_camera` | **K** | En combat Ghost : caméra mise en scène ⇄ caméra libre (marche aussi avec l'écran de combat de Cobblemon ouvert) |
 | `key.phantasmon.sendout` | **H** | Sortir / rappeler le Pokémon de l'emplacement 1 de l'équipe |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe

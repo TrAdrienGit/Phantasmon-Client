@@ -33,6 +33,9 @@ public abstract class CameraMixin {
 	private void phantasmon$battleCinematic(BlockGetter level, Entity entity, boolean detachedArg, boolean mirrored,
 			float partialTick, CallbackInfo ci) {
 		BattleCinematic.CameraPose pose = BattleCinematic.cameraPose((Camera) (Object) this, partialTick);
+		if (pose == null) {
+			pose = com.mystaria.phantasmon.client.battle.BattleCameraDirector.cameraPose((Camera) (Object) this, partialTick);
+		}
 		if (pose != null) {
 			setRotation(pose.yaw(), pose.pitch());
 			setPosition(pose.position().x, pose.position().y, pose.position().z);

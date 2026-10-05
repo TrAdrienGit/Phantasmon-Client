@@ -87,6 +87,9 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 4. Facultatif : **[Activer le chrono]** dans le chat (ou `/phantasmon battle timer`) impose 90 s par choix aux deux
    joueurs, jusqu'à la fin du combat. Passé ce délai, une action est jouée automatiquement.
 
+Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur les attaques). La touche **K** vous
+rend votre caméra ; rappuyez pour revenir à la mise en scène.
+
 Abandonner donne la victoire à l'adversaire ; une déconnexion annule le combat sans vainqueur. Les Pokémon
 retrouvent leur état normal après le combat.
 

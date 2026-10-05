@@ -10,9 +10,9 @@ import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
 
 /**
- * The mod's two keybinds (Adrien: 2026-09-29): opening the PC screen (P) and toggling sendout/recall of the team's
+ * The mod's three keybinds (Adrien: 2026-09-29): opening the PC screen (P) and toggling sendout/recall of the team's
  * lead Pokémon (H, team slot 1 — see {@link PokemonCommandHandler#sendOutTeamLead} and
- * {@link PhantasmonCommands#toggleSendOut}). Trades and battles start from Cobblemon's interaction wheel only
+ * {@link PhantasmonCommands#toggleSendOut}), and the battle camera toggle (K). Trades and battles start from Cobblemon's interaction wheel only
  * (TODO-22, Adrien 2026-10-05: the G and B invite keys were removed).
  *
  * <p>Registered once via {@link KeyBindingHelper} with a plain default key —
@@ -28,6 +28,8 @@ public final class PhantasmonKeybinds {
 
 	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc", GLFW.GLFW_KEY_P, CATEGORY);
 	private static final KeyMapping TOGGLE_SEND_OUT = new KeyMapping("key.phantasmon.sendout", GLFW.GLFW_KEY_H, CATEGORY);
+	/** In a Ghost battle: own camera ⇄ staged battle camera (TODO-20). Also caught over Cobblemon's battle screen. */
+	private static final KeyMapping BATTLE_CAMERA = new KeyMapping("key.phantasmon.battle_camera", GLFW.GLFW_KEY_K, CATEGORY);
 
 	private PhantasmonKeybinds() {
 	}
@@ -35,12 +37,25 @@ public final class PhantasmonKeybinds {
 	public static void register() {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
 		KeyBindingHelper.registerKeyBinding(TOGGLE_SEND_OUT);
+		KeyBindingHelper.registerKeyBinding(BATTLE_CAMERA);
+		// Cobblemon's battle screen is open while choosing moves, and keys go to the open screen, not to keybinds.
+		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
+				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.afterKeyPress(screen).register((current, key, scancode, modifiers) -> {
+					if (BATTLE_CAMERA.matches(key, scancode) && com.mystaria.phantasmon.client.battle.BattleCameraDirector.inBattle()) {
+						com.mystaria.phantasmon.client.battle.BattleCameraDirector.toggle();
+					}
+				}));
 	}
 
 	/** Called every client tick (see {@link PhantasmonClient}) — {@code consumeClick()} is the standard vanilla pattern for a keybind's action firing once per press, queued click included, regardless of how long the key is held. */
 	public static void tick(PokemonCommandHandler pokemonCommands, GhostSession ghostSession) {
 		while (OPEN_PC.consumeClick()) {
 			pokemonCommands.openPc();
+		}
+		while (BATTLE_CAMERA.consumeClick()) {
+			if (com.mystaria.phantasmon.client.battle.BattleCameraDirector.inBattle()) {
+				com.mystaria.phantasmon.client.battle.BattleCameraDirector.toggle();
+			}
 		}
 		while (TOGGLE_SEND_OUT.consumeClick()) {
 			PhantasmonCommands.toggleSendOut(pokemonCommands, ghostSession);

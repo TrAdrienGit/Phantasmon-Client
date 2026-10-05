@@ -2046,3 +2046,24 @@ dans le moteur mais ne fait que l'annoncer (`MegaInstruction` → `CobblemonEven
 - Tests : politique de relais et choix de l'aspect (56 tests client verts). Client compilé et déployé. Non testé en
   jeu par Claude.
 
+### 4.76 Caméra de combat mise en scène — TODO-20 (2026-10-05)
+
+Demande d'Adrien : des matchs mis en scène, avec une caméra qui change selon le moment du combat, et un bouton pour
+reprendre sa caméra.
+
+- `BattleCameraDirector` (appliqué par `CameraMixin` après les plans d'intro et de sortie de `BattleCinematic`) :
+  - choix des attaques (`BattleMakeChoicePacket`) : plans tirés au hasard toutes les 4,5 à 8 s, jamais deux fois le
+    même type de suite — orbite lente autour du milieu des deux Pokémon actifs, travelling bas le long du terrain,
+    grue qui descend, par-dessus l'épaule d'un camp, gros plan trois-quarts face ; 30 % en coupe, sinon fondu 1,1 s ;
+  - attaque (`ActionEffectPlayer.play`, hôte et invité) : derrière l'attaquant, panoramique vers la cible (3,2 s) ;
+    gros plan si l'attaque vise le lanceur ; gros plan aux entrées en cours de combat et aux K.O. ;
+  - la caméra est glissée hors des blocs vers ce qu'elle regarde.
+- Touche **K** (`key.phantasmon.battle_camera`) : caméra libre ⇄ mise en scène, message dans la barre d'action ;
+  captée aussi par-dessus l'écran de combat de Cobblemon (`ScreenKeyboardEvents`), qui reçoit les touches pendant les
+  choix. Seuls les combats Ghost sont concernés (paquets passés par `CobblemonPackets.dispatchLocally`).
+- Client compilé et déployé. Non testé en jeu par Claude.
+- Retours d'Adrien (2026-10-05) : plans de 5 à 10 s ; fondus de 2 s ; plan « épaule » plus décalé (4,4 en arrière,
+  2,5 sur le côté, 2,3 de haut) ; rayons et hauteurs proportionnels à l'écart entre les deux Pokémon (orbite
+  3,5 + 0,75 × écart, travelling, grue) ; trois travellings ajoutés : passage en diagonale du terrain, contre-plongée
+  au ras du sol à côté d'un Pokémon, spirale qui se resserre en montant.
+
