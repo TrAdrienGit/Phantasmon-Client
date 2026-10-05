@@ -38,8 +38,8 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * {@code list}, {@code pc <box>}, {@code delete <uuid>}, {@code clone <uuid>},
  * {@code edit <uuid> level <n>} — see {@link PokemonCommandHandler}.
  *
- * <p>No {@code sendout}/{@code recall} command either (Adrien 2026-10-05): Ghosts go out and back with the H key
- * or Cobblemon's party keys on the Ghost overlay.
+ * <p>No {@code sendout}/{@code recall} command either (Adrien 2026-10-05): Ghosts go out and back with
+ * Cobblemon's party keys on the Ghost overlay.
  *
  */
 public final class PhantasmonCommands {
@@ -199,17 +199,5 @@ public final class PhantasmonCommands {
 					.then(tradeNode)
 					.then(battleNode));
 		});
-	}
-
-	/**
-	 * The send-out key (H) is a toggle (Adrien: 2026-09-29): sends out the team lead if nothing is currently out,
-	 * recalls otherwise (see {@code com.mystaria.phantasmon.client.PhantasmonKeybinds}).
-	 */
-	public static void toggleSendOut(PokemonCommandHandler pokemonCommands, GhostSession ghostSession) {
-		if (ghostSession.hasActiveGhost()) {
-			ghostSession.recall();
-		} else {
-			pokemonCommands.sendOutTeamLead(ghostSession::sendOut);
-		}
 	}
 }

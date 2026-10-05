@@ -4,16 +4,16 @@ import org.lwjgl.glfw.GLFW;
 
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
 
-import com.mystaria.phantasmon.client.command.PhantasmonCommands;
-import com.mystaria.phantasmon.client.ghost.GhostSession;
+import com.mystaria.phantasmon.client.gui.PhantasmonMusicScreen;
 import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
 
 /**
- * The mod's three keybinds (Adrien: 2026-09-29): opening the PC screen (P) and toggling sendout/recall of the team's
- * lead Pokémon (H, team slot 1 — see {@link PokemonCommandHandler#sendOutTeamLead} and
- * {@link PhantasmonCommands#toggleSendOut}), and the battle camera toggle (K). Trades and battles start from Cobblemon's interaction wheel only
- * (TODO-22, Adrien 2026-10-05: the G and B invite keys were removed).
+ * The mod's two keybinds: opening the PC screen (P, Adrien: 2026-09-29) and the music screen (N, Adrien 2026-10-05:
+ * which tracks of the resource pack may play). Everything else has moved off keys: trades and battles start from
+ * Cobblemon's interaction wheel (TODO-22), Ghosts go out and back with Cobblemon's party keys on the Ghost overlay
+ * (TODO-23), and the battle camera / music skip / timer are buttons on Cobblemon's battle screen.
  *
  * <p>Registered once via {@link KeyBindingHelper} with a plain default key —
  * no custom persistence needed: Minecraft itself saves any rebind to
@@ -27,38 +27,23 @@ public final class PhantasmonKeybinds {
 	private static final String CATEGORY = "key.categories.phantasmon";
 
 	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc", GLFW.GLFW_KEY_P, CATEGORY);
-	private static final KeyMapping TOGGLE_SEND_OUT = new KeyMapping("key.phantasmon.sendout", GLFW.GLFW_KEY_H, CATEGORY);
-	/** In a Ghost battle: own camera ⇄ staged battle camera (TODO-20). Also caught over Cobblemon's battle screen. */
-	private static final KeyMapping BATTLE_CAMERA = new KeyMapping("key.phantasmon.battle_camera", GLFW.GLFW_KEY_K, CATEGORY);
+	private static final KeyMapping MUSIC_MENU = new KeyMapping("key.phantasmon.music_menu", GLFW.GLFW_KEY_N, CATEGORY);
 
 	private PhantasmonKeybinds() {
 	}
 
 	public static void register() {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
-		KeyBindingHelper.registerKeyBinding(TOGGLE_SEND_OUT);
-		KeyBindingHelper.registerKeyBinding(BATTLE_CAMERA);
-		// Cobblemon's battle screen is open while choosing moves, and keys go to the open screen, not to keybinds.
-		net.fabricmc.fabric.api.client.screen.v1.ScreenEvents.AFTER_INIT.register((client, screen, width, height) ->
-				net.fabricmc.fabric.api.client.screen.v1.ScreenKeyboardEvents.afterKeyPress(screen).register((current, key, scancode, modifiers) -> {
-					if (BATTLE_CAMERA.matches(key, scancode) && com.mystaria.phantasmon.client.battle.BattleCameraDirector.inBattle()) {
-						com.mystaria.phantasmon.client.battle.BattleCameraDirector.toggle();
-					}
-				}));
+		KeyBindingHelper.registerKeyBinding(MUSIC_MENU);
 	}
 
 	/** Called every client tick (see {@link PhantasmonClient}) — {@code consumeClick()} is the standard vanilla pattern for a keybind's action firing once per press, queued click included, regardless of how long the key is held. */
-	public static void tick(PokemonCommandHandler pokemonCommands, GhostSession ghostSession) {
+	public static void tick(PokemonCommandHandler pokemonCommands) {
 		while (OPEN_PC.consumeClick()) {
 			pokemonCommands.openPc();
 		}
-		while (BATTLE_CAMERA.consumeClick()) {
-			if (com.mystaria.phantasmon.client.battle.BattleCameraDirector.inBattle()) {
-				com.mystaria.phantasmon.client.battle.BattleCameraDirector.toggle();
-			}
-		}
-		while (TOGGLE_SEND_OUT.consumeClick()) {
-			PhantasmonCommands.toggleSendOut(pokemonCommands, ghostSession);
+		while (MUSIC_MENU.consumeClick()) {
+			Minecraft.getInstance().setScreen(new PhantasmonMusicScreen(null));
 		}
 	}
 }

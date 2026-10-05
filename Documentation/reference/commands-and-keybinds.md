@@ -11,16 +11,15 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
+| `key.phantasmon.music_menu` | **N** | Ouvre le menu des musiques (cocher les morceaux du pack « Phantasmon Music » à jouer, les écouter) |
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
-| `key.phantasmon.battle_camera` | **K** | En combat Ghost : caméra mise en scène ⇄ caméra libre (marche aussi avec l'écran de combat de Cobblemon ouvert) |
-| `key.phantasmon.sendout` | **H** | Sortir / rappeler le Pokémon de l'emplacement 1 de l'équipe |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
 Cobblemon → équipe Ghost (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
 Cobblemon. Quand l'équipe Ghost est affichée, les touches d'équipe de Cobblemon agissent sur elle : **haut / bas**
 choisissent un Ghost (case mise en avant), **R** le sort (en rappelant celui qui est dehors) ou le rappelle s'il est
 déjà sorti (Poké Ball ouverte). En visant un joueur ou un vrai Pokémon, ou en chevauchant une monture, R reste à
-Cobblemon (roue d'interaction, défi, descente). (`key.phantasmon.sendout` est passé de **O** à **H** par défaut pour ne plus la partager ; une touche déjà enregistrée dans `options.txt` est conservée.)
+Cobblemon (roue d'interaction, défi, descente).
 
 **Roue d'interaction de Cobblemon** (touche **R** de Cobblemon sur un autre joueur) : deux entrées ajoutées,
 « Échange Ghost » (Est, cyan) et « Combat Ghost » (Nord-Ouest, rose-rouge), qui invitent le joueur sur lequel la
@@ -59,8 +58,8 @@ L'écran PC s'ouvre uniquement avec sa touche (**P** par défaut, TODO-22).
 
 ### Ghost
 
-Aucune commande (Adrien 2026-10-05) : touche **H** (sortie / rappel du Ghost de l'emplacement 1), ou les touches
-d'équipe de Cobblemon sur l'overlay Ghost (haut / bas, R).
+Aucune commande ni touche dédiée (Adrien 2026-10-05) : touches d'équipe de Cobblemon sur l'overlay Ghost (haut / bas
+pour choisir, R pour sortir / rappeler). Caméra de combat, musique suivante et chrono : boutons de l'écran de combat.
 
 ### Échange en direct
 

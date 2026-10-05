@@ -56,10 +56,11 @@ La recherche accepte les mots dans n'importe quel ordre (« booster energy » tr
 **IMPORTER** remplit le formulaire depuis le presse-papiers sans enregistrer. **ENREGISTRER** (ou Entrée)
 sauvegarde ; Échap ferme (avec confirmation s'il reste des modifications).
 
-## 4. Faire sortir un Ghost (touche O)
+## 4. Faire sortir un Ghost
 
-La touche **H** fait sortir le Pokémon placé en **emplacement 1** de votre équipe, avec l'animation de Poké Ball ;
-une seconde pression le rappelle. Il vous suit, se promène autour de vous quand vous restez immobile, et rentre
+Appuyez sur **O** (touche « Cacher l'équipe » de Cobblemon) jusqu'à afficher l'équipe Ghost à gauche de l'écran,
+choisissez un Ghost avec **haut / bas**, puis **R** le fait sortir avec l'animation de Poké Ball ; **R** à nouveau le
+rappelle. Il vous suit, se promène autour de vous quand vous restez immobile, et rentre
 automatiquement si vous mourez, changez de dimension ou vous déconnectez. Les joueurs qui ont le mod et sont
 dans la même dimension du même serveur le voient aussi.
 
@@ -87,8 +88,14 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 4. Facultatif : **[Activer le chrono]** dans le chat (ou `/phantasmon battle timer`) impose 90 s par choix aux deux
    joueurs, jusqu'à la fin du combat. Passé ce délai, une action est jouée automatiquement.
 
-Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur les attaques). La touche **K** vous
-rend votre caméra ; rappuyez pour revenir à la mise en scène.
+Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur les attaques). Les boutons à
+droite de l'écran de combat passent à la musique suivante, basculent caméra cinéma / libre et activent le chrono
+(qui devient alors le compte à rebours).
+
+**Musiques** : installez le pack de ressources « Phantasmon Music » (modèle dans `resourcepack-template/` du dépôt
+client) et déposez vos `.ogg` dans ses dossiers `lobby`, `intro`, `battle`, `victory`, `defeat` (voir son
+`LISEZ-MOI.txt`). Elles sont tirées au hasard ; F3 + T recharge après un ajout. La touche **N**, le bouton **♪ Musiques** du lobby ou
+Mod Menu → Phantasmon → Configurer ouvrent le menu des musiques, qui permet de décocher les morceaux qu'on ne veut pas entendre et d'écouter chacun.
 
 Abandonner donne la victoire à l'adversaire ; une déconnexion annule le combat sans vainqueur. Les Pokémon
 retrouvent leur état normal après le combat.

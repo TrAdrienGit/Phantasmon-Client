@@ -42,6 +42,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static final float PLAYER_MODEL_SCALE = 150f;
 	private static final int TIMER_X = 1265;
 	private static final int TIMER_W = 200;
+	private static final int MUSIC_X = 1055;
+	private static final int MUSIC_W = 200;
+	/** The music screen opens over the lobby: leaving the lobby screen for it is not leaving the lobby. */
+	private boolean openingMusic;
 
 	private final LiveBattleController controller;
 	private boolean quitConfirmOpen;
@@ -65,6 +69,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public void removed() {
+		if (openingMusic) {
+			openingMusic = false;
+			return;
+		}
 		controller.onLobbyScreenRemoved();
 	}
 
@@ -93,6 +101,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			controller.lobbyToggleReady();
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
+		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
+			openingMusic = true;
+			minecraft.setScreen(new PhantasmonMusicScreen(this));
 		} else if (inside(x, y, TIMER_X, 849, TIMER_W, 28)) {
 			controller.lobbyEnableTimer();
 		} else if (inside(x, y, CARD_X + 9, 716, 559, 48)) {
@@ -370,7 +381,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	// ---- Footer ----
 
 	private void renderFooter(GuiGraphics g, BattleLobbyState state, double mx, double my) {
-		renderFooterBar(g, statusLine(state), state.lastErrorCode() != null ? ERROR_TEXT : MUTED, TIMER_X - 40);
+		renderFooterBar(g, statusLine(state), state.lastErrorCode() != null ? ERROR_TEXT : MUTED, MUSIC_X - 40);
+		renderButton(g, MUSIC_X, 849, MUSIC_W, 28, "phantasmon.music.button", false, inside(mx, my, MUSIC_X, 849, MUSIC_W, 28));
 		if (state.timerOn()) {
 			long left = state.timerSecondsLeft();
 			renderPrimaryButtonFrame(g, TIMER_X, 849, TIMER_W, 28, false, false);

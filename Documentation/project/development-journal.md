@@ -2067,3 +2067,55 @@ reprendre sa caméra.
   3,5 + 0,75 × écart, travelling, grue) ; trois travellings ajoutés : passage en diagonale du terrain, contre-plongée
   au ras du sol à côté d'un Pokémon, spirale qui se resserre en montant.
 
+### 4.77 Musiques de combat par pack de ressources — TODO-21 (2026-10-05)
+
+Demande d'Adrien (qui n'a jamais fait de pack de ressources) : déposer des fichiers dans un dossier, et les musiques
+sont jouées au hasard. TODO-20 validé en jeu.
+
+- `PhantasmonMusic` : aucun `sounds.json` à écrire — tout `.ogg` trouvé dans
+  `assets/phantasmon/sounds/music/<dossier>/` d'un pack actif est un candidat (`ResourceManager.listResources`) ; le
+  fichier est joué directement (`resolve` d'une `AbstractTickableSoundInstance` qui fabrique son `Sound`, en flux,
+  non positionnel, curseur « Musique »). Dossiers : `lobby` (boucle tant que le lobby est ouvert), `intro` (la
+  cinématique, puis `battle` à sa fin, ou tout de suite sans intro), `battle` (boucle, jamais deux fois le même
+  morceau de suite), `victory` / `defeat` (une fois). Fondu de sortie de 1,5 s. Dossier vide = silence.
+- `MusicManagerMixin` : la musique de Minecraft attend tant qu'une musique Phantasmon joue.
+- `resourcepack-template/Phantasmon Music/` (pack_format 34, dossiers vides, `LISEZ-MOI.txt`), copié aussi dans
+  l'instance d'Adrien. Effets sonores : reportés (TODO-21 réduit).
+- Client compilé et déployé. Non testé en jeu par Claude (aucun fichier .ogg fourni).
+- Complément (Adrien, beaucoup de morceaux, goûts différents) : touche **N** (`key.phantasmon.music_skip`, aussi par
+  -dessus le lobby, l'écran des musiques et l'écran de combat de Cobblemon) pour passer au morceau suivant, titre dans
+  la barre d'action ; écran `PhantasmonMusicScreen` (onglets lobby / intro / combat / victoire / défaite, case à cocher
+  et écoute par morceau), ouvert par le bouton **♪ Musiques** du lobby et par Mod Menu (« Configurer », entrypoint
+  `modmenu`, Mod Menu en `modCompileOnly` : facultatif). Morceaux décochés enregistrés dans
+  `config/phantasmon-music.json` (par joueur) et jamais tirés. Une vraie lecture (combat qui démarre...) coupe
+  l'écoute en cours. Cause du silence du lobby : fichier `mt battle.ogg` (espace refusé par Minecraft).
+
+### 4.78 Boutons Phantasmon sur l'écran de combat de Cobblemon (2026-10-05)
+
+Demande d'Adrien : skip de musique, caméra cinéma / libre et chrono accessibles dans le menu de combat.
+
+- `BattleScreenButtons` : trois boutons (« ♪ Musique suivante », « Caméra : cinéma / libre », « Activer le chrono » /
+  « Chrono activé ») à droite sous la vignette adverse de `BattleGUI`, en combat Ghost seulement. Dessinés par
+  `ScreenEvents.afterRender` et cliqués par `ScreenMouseEvents.allowMouseClick` (le clic ne va pas à Cobblemon), pas
+  ajoutés comme widgets : Cobblemon reconstruit les siens à chaque sous-écran.
+- `LiveBattleController.timerOn()` pour l'état du chrono. Client compilé et déployé. Non testé en jeu par Claude.
+
+### 4.79 Musique d'intro, compte à rebours, jingles de fin (2026-10-05)
+
+Retours d'Adrien.
+
+- La musique d'intro s'arrêtait à la fin de son fichier, et la musique de combat attendait ce moment : elle part
+  maintenant à la fin de l'animation d'intro (`BattleCinematic.tick`, `INTRO_END`), l'intro s'éteint en fondu.
+- Le bouton du chrono, une fois activé, devient le compte à rebours du joueur (« ⏱ 42 s », rouge sous 10 s ; « Tour
+  adverse » quand il n'a rien à choisir) — `LiveBattleController.timerSecondsLeft()`.
+- Victoire / défaite : 10 s au plus, fondu compris (`Track.maxSeconds`). Plus tard, ces jingles deviendront
+  probablement des effets sonores intégrés au mod (TODO-21).
+
+### 4.80 Touches : plus que P et N (2026-10-05)
+
+Demande d'Adrien : N ouvre maintenant le menu des musiques (`key.phantasmon.music_menu`) au lieu de passer au morceau
+suivant ; retirées : la caméra de combat (K, remplacée par le bouton de l'écran de combat) et « sortir / rappeler »
+(H, remplacée par R sur l'overlay Ghost). `PhantasmonCommands.toggleSendOut` et `PokemonCommandHandler.sendOutTeamLead`
+supprimés (plus utilisés) ; l'écoute des touches par-dessus les écrans aussi. Textes d'aide mis à jour. Client
+compilé, tests verts, déployé (avec les corrections du §4.79).
+

@@ -237,6 +237,19 @@ public final class LiveBattleController implements LiveBattleListener {
 		return localName();
 	}
 
+	/** Whether the turn timer is on in the current battle (battle screen button). */
+	public boolean timerOn() {
+		return timerEnabled;
+	}
+
+	/** Seconds left for this player's choice, or -1 while not waiting on them (battle screen button). */
+	public long timerSecondsLeft() {
+		if (!timerEnabled || localDeadline <= 0) {
+			return -1;
+		}
+		return Math.max(0, (localDeadline - System.currentTimeMillis() + 999) / 1000);
+	}
+
 	/** {@code /phantasmon battle timer}: in the lobby, its timer; in battle, the 90 s turn timer for both players. */
 	public void enableTimer() {
 		if (lobby != null) {
@@ -328,6 +341,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		if (lobby != null) {
 			lobby = null;
 			closeLobbyScreen();
+			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
 			chat(Component.translatable("phantasmon.battle.lobby.connection_lost").withStyle(ChatFormatting.RED));
 		}
 		if (battleUuid != null) {
@@ -360,6 +374,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			lobby = new BattleLobbyState(lobbyUuid);
 			pendingInviteUuid = null;
 			lobbyScreenRequested = true;
+			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.LOBBY);
 		}
 		lobby.apply(data);
 		lastOpponentTeamSize = lobby.opponentTeamSize();
@@ -370,6 +385,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		boolean ours = lobby != null && lobby.lobbyUuid().equals(lobbyUuid);
 		lobby = null;
 		closeLobbyScreen();
+		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
 		String reason = string(data.get("reason"));
 		String byName = data.get("by_name") == null ? null : data.get("by_name").toString();
 		if ("LEFT".equals(reason)) {
@@ -593,6 +609,12 @@ public final class LiveBattleController implements LiveBattleListener {
 		String reason = string(data.get("reason"));
 		UUID winner = uuid(data.get("winner_uuid"));
 		endLocally();
+		// Victory / defeat jingle from the music resource pack, if it has one (else the music just fades out).
+		if (winner != null && !"PARTNER_DISCONNECTED".equals(reason)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(winner.equals(localUuid())
+					? com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.VICTORY
+					: com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.DEFEAT);
+		}
 		Component message;
 		if ("PARTNER_DISCONNECTED".equals(reason)) {
 			message = Component.translatable("phantasmon.battle.ended.disconnected").withStyle(ChatFormatting.GOLD);
@@ -639,6 +661,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		BattleVisuals.clear();
 		BattleCinematic.stop();
+		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
 		pendingEngineStart = null;
 		heldPackets.clear();
 		holdRelayedUntil = 0;

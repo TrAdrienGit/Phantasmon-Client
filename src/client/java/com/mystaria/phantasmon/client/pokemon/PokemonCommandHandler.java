@@ -299,40 +299,6 @@ public final class PokemonCommandHandler {
 	 * the actual {@code GhostSession.sendOut(UUID)} call stay outside this
 	 * class — {@code pokemon} has no reason to depend on {@code ghost}.
 	 */
-	public void sendOutTeamLead(java.util.function.Consumer<UUID> onFound) {
-		if (!session.isAuthenticated()) {
-			chatMessage(Component.translatable("phantasmon.error.not_authenticated"));
-			return;
-		}
-		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
-				.thenAccept(pokemons -> {
-					java.util.Optional<PokemonDto> lead = java.util.Arrays.stream(pokemons)
-							.filter(pokemon -> pokemon.teamSlot() != null && pokemon.teamSlot() == 1)
-							.findFirst();
-					if (lead.isEmpty()) {
-						chatMessage(Component.translatable("phantasmon.ghost.error.no_team_lead"));
-						return;
-					}
-					PokemonDto leadPokemon = lead.get();
-					Minecraft.getInstance().execute(() -> {
-						// Not recognized by this Cobblemon version: kept out of the world, data left intact (DEBT-5).
-						Component unrecognized = PokemonRecognition.problem(leadPokemon);
-						if (unrecognized != null) {
-							chatMessage(unrecognized);
-							return;
-						}
-						onFound.accept(leadPokemon.uuid());
-					});
-				})
-				.exceptionally(ex -> {
-					Throwable cause = ex instanceof CompletionException ? ex.getCause() : ex;
-					String key = cause instanceof BackendApiException apiException
-							? BackendErrorMessages.translationKey(apiException.errorCode())
-							: "phantasmon.error.network";
-					Minecraft.getInstance().execute(() -> chatMessage(Component.translatable(key)));
-					return null;
-				});
-	}
 
 	private static void chatMessage(Component message) {
 		var player = Minecraft.getInstance().player;

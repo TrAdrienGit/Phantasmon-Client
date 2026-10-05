@@ -20,6 +20,9 @@
 		],
 		"client": [
 			"com.mystaria.phantasmon.client.PhantasmonClient"
+		],
+		"modmenu": [
+			"com.mystaria.phantasmon.client.compat.PhantasmonModMenu"
 		]
 	},
 	"mixins": [

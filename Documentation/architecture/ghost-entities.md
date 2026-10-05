@@ -28,9 +28,8 @@ SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN »
 `config/phantasmon-fingerprint-override.txt` et appliquée immédiatement (nouveau `JoinServerGroup`). Sans
 argument, la commande supprime la surcharge. **Commande de test à retirer** quand un vrai serveur dédié sera utilisé.
 
-**Sortie et rappel** : touche **H** bascule : rappel si un Ghost est sorti, sinon sortie
-du Pokémon de l'**emplacement 1** de l'équipe (`phantasmon.ghost.error.no_team_lead` s'il est vide).
-Sur l'overlay de l'équipe Ghost, haut / bas et R (touches de Cobblemon) choisissent et sortent / rappellent un Ghost. Le chat affiche « Envoi en cours… », puis la confirmation quand le
+**Sortie et rappel** : sur l'overlay de l'équipe Ghost (touche O de Cobblemon), haut / bas et R (touches de
+Cobblemon) choisissent et sortent / rappellent un Ghost (`GhostPartyHud`). Plus de touche dédiée ni de commande. Le chat affiche « Envoi en cours… », puis la confirmation quand le
 serveur renvoie l'événement au propriétaire.
 
 ## 3. Création de l'entité (`GhostEntityManager.spawn`)

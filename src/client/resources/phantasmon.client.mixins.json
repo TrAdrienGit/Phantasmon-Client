@@ -15,7 +15,8 @@
 		"CameraMixin",
 		"HidePartyBindingMixin",
 		"PartyShiftBindingMixin",
-		"PartySendBindingMixin"
+		"PartySendBindingMixin",
+		"MusicManagerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

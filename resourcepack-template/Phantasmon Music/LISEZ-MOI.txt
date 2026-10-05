@@ -1,0 +1,21 @@
+PHANTASMON MUSIC — pack de ressources de musiques de combat
+==========================================================
+
+1. Mettez des fichiers .ogg dans les dossiers de assets/phantasmon/sounds/music/ :
+
+   lobby/    écran de préparation du combat (en boucle, morceaux tirés au hasard)
+   intro/    cinématique de lancement (une fois ; la musique de combat prend le relais à la fin)
+   battle/   pendant le combat (en boucle, morceaux tirés au hasard)
+   victory/  à la victoire (une fois)
+   defeat/   à la défaite (une fois)
+
+   Aucun fichier à déclarer : tout .ogg déposé est pris en compte. Dossier vide = silence à ce moment-là.
+
+2. Format : Ogg Vorbis (.ogg). Un .mp3 / .wav se convertit avec Audacity (Fichier > Exporter > OGG) ou un
+   convertisseur en ligne. Noms de fichiers en minuscules, sans espaces ni accents (ex. : combat_rival.ogg).
+
+3. Dans Minecraft : Options > Packs de ressources > activer « Phantasmon Music ». Après avoir ajouté ou retiré
+   des fichiers, appuyez sur F3 + T pour recharger (pas besoin de relancer le jeu).
+
+Le volume suit le curseur « Musique » de Minecraft ; la musique normale du jeu se coupe pendant un combat Ghost.
+Attention aux droits : ne partagez ce pack qu'avec des musiques que vous avez le droit de diffuser.

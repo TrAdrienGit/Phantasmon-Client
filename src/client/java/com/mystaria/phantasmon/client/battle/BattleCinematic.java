@@ -67,6 +67,8 @@ public final class BattleCinematic {
 	private static Vec3 opponentSpot;
 	private static Boolean savedHideGui;
 	private static boolean exclamationSoundPlayed;
+	/** The intro's music gives way to the battle music when the intro ends, not when its file does (Adrien). */
+	private static boolean battleMusicStarted;
 
 	private BattleCinematic() {
 	}
@@ -87,6 +89,10 @@ public final class BattleCinematic {
 		sendOutPending = true;
 		sendOutStart = -1;
 		exclamationSoundPlayed = false;
+		battleMusicStarted = false;
+		// The intro's music from the resource pack, then the battle music when it ends (or right away without one).
+		com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.INTRO,
+				com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
 		Minecraft.getInstance().setScreen(new PhantasmonBattleIntroScreen());
 	}
 
@@ -150,6 +156,10 @@ public final class BattleCinematic {
 		}
 		if (sendOutStart >= 0 && now - sendOutStart >= BLEND_END) {
 			sendOutStart = -1;
+		}
+		if (introStart >= 0 && !battleMusicStarted && now - introStart >= INTRO_END) {
+			battleMusicStarted = true;
+			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
 		}
 		if (introPlaying() && !exclamationSoundPlayed && introElapsed() >= EXCLAMATION_START) {
 			exclamationSoundPlayed = true;

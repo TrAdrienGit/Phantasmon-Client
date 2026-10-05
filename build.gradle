@@ -49,6 +49,9 @@ dependencies {
 	// classpath to resolve that interface hierarchy — compileOnly avoids bundling a second copy.
 	compileOnly "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
 
+	// Mod Menu: optional — only its API is compiled against, for the "Configure" button (music screen).
+	modCompileOnly "maven.modrinth:modmenu:11.0.3"
+
 	// JUnit — pure-logic classes only (e.g. VersionCompatibility); rendering/world
 	// interaction stays manual QA (see PHANTASMON_CLIENT conventions).
 	testImplementation platform('org.junit:junit-bom:5.11.3')
