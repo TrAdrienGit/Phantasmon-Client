@@ -54,6 +54,59 @@ public final class GhostBattles {
 	 */
 	private static final Map<UUID, Consumer<ActionEffectEvent>> EFFECT_ROUTES = new ConcurrentHashMap<>();
 
+	/** Battles hosted here, and where their Mega Evolutions / Primal Reversions go (local scene + relay). */
+	private static final Map<UUID, Consumer<FormeChangeVisual>> FORME_ROUTES = new ConcurrentHashMap<>();
+
+	static {
+		// Cobblemon's engine only announces these; on a Cobblemon Delta server, Delta's server mod gives the Pokémon
+		// its aspect. Here the host does it, for its own hosted Ghost battles only (Adrien 2026-10-05).
+		Consumer<com.cobblemon.mod.common.api.events.battles.instruction.MegaEvolutionEvent> onMega =
+				event -> onFormeChange(event.getBattle(), event.getPokemon(), FormeChangeVisual.megaAspect(heldItemPath(event.getPokemon())));
+		Consumer<com.cobblemon.mod.common.api.events.battles.instruction.FormeChangeEvent> onForme = event -> {
+			if ("primal".equals(event.getFormeName())) {
+				onFormeChange(event.getBattle(), event.getPokemon(), "primal");
+			}
+		};
+		com.cobblemon.mod.common.api.events.CobblemonEvents.MEGA_EVOLUTION.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onMega);
+		com.cobblemon.mod.common.api.events.CobblemonEvents.FORME_CHANGE.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onForme);
+	}
+
+	/** Battle thread. Gives the battle Pokémon the aspect (kept through switches) and reports it to the controller. */
+	private static void onFormeChange(PokemonBattle battle, BattlePokemon pokemon, String aspect) {
+		Consumer<FormeChangeVisual> route = battle == null ? null : FORME_ROUTES.get(battle.getBattleId());
+		if (route == null || pokemon == null) {
+			return;
+		}
+		String pnx = pnxOf(pokemon);
+		Pokemon effected = pokemon.getEffectedPokemon();
+		java.util.Set<String> forced = new java.util.HashSet<>(effected.getForcedAspects());
+		forced.add(aspect);
+		effected.setForcedAspects(forced);
+		effected.updateAspects();
+		if (pnx != null) {
+			route.accept(new FormeChangeVisual(pnx, pokemon.getUuid().toString(),
+					effected.getSpecies().getResourceIdentifier().getPath(), aspect));
+		}
+	}
+
+	private static String heldItemPath(BattlePokemon pokemon) {
+		var stack = pokemon == null ? null : pokemon.getEffectedPokemon().heldItem();
+		return stack == null || stack.isEmpty() ? null
+				: net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+	}
+
+	/** Showdown position of an active battle Pokémon: its actor's id plus the slot letter. */
+	private static String pnxOf(BattlePokemon pokemon) {
+		BattleActor actor = pokemon.getActor();
+		var active = actor.getActivePokemon();
+		for (int i = 0; i < active.size(); i++) {
+			if (active.get(i).getBattlePokemon() == pokemon) {
+				return actor.getShowdownId() + (char) ('a' + i);
+			}
+		}
+		return null;
+	}
+
 	private GhostBattles() {
 	}
 
@@ -134,6 +187,10 @@ public final class GhostBattles {
 		/** An action effect to relay to the guest (this client plays it itself). Called on the battle thread. */
 		default void effect(ActionEffectEvent event) {
 		}
+
+		/** A Mega Evolution / Primal Reversion, for both clients' scene. Called on the battle thread. */
+		default void formeChange(FormeChangeVisual change) {
+		}
 	}
 
 	private static final java.util.Set<UUID> STOPPED = ConcurrentHashMap.newKeySet();
@@ -166,9 +223,11 @@ public final class GhostBattles {
 				PokemonBattle battle = success.getBattle();
 				route(battle.getBattleId(), choice -> applyChoice(choice, hostUuid));
 				EFFECT_ROUTES.put(battle.getBattleId(), callbacks::effect);
+				FORME_ROUTES.put(battle.getBattleId(), callbacks::formeChange);
 				battle.getOnEndHandlers().add(ended -> {
 					unroute(ended.getBattleId());
 					EFFECT_ROUTES.remove(ended.getBattleId());
+					FORME_ROUTES.remove(ended.getBattleId());
 					if (!STOPPED.remove(ended.getBattleId())) {
 						UUID winner = null;
 						for (BattleActor actor : ended.getWinners()) {

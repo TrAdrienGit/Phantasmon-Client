@@ -10,9 +10,7 @@
 
 | Moyen | Détail |
 |---|---|
-| Touche **G** | Invite le joueur visé au réticule |
 | Roue Cobblemon (**R** sur un joueur) | Entrée « Échange Ghost » (Est, cyan) |
-| `/phantasmon trade invite <pseudo>` | Pseudos proposés depuis la liste des joueurs du serveur |
 
 L'invité reçoit un message avec **[Accepter]** / **[Refuser]** cliquables (`/phantasmon trade join` /
 `/phantasmon trade decline`). L'invitation expire après 60 s. L'écran s'ouvre chez les deux joueurs à
@@ -46,16 +44,8 @@ l'acceptation, au tick suivant (piège de fermeture du chat). Le premier Pokémo
 cliquable, Poké Ball centrée sur la bande de transfert, menu réduit à 80 %, valeurs de la fiche agrandies,
 types sous chaque attaque, couleurs +/- de la nature.
 
-## 2. Échange asynchrone (commandes)
+## 2. Échange asynchrone
 
-| Commande | Effet |
-|---|---|
-| `/phantasmon trade propose <uuid-joueur> <uuid-offert> <uuid-demandé>` | `POST /trades` |
-| `/phantasmon trade accept <uuid-échange>` | Destinataire uniquement |
-| `/phantasmon trade cancel <uuid-échange>` | Initiateur ou destinataire |
-| `/phantasmon trade view <uuid-échange>` | Détail |
-| `/phantasmon trade list` | Échanges initiés ou reçus |
-
-Notifications en temps réel par le même WebSocket (`TradeProposed`, `TradeAccepted`, `TradeCancelled`, via
-`TradeNotificationListener`). Les Pokémon reçus vont dans la première case libre du PC. Limite : il faut connaître
-l'UUID Mojang de l'autre joueur (aucune commande ne le donne) ; l'échange en direct évite ce problème.
+Retiré du client (TODO-22, Adrien 2026-10-05 : aucun échange par commande). L'API REST (`/trades`) et les
+notifications WebSocket (`TradeProposed`, `TradeAccepted`, `TradeCancelled`) existent toujours côté backend ; le client
+affiche encore les notifications, sans commande pour y répondre.

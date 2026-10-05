@@ -1,14 +1,10 @@
 package com.mystaria.phantasmon.client.trade;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -49,41 +45,6 @@ public final class LiveTradeController implements LiveTradeListener {
 	}
 
 	// ---- Player actions ----
-
-	/** {@code /phantasmon trade invite <player>} — resolved through the server's own player list, so only players actually on this server can be picked. */
-	public void inviteByName(String playerName) {
-		ClientPacketListener connection = Minecraft.getInstance().getConnection();
-		PlayerInfo info = connection == null ? null : connection.getPlayerInfo(playerName);
-		if (info == null) {
-			chat(Component.translatable("phantasmon.trade.live.error.player_not_found", playerName).withStyle(ChatFormatting.RED));
-			return;
-		}
-		invite(info.getProfile().getId(), info.getProfile().getName());
-	}
-
-	/** Keybind: invites whichever player the crosshair is on. */
-	public void inviteTargetedPlayer() {
-		if (Minecraft.getInstance().crosshairPickEntity instanceof Player target && target != Minecraft.getInstance().player) {
-			invite(target.getUUID(), target.getGameProfile().getName());
-		} else {
-			chat(Component.translatable("phantasmon.trade.live.error.no_target").withStyle(ChatFormatting.RED));
-		}
-	}
-
-	/** Names suggested by the {@code invite} command: everyone on the server except ourselves. */
-	public static List<String> onlinePlayerNames() {
-		ClientPacketListener connection = Minecraft.getInstance().getConnection();
-		Player self = Minecraft.getInstance().player;
-		if (connection == null) {
-			return List.of();
-		}
-		Collection<PlayerInfo> players = connection.getOnlinePlayers();
-		return players.stream()
-				.filter(info -> self == null || !info.getProfile().getId().equals(self.getUUID()))
-				.map(info -> info.getProfile().getName())
-				.sorted(String.CASE_INSENSITIVE_ORDER)
-				.toList();
-	}
 
 	/** Cobblemon's interaction wheel ("Ghost Trade"): invites the player the wheel is open on. */
 	public void invitePlayer(UUID targetUuid) {
@@ -260,6 +221,7 @@ public final class LiveTradeController implements LiveTradeListener {
 		if (state == null || !state.isSameSession(data)) {
 			return;
 		}
+		com.mystaria.phantasmon.client.ghost.GhostPartyHud.teamChanged();
 		state.markCompleted(data);
 		PokemonDto given = state.givenPokemon();
 		PokemonDto received = state.receivedPokemon();

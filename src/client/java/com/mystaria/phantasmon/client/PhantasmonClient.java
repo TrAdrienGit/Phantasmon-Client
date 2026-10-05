@@ -66,7 +66,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveBattle.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
 			ghostPartyHud.tick();
-			PhantasmonKeybinds.tick(pokemonCommands, ghostSession, liveTrade, liveBattle);
+			PhantasmonKeybinds.tick(pokemonCommands, ghostSession);
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(com.mystaria.phantasmon.client.battle.BattleCinematic::renderWorld);

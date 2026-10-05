@@ -18,4 +18,4 @@
 | L'écran d'échange ne s'ouvre pas après [Accepter] | Invitation expirée (60 s) ou inviteur déjà occupé | Relancer l'invitation |
 | Le combat ne démarre pas chez l'invité | Moteur Showdown non démarré chez l'hôte (« Le moteur de combat n'a pas pu démarrer ») | Consulter le log de l'hôte (`Cannot`, `engine`) |
 | Animations d'attaque absentes | Action effects non chargées ou non reliées (`was not claimed by any instruction`) | Joindre le log de l'hôte ; vérifier les Mixins après une mise à jour de Cobblemon |
-| `/phantasmon pc` ne fait rien | Écran ouvert puis refermé par le chat (régression du différé au tick suivant) | Vérifier que l'ouverture passe par un drapeau consommé au tick |
+| La touche du PC ne fait rien | Écran ouvert puis refermé par le chat (régression du différé au tick suivant) | Vérifier que l'ouverture passe par un drapeau consommé au tick |

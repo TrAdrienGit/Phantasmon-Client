@@ -28,9 +28,9 @@ SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN »
 `config/phantasmon-fingerprint-override.txt` et appliquée immédiatement (nouveau `JoinServerGroup`). Sans
 argument, la commande supprime la surcharge. **Commande de test à retirer** quand un vrai serveur dédié sera utilisé.
 
-**Sortie et rappel** : touche **H** ou `/phantasmon sendout` bascule : rappel si un Ghost est sorti, sinon sortie
+**Sortie et rappel** : touche **H** bascule : rappel si un Ghost est sorti, sinon sortie
 du Pokémon de l'**emplacement 1** de l'équipe (`phantasmon.ghost.error.no_team_lead` s'il est vide).
-`/phantasmon recall` rappelle explicitement. Le chat affiche « Envoi en cours… », puis la confirmation quand le
+Sur l'overlay de l'équipe Ghost, haut / bas et R (touches de Cobblemon) choisissent et sortent / rappellent un Ghost. Le chat affiche « Envoi en cours… », puis la confirmation quand le
 serveur renvoie l'événement au propriétaire.
 
 ## 3. Création de l'entité (`GhostEntityManager.spawn`)
@@ -80,7 +80,7 @@ Les constantes sont en tête de `GhostEntityManager`.
 
 | Cause | Effet |
 |---|---|
-| Rappel (`/phantasmon recall`, touche O), Ghost échangé, mort du propriétaire | `GhostEntityDespawn` : faisceau de rappel vers le propriétaire (`BEAM_MODE = 3`) s'il est chargé chez ce client, sinon suppression immédiate |
+| Rappel (touche H ou R sur l'overlay Ghost), Ghost échangé, mort du propriétaire | `GhostEntityDespawn` : faisceau de rappel vers le propriétaire (`BEAM_MODE = 3`) s'il est chargé chez ce client, sinon suppression immédiate |
 | Déconnexion du propriétaire, changement de dimension | Suppression immédiate |
 | Déconnexion locale | Suppression immédiate de tous les Ghost |
 

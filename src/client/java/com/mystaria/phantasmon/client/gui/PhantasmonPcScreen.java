@@ -142,6 +142,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		refresh();
 	}
 
+	@Override
+	public void removed() {
+		super.removed();
+		// The team may have changed here: the Ghost team overlay re-reads it right away.
+		com.mystaria.phantasmon.client.ghost.GhostPartyHud.teamChanged();
+	}
+
 	// =====================================================================
 	// Data (unchanged behavior)
 	// =====================================================================

@@ -185,7 +185,7 @@ public final class PokemonGuiRendering {
 		if (heldItemId == null || heldItemId.isBlank()) {
 			return ItemStack.EMPTY;
 		}
-		Item item = CobblemonHeldItems.byId().get(heldItemId.toLowerCase(Locale.ROOT));
+		Item item = CobblemonHeldItems.resolve(heldItemId);
 		return item == null ? ItemStack.EMPTY : new ItemStack(item);
 	}
 

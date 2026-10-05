@@ -123,6 +123,16 @@ public final class GhostPartyHud {
 		}
 	}
 
+	/**
+	 * The team may have changed (PC closed, trade done): re-read it on the next tick if the overlay shows, instead of
+	 * waiting for the periodic refresh (Adrien 2026-10-05: a Pokémon put in the team didn't appear).
+	 */
+	public static void teamChanged() {
+		if (instance != null) {
+			instance.lastRefresh = 0;
+		}
+	}
+
 	/** Called every client tick: keeps the team fresh while it shows. */
 	public void tick() {
 		if (mode == Mode.GHOST && System.currentTimeMillis() - lastRefresh >= REFRESH_MS) {

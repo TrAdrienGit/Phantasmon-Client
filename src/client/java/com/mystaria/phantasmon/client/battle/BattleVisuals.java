@@ -249,6 +249,77 @@ public final class BattleVisuals {
 		});
 	}
 
+	// ---- Mega Evolution / Primal Reversion (Adrien 2026-10-05) ----
+
+	private static final int TRANSFORM_TICKS = 24;
+	private static final float[][] RAINBOW = {
+			{ 1f, 0.25f, 0.3f }, { 1f, 0.6f, 0.15f }, { 1f, 0.95f, 0.2f }, { 0.3f, 1f, 0.4f },
+			{ 0.25f, 0.75f, 1f }, { 0.55f, 0.35f, 1f }, { 1f, 0.4f, 0.9f } };
+
+	/**
+	 * The transformation, on this client's scene: a double helix of energy rising round the Pokémon for 1.2 s
+	 * (rainbow for a Mega Evolution, red for Groudon / blue for Kyogre's Primal Reversion), then a flash and a burst,
+	 * hiding the moment its model switches (the aspect the pack's resolvers key on), then its cry.
+	 */
+	public static void transform(FormeChangeVisual change) {
+		ClientLevel level = Minecraft.getInstance().level;
+		PokemonEntity entity = entityAt(change.pnx());
+		if (level == null || entity == null) {
+			return;
+		}
+		float[][] palette = change.primal()
+				? new float[][] { "kyogre".equals(change.species()) ? new float[] { 0.2f, 0.5f, 1f } : new float[] { 1f, 0.25f, 0.1f },
+						"kyogre".equals(change.species()) ? new float[] { 0.5f, 0.9f, 1f } : new float[] { 1f, 0.7f, 0.2f } }
+				: RAINBOW;
+		level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(), net.minecraft.sounds.SoundEvents.BEACON_POWER_SELECT,
+				SoundSource.NEUTRAL, 0.8F, change.primal() ? 0.6F : 1.2F, false);
+		for (int tick = 0; tick < TRANSFORM_TICKS; tick++) {
+			int t = tick;
+			later(t * 0.05f, () -> helix(level, entity, palette, t));
+		}
+		later(TRANSFORM_TICKS * 0.05f, () -> {
+			if (entity.isRemoved()) {
+				return;
+			}
+			java.util.Set<String> aspects = new HashSet<>(entity.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
+			aspects.add(change.aspect());
+			entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
+			double height = entity.getBbHeight();
+			level.addParticle(net.minecraft.core.particles.ParticleTypes.FLASH, entity.getX(), entity.getY() + height / 2, entity.getZ(), 0, 0, 0);
+			for (int i = 0; i < 40; i++) {
+				double angle = i * Math.PI * 2 / 40;
+				level.addParticle(net.minecraft.core.particles.ParticleTypes.END_ROD, entity.getX(), entity.getY() + height / 2, entity.getZ(),
+						Math.cos(angle) * 0.25, (i % 5 - 2) * 0.06, Math.sin(angle) * 0.25);
+			}
+			level.playLocalSound(entity.getX(), entity.getY(), entity.getZ(), net.minecraft.sounds.SoundEvents.FIREWORK_ROCKET_LARGE_BLAST,
+					SoundSource.NEUTRAL, 0.9F, 1F, false);
+			later(0.35f, () -> CobblemonPackets.dispatchLocally(new PlayPosableAnimationPacket(entity.getId(), Set.of("cry"), List.of())));
+		});
+	}
+
+	/** One tick of the rising double helix of coloured energy. */
+	private static void helix(ClientLevel level, PokemonEntity entity, float[][] palette, int tick) {
+		if (entity.isRemoved()) {
+			return;
+		}
+		double radius = Math.max(0.6, entity.getBbWidth() * 0.8);
+		double height = Math.max(1.0, entity.getBbHeight() * 1.2);
+		for (int strand = 0; strand < 2; strand++) {
+			for (int k = 0; k < 3; k++) {
+				double progress = ((tick * 3 + k) % 36) / 36.0;
+				double angle = progress * Math.PI * 6 + strand * Math.PI + tick * 0.25;
+				float[] color = palette[(tick + k + strand * 3) % palette.length];
+				level.addParticle(new net.minecraft.core.particles.DustParticleOptions(new org.joml.Vector3f(color[0], color[1], color[2]), 1.4f),
+						entity.getX() + Math.cos(angle) * radius, entity.getY() + progress * height, entity.getZ() + Math.sin(angle) * radius,
+						0, 0.02, 0);
+			}
+		}
+		if (tick % 4 == 0) {
+			level.addParticle(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, entity.getX(), entity.getY() + entity.getBbHeight() / 2,
+					entity.getZ(), 0, 0.1, 0);
+		}
+	}
+
 	/** Recall beam back to the trainer, then removal. Returns whether there was something to recall. */
 	private static boolean recall(String pnx) {
 		PokemonEntity entity = entities.remove(pnx);

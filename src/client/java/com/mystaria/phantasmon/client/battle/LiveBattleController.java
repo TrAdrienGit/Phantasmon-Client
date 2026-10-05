@@ -22,8 +22,6 @@ import com.google.gson.GsonBuilder;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientPacketListener;
-import net.minecraft.client.multiplayer.PlayerInfo;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.HoverEvent;
@@ -106,28 +104,6 @@ public final class LiveBattleController implements LiveBattleListener {
 	public enum TeamChoice { GHOST, COBBLEMON }
 
 	// ---- Player actions ----
-
-	public void inviteByName(String playerName) {
-		inviteByName(playerName, TeamChoice.GHOST);
-	}
-
-	public void inviteByName(String playerName, TeamChoice team) {
-		ClientPacketListener connection = Minecraft.getInstance().getConnection();
-		PlayerInfo info = connection == null ? null : connection.getPlayerInfo(playerName);
-		if (info == null) {
-			chat(Component.translatable("phantasmon.trade.live.error.player_not_found", playerName).withStyle(ChatFormatting.RED));
-			return;
-		}
-		invite(info.getProfile().getId(), team);
-	}
-
-	public void inviteTargetedPlayer() {
-		if (Minecraft.getInstance().crosshairPickEntity instanceof Player target && target != Minecraft.getInstance().player) {
-			invite(target.getUUID(), TeamChoice.GHOST);
-		} else {
-			chat(Component.translatable("phantasmon.battle.error.no_target").withStyle(ChatFormatting.RED));
-		}
-	}
 
 	/** Cobblemon's interaction wheel ("Ghost Battle"): invites the player the wheel is open on. */
 	public void invitePlayer(UUID targetUuid) {
@@ -472,6 +448,14 @@ public final class LiveBattleController implements LiveBattleListener {
 					}
 
 					@Override
+					public void formeChange(FormeChangeVisual change) {
+						// Played here and on the guest's client, same relay as the move animations (keeps the order).
+						Minecraft.getInstance().execute(() -> BattleVisuals.transform(change));
+						send("BattlePacket", Map.of("battle_uuid", currentBattle, "id", FormeChangeVisual.PACKET_ID,
+								"payload", Base64.getEncoder().encodeToString(change.toBytes())));
+					}
+
+					@Override
 					public void failed() {
 						Map<String, Object> result = new HashMap<>();
 						result.put("battle_uuid", currentBattle);
@@ -529,6 +513,10 @@ public final class LiveBattleController implements LiveBattleListener {
 			return;
 		}
 		try {
+			if (FormeChangeVisual.PACKET_ID.equals(id)) {
+				BattleVisuals.transform(FormeChangeVisual.fromBytes(Base64.getDecoder().decode(string(data.get("payload")))));
+				return;
+			}
 			if (ActionEffectEvent.PACKET_ID.equals(id)) {
 				ActionEffectPlayer.play(ActionEffectEvent.fromBytes(Base64.getDecoder().decode(string(data.get("payload")))), null);
 				return;

@@ -1998,3 +1998,51 @@ veste, manches, jambes) ni sa cape. Ces parties visibles sont une donnée synchr
 `RemotePlayer`) reprend celle du vrai joueur s'il est chargé, sinon les affiche toutes. La cape vient de son
 `PlayerInfo` (onglet joueurs). Client compilé et déployé. Non testé en jeu par Claude.
 
+### 4.73 Plus de commandes pour le PC, les échanges et les combats — TODO-22 (2026-10-05)
+
+Demande d'Adrien (décision D-24) : échanges et combats uniquement par la roue de Cobblemon, PC uniquement par sa touche.
+
+- Retirés : `/phantasmon pc`, `/phantasmon trade invite|propose|accept|cancel|view|list`,
+  `/phantasmon battle invite`, touches G (`key.phantasmon.trade`) et B (`key.phantasmon.battle`), et les méthodes
+  d'invitation par pseudo ou par réticule des contrôleurs. Gardés pour les boutons du chat (choix d'Adrien) :
+  `trade join|decline`, `battle join [ghost|cobblemon]|decline|timer`.
+- La notification d'un échange asynchrone reçu ne renvoie plus vers des commandes. L'API REST `/trades` est inchangée.
+- TODO-23 clos (validé en jeu). Client compilé, tests verts, déployé. Non testé en jeu par Claude.
+- Complément (Adrien) : `/phantasmon sendout` et `/phantasmon recall` retirés aussi ; les Ghost sortent et rentrent
+  avec la touche H ou les touches d'équipe de Cobblemon sur l'overlay Ghost.
+
+### 4.74 Overlay Ghost à jour en sortant du PC ; Méga-Gemmes reconnues (2026-10-05)
+
+Deux bugs remontés par Adrien.
+
+- **Overlay pas à jour** après avoir mis un Pokémon dans l'équipe depuis le PC : l'overlay ne relisait l'équipe que
+  toutes les 10 s. `GhostPartyHud.teamChanged()` force une relecture au tick suivant ; appelé à la fermeture du PC
+  (`PhantasmonPcScreen.removed`) et à la fin d'un échange en direct.
+- **Méga-Gemmes importées de Showdown non reconnues** : elles ne viennent pas de Cobblemon 1.8.1 mais de DeltaClient
+  (le client de Cobblemon Delta, présent dans le modpack), qui les enregistre dans l'espace `cobblemon:` sous
+  l'identifiant Showdown collé (`cobblemon:charizarditex`) et hors du tag `cobblemon:held/is_held_item`. L'import
+  stockait `charizardite_x`. `CobblemonHeldItems.resolve` : chemin exact, sinon comparaison à la Showdown (minuscules,
+  lettres et chiffres seulement, `slugConcat`) avec les objets proposés puis tout objet `cobblemon:`. Les Méga-Gemmes
+  (classe `MegaStoneItem` de Delta, détectée par son nom) sont aussi proposées dans l'éditeur. Utilisé pour l'icône,
+  le nom et l'objet posé sur le Pokémon de combat. Non vérifié : que la Méga-Évolution elle-même fonctionne dans un
+  combat Ghost (dépend du support de Delta côté moteur).
+- 1 test ajouté (55 tests client verts). Client compilé et déployé. Non testé en jeu par Claude.
+
+### 4.75 Méga-Évolution et Retour primal visibles en combat (2026-10-05)
+
+Étude (demande d'Adrien, qui ne voulait pas de dépendance de plus) : les modèles / textures / animations Méga et
+primaux viennent du pack de ressources **CCC_2.2** du modpack (déjà activé), qui choisit le modèle d'après les aspects
+`mega`, `mega_x`, `mega_y`, `primal` ; les Méga-Gemmes viennent de DeltaClient. Cobblemon 1.8.1 gère la Méga-Évolution
+dans le moteur mais ne fait que l'annoncer (`MegaInstruction` → `CobblemonEvents.MEGA_EVOLUTION`,
+`FormeChangeInstruction` → `FORME_CHANGE`, dont le nom de forme ne garde que le dernier segment : `x`, `mega`,
+`primal`) ; sur un serveur Delta, c'est son mod serveur qui pose l'aspect.
+
+- Hôte (`GhostBattles`, abonnement aux deux événements, combats hébergés ici seulement) : aspect Méga d'après la gemme
+  tenue (`FormeChangeVisual.megaAspect` : `…ite x` → `mega_x`, `…ite y` → `mega_y`, sinon `mega`, Méga-Rayquaza
+  compris), `primal` pour le Retour primal ; ajouté aux aspects forcés du Pokémon de combat (gardé s'il est rappelé
+  puis renvoyé), puis relayé à l'invité (`phantasmon:forme_change`, accepté par `RelayedPacketPolicy`).
+- Effet (`BattleVisuals.transform`, chaque client) : son, double hélice de particules 1,2 s (arc-en-ciel ; rouge pour
+  Groudon, bleu pour Kyogre), flash et gerbe au moment où le modèle change, puis cri.
+- Tests : politique de relais et choix de l'aspect (56 tests client verts). Client compilé et déployé. Non testé en
+  jeu par Claude.
+

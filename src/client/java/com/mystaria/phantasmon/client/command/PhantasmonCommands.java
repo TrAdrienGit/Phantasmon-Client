@@ -8,7 +8,6 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandRegistrationCallback;
-import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.UuidArgument;
 import net.minecraft.network.chat.Component;
 
@@ -29,10 +28,9 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * <p>{@code /phantasmon toggle-ping} switches the {@code GET /health} heartbeat
  * on/off for the current session — off by default (Adrien: 2026-09-26).
  *
- * <p>{@code /phantasmon pc} opens the graphical PC HUD screen (Adrien:
- * 2026-09-27, first HUD pass) — see {@link com.mystaria.phantasmon.client.gui.PhantasmonPcScreen}.
- * The command-based {@code /phantasmon pokemon pc <box>}/{@code pc move} below
- * remain available alongside it.
+ * <p>No command opens the PC or starts a trade or a battle (TODO-22, Adrien 2026-10-05): the PC opens with its
+ * key, trades and battles start from Cobblemon's interaction wheel. What remains of {@code trade} / {@code battle}
+ * ({@code join}, {@code decline}, {@code timer}) only exists for the clickable chat buttons.
  *
  * <p>{@code /phantasmon pokemon *} (CAD Phase 6, all-commands approach, Adrien:
  * 2026-09-26): {@code import} (reads a Showdown block from the clipboard),
@@ -40,22 +38,9 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * {@code list}, {@code pc <box>}, {@code delete <uuid>}, {@code clone <uuid>},
  * {@code edit <uuid> level <n>} — see {@link PokemonCommandHandler}.
  *
- * <p>{@code /phantasmon sendout}/{@code recall} (CAD Phase 7) trigger the
- * Ghost Entity spawn/despawn over the presence WebSocket — see
- * {@link GhostSession}. {@code sendout} takes no argument (Adrien:
- * 2026-09-29): it always sends out whichever Pokémon is in team slot 1, see
- * {@link PokemonCommandHandler#sendOutTeamLead}.
+ * <p>No {@code sendout}/{@code recall} command either (Adrien 2026-10-05): Ghosts go out and back with the H key
+ * or Cobblemon's party keys on the Ghost overlay.
  *
- * <p>{@code /phantasmon trade *} (CAD Phase 8, same all-commands approach):
- * {@code propose <recipient> <offered> <requested>}, {@code accept <uuid>},
- * {@code cancel <uuid>}, {@code view <uuid>}, {@code list} — see
- * {@link TradeCommandHandler}, which also renders the WS trade notifications.
- *
- * <p>Live trade screen (Adrien 2026-10-02): {@code trade invite <player>}
- * (names suggested from the server's player list — no UUID to type),
- * {@code trade join}/{@code trade decline} to answer the latest invitation
- * (also run by the clickable [Accept]/[Decline] chat buttons) — see
- * {@link LiveTradeController}. Same invitation is also bound to a keybind.
  */
 public final class PhantasmonCommands {
 
@@ -142,43 +127,9 @@ public final class PhantasmonCommands {
 															return Command.SINGLE_SUCCESS;
 														}))))));
 
+			// Only the answers to an invitation, run by the chat [Accept] / [Decline] buttons: inviting goes through
+			// Cobblemon's interaction wheel (TODO-22, Adrien 2026-10-05).
 			var tradeNode = ClientCommandManager.literal("trade")
-					.then(ClientCommandManager.literal("propose")
-							.then(ClientCommandManager.argument("recipient", UuidArgument.uuid())
-									.then(ClientCommandManager.argument("offered", UuidArgument.uuid())
-											.then(ClientCommandManager.argument("requested", UuidArgument.uuid()).executes(context -> {
-												tradeCommands.propose(context.getSource(),
-														context.getArgument("recipient", UUID.class),
-														context.getArgument("offered", UUID.class),
-														context.getArgument("requested", UUID.class));
-												return Command.SINGLE_SUCCESS;
-											})))))
-					.then(ClientCommandManager.literal("accept")
-							.then(ClientCommandManager.argument("uuid", UuidArgument.uuid()).executes(context -> {
-								tradeCommands.accept(context.getSource(), context.getArgument("uuid", UUID.class));
-								return Command.SINGLE_SUCCESS;
-							})))
-					.then(ClientCommandManager.literal("cancel")
-							.then(ClientCommandManager.argument("uuid", UuidArgument.uuid()).executes(context -> {
-								tradeCommands.cancel(context.getSource(), context.getArgument("uuid", UUID.class));
-								return Command.SINGLE_SUCCESS;
-							})))
-					.then(ClientCommandManager.literal("view")
-							.then(ClientCommandManager.argument("uuid", UuidArgument.uuid()).executes(context -> {
-								tradeCommands.view(context.getSource(), context.getArgument("uuid", UUID.class));
-								return Command.SINGLE_SUCCESS;
-							})))
-					.then(ClientCommandManager.literal("list").executes(context -> {
-						tradeCommands.list(context.getSource());
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("invite")
-							.then(ClientCommandManager.argument("player", StringArgumentType.word())
-									.suggests((context, builder) -> SharedSuggestionProvider.suggest(LiveTradeController.onlinePlayerNames(), builder))
-									.executes(context -> {
-										liveTrade.inviteByName(StringArgumentType.getString(context, "player"));
-										return Command.SINGLE_SUCCESS;
-									})))
 					.then(ClientCommandManager.literal("join").executes(context -> {
 						liveTrade.acceptInvite();
 						return Command.SINGLE_SUCCESS;
@@ -188,26 +139,9 @@ public final class PhantasmonCommands {
 						return Command.SINGLE_SUCCESS;
 					}));
 
-			// Live Ghost battles (Phase 9): invite (names from the server's player list), answer, turn timer.
+			// Live Ghost battles: only the answers and the turn timer, run by the chat buttons; inviting goes through the
+			// wheel (TODO-22).
 			var battleNode = ClientCommandManager.literal("battle")
-					.then(ClientCommandManager.literal("invite")
-							.then(ClientCommandManager.argument("player", StringArgumentType.word())
-									.suggests((context, builder) -> SharedSuggestionProvider.suggest(LiveTradeController.onlinePlayerNames(), builder))
-									.executes(context -> {
-										liveBattle.inviteByName(StringArgumentType.getString(context, "player"));
-										return Command.SINGLE_SUCCESS;
-									})
-									// Ghost vs normal Pokémon (CAD Partie 1 §31): bring a copy of the real Cobblemon party.
-									.then(ClientCommandManager.literal("ghost").executes(context -> {
-										liveBattle.inviteByName(StringArgumentType.getString(context, "player"),
-												com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.GHOST);
-										return Command.SINGLE_SUCCESS;
-									}))
-									.then(ClientCommandManager.literal("cobblemon").executes(context -> {
-										liveBattle.inviteByName(StringArgumentType.getString(context, "player"),
-												com.mystaria.phantasmon.client.battle.LiveBattleController.TeamChoice.COBBLEMON);
-										return Command.SINGLE_SUCCESS;
-									}))))
 					.then(ClientCommandManager.literal("join")
 							.executes(context -> {
 								liveBattle.acceptInvite();
@@ -246,10 +180,6 @@ public final class PhantasmonCommands {
 								enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));
 						return Command.SINGLE_SUCCESS;
 					}))
-					.then(ClientCommandManager.literal("pc").executes(context -> {
-						pokemonCommands.openPc(context.getSource());
-						return Command.SINGLE_SUCCESS;
-					}))
 					.then(ClientCommandManager.literal("debug")
 							.then(ClientCommandManager.literal("fingerprint")
 									.executes(context -> {
@@ -267,24 +197,13 @@ public final class PhantasmonCommands {
 									}))))
 					.then(pokemonNode)
 					.then(tradeNode)
-					.then(battleNode)
-					.then(ClientCommandManager.literal("sendout").executes(context -> {
-						toggleSendOut(pokemonCommands, ghostSession);
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("recall").executes(context -> {
-						ghostSession.recall();
-						return Command.SINGLE_SUCCESS;
-					})));
+					.then(battleNode));
 		});
 	}
 
 	/**
-	 * {@code /phantasmon sendout} is a toggle (Adrien: 2026-09-29): sends out the
-	 * team lead if nothing is currently out, recalls otherwise — same behavior
-	 * shared by the {@code sendout} keybind (see
-	 * {@code com.mystaria.phantasmon.client.PhantasmonKeybinds}), hence
-	 * {@code public static} rather than private to this class.
+	 * The send-out key (H) is a toggle (Adrien: 2026-09-29): sends out the team lead if nothing is currently out,
+	 * recalls otherwise (see {@code com.mystaria.phantasmon.client.PhantasmonKeybinds}).
 	 */
 	public static void toggleSendOut(PokemonCommandHandler pokemonCommands, GhostSession ghostSession) {
 		if (ghostSession.hasActiveGhost()) {

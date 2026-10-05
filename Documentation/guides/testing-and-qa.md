@@ -66,7 +66,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 ### Échange en direct (deux comptes)
 
-- [ ] Invitation par **G**, par la roue **R** et par commande ; [Accepter] ouvre l'écran chez les deux.
+- [ ] Invitation par la roue **R** (« Échange Ghost ») ; [Accepter] ouvre l'écran chez les deux.
 - [ ] Changer d'offre met à jour la fiche de l'autre et remet « prêt » à faux des deux côtés.
 - [ ] Les deux prêts : animation, « échange terminé », fermeture automatique ; le Pokémon reçu est à
       l'emplacement d'équipe du Pokémon donné.
@@ -75,7 +75,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 ### Combat (deux comptes)
 
-- [ ] Invitation par **B**, par la roue **R** et par commande ; [Accepter] lance l'interface de combat Cobblemon
+- [ ] Invitation par la roue **R** (« Combat Ghost ») ; [Accepter] lance l'interface de combat Cobblemon
       chez les deux.
 - [ ] Les deux sens d'hébergement : hôte sur serveur intégré (LAN) **et** hôte client pur (l'hôte alterne d'un
       combat à l'autre).

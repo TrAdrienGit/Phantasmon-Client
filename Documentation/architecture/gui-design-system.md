@@ -8,7 +8,7 @@
 
 | Écran | Ouverture | Disposition |
 |---|---|---|
-| **PC** (`PhantasmonPcScreen`) | Touche **P**, `/phantasmon pc` | Rail Équipe à gauche · fiche Pokémon au centre · grille 6×5 de la boîte à droite (◀ BOÎTE n / 16 ▶). En-tête : « PC · joueur », IMPORTER, compteurs. Pied : ligne d'état, ÉDITER / SUPPRIMER. Bouton ✕ pour fermer. |
+| **PC** (`PhantasmonPcScreen`) | Touche **P** | Rail Équipe à gauche · fiche Pokémon au centre · grille 6×5 de la boîte à droite (◀ BOÎTE n / 16 ▶). En-tête : « PC · joueur », IMPORTER, compteurs. Pied : ligne d'état, ÉDITER / SUPPRIMER. Bouton ✕ pour fermer. |
 | **Éditeur** (`PhantasmonPcEditScreen`) | Bouton ÉDITER du PC | Fiche en aperçu en direct à gauche · formulaire à droite. En-tête : IMPORTER, indicateur « modifications non enregistrées ». Pied : ANNULER / ENREGISTRER. |
 | **Échange** (`PhantasmonTradeScreen`) | Acceptation d'une invitation d'échange | Rail équipe et fiche de chaque joueur, bouton ⇄ ÉCHANGER / PRÊT ✓, QUITTER, fenêtres « échange en cours » et « quitter ? » |
 

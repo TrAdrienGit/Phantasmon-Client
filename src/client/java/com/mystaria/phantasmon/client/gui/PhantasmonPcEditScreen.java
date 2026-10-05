@@ -581,7 +581,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		if (id == null || id.isEmpty()) {
 			return Component.translatable("phantasmon.trade.screen.no_item").getString();
 		}
-		Item item = CobblemonHeldItems.byId().get(id);
+		Item item = CobblemonHeldItems.resolve(id);
 		return item != null ? item.getDescription().getString() : capitalize(id);
 	}
 

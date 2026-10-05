@@ -13,8 +13,6 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 |---|---|---|
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
 | `key.phantasmon.sendout` | **H** | Sortir / rappeler le Pokémon de l'emplacement 1 de l'équipe |
-| `key.phantasmon.trade` | **G** | Inviter à un échange le joueur visé |
-| `key.phantasmon.battle` | **B** | Inviter à un combat le joueur visé |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
 Cobblemon → équipe Ghost (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
@@ -42,9 +40,10 @@ dans la barre de saisie.
 
 ### PC et Pokémon
 
+L'écran PC s'ouvre uniquement avec sa touche (**P** par défaut, TODO-22).
+
 | Commande | Effet |
 |---|---|
-| `/phantasmon pc` | Ouvre l'écran PC |
 | `/phantasmon pokemon import` | Crée un ou plusieurs Pokémon depuis le texte Showdown du presse-papiers |
 | `/phantasmon pokemon export [uuid]` | Copie l'équipe active (ou le Pokémon donné) au format Showdown dans le presse-papiers |
 | `/phantasmon pokemon list` | Liste tous ses Pokémon (espèce, niveau, UUID) |
@@ -59,34 +58,26 @@ dans la barre de saisie.
 
 ### Ghost
 
-| Commande | Effet |
-|---|---|
-| `/phantasmon sendout` | Bascule : rappelle le Ghost sorti, sinon sort le Pokémon de l'emplacement 1 |
-| `/phantasmon recall` | Rappelle le Ghost sorti |
+Aucune commande (Adrien 2026-10-05) : touche **H** (sortie / rappel du Ghost de l'emplacement 1), ou les touches
+d'équipe de Cobblemon sur l'overlay Ghost (haut / bas, R).
 
 ### Échange en direct
 
+Pas de commande pour inviter (TODO-22) : l'invitation passe par la roue d'interaction de Cobblemon (**R** sur un
+joueur → « Échange Ghost »). Ces commandes ne servent qu'aux boutons du chat.
+
 | Commande | Effet |
 |---|---|
-| `/phantasmon trade invite <joueur>` | Invite (suggestions : joueurs du serveur) |
 | `/phantasmon trade join` | Accepte l'invitation reçue (bouton [Accepter] du chat) |
 | `/phantasmon trade decline` | Refuse (bouton [Refuser]) |
 
-### Échange asynchrone
-
-| Commande | Effet |
-|---|---|
-| `/phantasmon trade propose <uuid-joueur> <uuid-offert> <uuid-demandé>` | Propose un échange |
-| `/phantasmon trade accept <uuid-échange>` | Accepte (destinataire) |
-| `/phantasmon trade cancel <uuid-échange>` | Annule (initiateur ou destinataire) |
-| `/phantasmon trade view <uuid-échange>` | Détail |
-| `/phantasmon trade list` | Échanges initiés ou reçus |
-
 ### Combat
 
+Pas de commande pour inviter (TODO-22) : roue d'interaction de Cobblemon (**R** sur un joueur → « Combat Ghost »).
+Ces commandes ne servent qu'aux boutons du chat.
+
 | Commande | Effet |
 |---|---|
-| `/phantasmon battle invite <joueur> [ghost\|cobblemon]` | Invite à un combat ; `cobblemon` présélectionne une copie de votre équipe Cobblemon dans le lobby (Ghost par défaut) |
 | `/phantasmon battle join [ghost\|cobblemon]` | Accepte (bouton [Accepter]) et ouvre le lobby ; `cobblemon` présélectionne votre équipe Cobblemon (modifiable dans le lobby) |
 | `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
 | `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |

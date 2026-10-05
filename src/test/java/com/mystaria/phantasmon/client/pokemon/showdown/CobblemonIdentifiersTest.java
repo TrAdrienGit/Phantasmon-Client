@@ -48,4 +48,11 @@ class CobblemonIdentifiersTest {
 		assertEquals("assault_vest", CobblemonIdentifiers.slugUnderscore("Assault Vest"));
 		assertEquals("choice_band", CobblemonIdentifiers.slugUnderscore("Choice Band"));
 	}
+
+	@Test
+	void anImportedMegaStoneMatchesItsItemIdOnceCompared() {
+		// Showdown import stores "Charizardite X" as charizardite_x; the pack's item is cobblemon:charizarditex.
+		assertEquals("charizardite_x", CobblemonIdentifiers.slugUnderscore("Charizardite X"));
+		assertEquals(CobblemonIdentifiers.slugConcat("charizarditex"), CobblemonIdentifiers.slugConcat("charizardite_x"));
+	}
 }

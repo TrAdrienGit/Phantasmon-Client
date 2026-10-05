@@ -65,10 +65,9 @@ dans la même dimension du même serveur le voient aussi.
 
 Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 
-## 5. Échanger (touche G)
+## 5. Échanger
 
-1. Visez un joueur et appuyez sur **G** (ou roue Cobblemon **R** → « Échange Ghost », ou
-   `/phantasmon trade invite <pseudo>`).
+1. Visez un joueur et ouvrez la roue de Cobblemon (**R**) → « Échange Ghost ».
 2. L'autre joueur clique **[Accepter]** dans le chat (60 s pour répondre).
 3. Chacun choisit son offre dans son équipe (rail de gauche) et voit celle de l'autre à droite.
 4. Cliquez **⇄ ÉCHANGER** pour vous déclarer prêt. Si l'un change d'offre, il faut se redéclarer prêt.
@@ -76,9 +75,9 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 
 **QUITTER** (ou Échap) annule l'échange pour les deux. Seuls les Pokémon de l'équipe sont échangeables.
 
-## 6. Combattre (touche B)
+## 6. Combattre
 
-1. Visez un joueur et appuyez sur **B** (ou roue **R** → « Combat Ghost », ou `/phantasmon battle invite <pseudo>`).
+1. Visez un joueur et ouvrez la roue de Cobblemon (**R**) → « Combat Ghost ».
 2. L'autre joueur clique **[Accepter]** : l'écran de préparation s'ouvre chez les deux. Vous y voyez votre équipe et
    seulement les modèles et noms des Pokémon adverses. Choisissez vos Ghost ou votre équipe Cobblemon (bouton
    ⇄), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
