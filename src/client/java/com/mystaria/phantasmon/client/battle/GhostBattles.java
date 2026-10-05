@@ -202,6 +202,7 @@ public final class GhostBattles {
 	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam,
+			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, HostCallbacks callbacks) {
 		BattleThread.get().submit(() -> {
 			try {
@@ -212,7 +213,7 @@ public final class GhostBattles {
 					callbacks.failed();
 					return;
 				}
-				GhostBattleActor host = new GhostBattleActor(hostUuid, hostName, hostPokemon, CobblemonPackets::dispatchLocally);
+				GhostBattleActor host = new GhostBattleActor(hostUuid, hostName, hostPokemon, hostSink);
 				GhostBattleActor guest = new GhostBattleActor(guestUuid, guestName, guestPokemon, guestSink);
 				BattleStartResult result = BattleRegistry.startBattle(BattleFormat.Companion.getGEN_9_SINGLES(),
 						new BattleSide(host), new BattleSide(guest), false);

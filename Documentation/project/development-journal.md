@@ -2119,3 +2119,17 @@ suivant ; retirées : la caméra de combat (K, remplacée par le bouton de l'éc
 supprimés (plus utilisés) ; l'écoute des touches par-dessus les écrans aussi. Textes d'aide mis à jour. Client
 compilé, tests verts, déployé (avec les corrections du §4.79).
 
+### 4.81 Plus de délai entre l'intro et le combat (2026-10-05)
+
+Retour d'Adrien : 0 à 10 s d'attente variable entre la fin de l'intro et le début du combat. Cause : l'hôte ne
+démarrait son moteur qu'à la fin de l'intro — premier démarrage de Showdown dans la session (espèces, objets chargés
+dans GraalJS : plusieurs secondes), puis création du combat, puis relais vers l'invité.
+
+- Showdown est préchauffé en arrière-plan dès l'ouverture du lobby, chez les deux joueurs (l'hôte n'est connu qu'au
+  début du combat) — `BattleThread.ensureShowdown`.
+- L'hôte démarre le combat dès le début de l'intro ; ce que le moteur envoie à sa propre interface est retenu
+  (`hostHeld`, rempli sur le thread de combat, vidé au premier tick après `INTRO_END`) comme l'invité retient les
+  paquets relayés. `GhostBattles.startHostedBattle` reçoit la destination de l'acteur hôte.
+- Chrono : le délai de l'invité part de la fin de l'intro (il ne voit la demande qu'à ce moment-là).
+- Client compilé, tests verts, déployé. Non testé en jeu par Claude.
+

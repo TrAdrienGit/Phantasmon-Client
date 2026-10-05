@@ -28,8 +28,8 @@ import com.mystaria.phantasmon.client.gui.PhantasmonBattleIntroScreen;
  *
  * <ol>
  *   <li><b>Intro</b>, played by both players as soon as the battle session starts ({@link #INTRO_END} ms, the
- *   same on both clients — the host only starts its engine afterwards, the guest holds relayed packets until
- *   then): "eyes meet" side shot of the two players with a "!" over the opponent, diamond wipe to black, the
+ *   same on both clients — the host's engine starts with it, and both clients hold the battle's packets
+ *   until it ends): "eyes meet" side shot of the two players with a "!" over the opponent, diamond wipe to black, the
  *   challenger panel ({@link PhantasmonBattleIntroScreen}), white flash.</li>
  *   <li><b>Send-outs</b>, when the battle's first packet arrives: the opponent's Pokémon comes out first, filmed
  *   from the front, then ours, over our shoulder; the camera then blends back to the player's own view.</li>

@@ -74,9 +74,14 @@ public final class LiveBattleController implements LiveBattleListener {
 	 * Battle launch cinematic ({@link BattleCinematic}): the host starts its engine only once the intro is over, and
 	 * the guest holds whatever the host relays until then, so both clients see the intro, then the same battle.
 	 */
-	private Runnable pendingEngineStart;
-	private long engineStartAt;
 	private long holdRelayedUntil;
+	/**
+	 * Host: the engine starts with the intro (booting Showdown / building the battle took 0-10 s after it — Adrien
+	 * 2026-10-05), and what it sends this client's UI waits here until the intro is over, like the guest's relayed
+	 * packets. Filled on the battle thread, emptied on the client thread.
+	 */
+	private final java.util.concurrent.ConcurrentLinkedQueue<NetworkPacket<?>> hostHeld = new java.util.concurrent.ConcurrentLinkedQueue<>();
+	private volatile long holdHostUntil;
 	private final List<Map<String, Object>> heldPackets = new ArrayList<>();
 
 	private UUID battleUuid;
@@ -277,10 +282,11 @@ public final class LiveBattleController implements LiveBattleListener {
 			}
 		}
 		long nowMillis = System.currentTimeMillis();
-		if (pendingEngineStart != null && nowMillis >= engineStartAt) {
-			Runnable start = pendingEngineStart;
-			pendingEngineStart = null;
-			start.run();
+		if (!hostHeld.isEmpty() && nowMillis >= holdHostUntil) {
+			NetworkPacket<?> packet;
+			while ((packet = hostHeld.poll()) != null) {
+				CobblemonPackets.dispatchLocally(packet);
+			}
 		}
 		if (!heldPackets.isEmpty() && nowMillis >= holdRelayedUntil) {
 			List<Map<String, Object>> held = new ArrayList<>(heldPackets);
@@ -374,6 +380,8 @@ public final class LiveBattleController implements LiveBattleListener {
 			lobby = new BattleLobbyState(lobbyUuid);
 			pendingInviteUuid = null;
 			lobbyScreenRequested = true;
+			// Either player may host: boot Showdown now, in the background, not when the battle starts.
+			BattleThread.get().submit(() -> BattleThread.get().ensureShowdown());
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.LOBBY);
 		}
 		lobby.apply(data);
@@ -438,9 +446,10 @@ public final class LiveBattleController implements LiveBattleListener {
 		String selfName = localName();
 		List<PokemonDto> ownTeam = team(data.get("own_team"));
 		UUID currentBattle = battleUuid;
-		engineStartAt = BattleCinematic.introEndsAt();
-		pendingEngineStart = () -> GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
-				this::relayToGuest, new GhostBattles.HostCallbacks() {
+		hostHeld.clear();
+		holdHostUntil = BattleCinematic.introEndsAt();
+		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
+				this::deliverToHostUi, this::relayToGuest, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
 						Minecraft.getInstance().execute(() -> {
@@ -483,14 +492,25 @@ public final class LiveBattleController implements LiveBattleListener {
 	}
 
 	/** Host: one Cobblemon packet addressed to the guest's actor, sent through the backend. Called on the battle thread. */
+	/** Host, battle thread: a packet for this client's own Cobblemon UI — held until the intro is over. */
+	private void deliverToHostUi(NetworkPacket<?> packet) {
+		if (System.currentTimeMillis() < holdHostUntil || !hostHeld.isEmpty()) {
+			hostHeld.add(packet);
+			return;
+		}
+		CobblemonPackets.dispatchLocally(packet);
+	}
+
 	private void relayToGuest(NetworkPacket<?> packet) {
 		UUID currentBattle = battleUuid;
 		if (currentBattle == null) {
 			return;
 		}
 		if (packet instanceof BattleMakeChoicePacket && timerEnabled) {
+			// The guest only sees the request once its intro is over: its time counts from then.
+			long from = Math.max(System.currentTimeMillis(), BattleCinematic.introEndsAt());
 			Minecraft.getInstance().execute(() -> enforcedDeadlines.put(opponentUuid,
-					System.currentTimeMillis() + timerSeconds * 1000L + GUEST_GRACE_MILLIS));
+					from + timerSeconds * 1000L + GUEST_GRACE_MILLIS));
 		}
 		try {
 			CobblemonPackets.Encoded encoded = CobblemonPackets.encode(packet);
@@ -662,7 +682,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		BattleVisuals.clear();
 		BattleCinematic.stop();
 		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
-		pendingEngineStart = null;
+		hostHeld.clear();
+		holdHostUntil = 0;
 		heldPackets.clear();
 		holdRelayedUntil = 0;
 		battleUuid = null;
