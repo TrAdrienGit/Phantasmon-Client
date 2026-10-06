@@ -35,7 +35,7 @@ Changer l'URL du backend impose de recompiler et de redéployer le mod sur toute
 
 | Fichier | Contenu | Quand |
 |---|---|---|
-| `config/phantasmon-fingerprint-override.txt` | Valeur brute de l'empreinte forcée | Uniquement après `/phantasmon debug fingerprint <valeur>` ; supprimé par la même commande sans argument |
+| `config/phantasmon-fingerprint-override.txt` | Valeur brute de l'empreinte forcée | Uniquement après `/phantasmon admin debug fingerprint <valeur>` ; supprimé par la même commande sans argument |
 | `options.txt` (Minecraft) | Touches choisies (`key.phantasmon.*`) | Géré par Minecraft |
 | `logs/latest.log` (Minecraft) | Journaux du mod (logger `phantasmon`, classes `GhostSession`, `PhantasmonWebSocketClient`…) | À chaque partie |
 

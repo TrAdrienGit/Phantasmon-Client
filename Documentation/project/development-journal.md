@@ -2271,3 +2271,20 @@ type, Z au choix. TODO-17 (disque USB) retiré de la liste à sa demande.
 - Cibles des mixins vérifiées dans les classes Minecraft / Cobblemon mappées ; client compilé, tests verts, déployé.
   Non vérifié en jeu par Claude.
 
+
+### 4.89 Relecture des docs et icônes (2026-10-06)
+
+Adrien déclare la phase 9 terminée ; TODO-2, 3, 7, 16 (machine de production), 21 (polissage) et 27 (lore) mis en
+suspens (`status.md`, `known-issues.md`, plan CAD 4).
+
+- Docs devenues fausses corrigées : LIM-3 (Méga-Gemmes de DeltaClient reconnues, Cristaux Z virtuels), LIM-7
+  (échanges uniquement en direct depuis TODO-22), `/phantasmon admin debug fingerprint` partout où l'ancienne
+  commande était citée (TODO-2, guides, configuration, CAD 2, D-18), notes du CAD 1 sur le PC (touche seule) et la
+  sortie des Ghost (overlay de l'équipe Phantasm, R), rappel par la touche H retiré de `ghost-entities.md`.
+- `openapi.yaml` : routes `/admin/*` (tag Administration, schéma `AdminPlayer`), paramètre `owner` de
+  `POST /pokemon`, accès admin aux PC des autres joueurs ; YAML vérifié (références résolues). Toutes les routes
+  des contrôleurs y figurent.
+- Icônes : `assets/phantasmon/icon.png` était resté l'image du modèle Fabric (« cobblemon-addon-ghost-pvp-client »),
+  et avait été copiée telle quelle en `pack.png`. Les deux viennent maintenant de `src/assets/logo/Phantasm_full_logo.png`
+  (rognée au carré, 256×256) : icône du mod (Mod Menu) et du pack « Phantasmon Music » (modèle et pack installé).
+  Client recompilé et déployé.

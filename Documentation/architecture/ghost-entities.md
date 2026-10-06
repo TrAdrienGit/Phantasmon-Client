@@ -23,7 +23,7 @@ le client et ajoutée directement au monde local avec `ClientLevel.addEntity`. L
 | Arrêt | Déconnexion du monde : fermeture du WebSocket, suppression de tous les Ghost locaux |
 
 **Empreinte de serveur** : `"singleplayer"` si le client héberge le monde (`Minecraft.isLocalServer()`), sinon
-SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN », `/phantasmon debug fingerprint
+SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN », `/phantasmon admin debug fingerprint
 <valeur>` force une valeur (identique sur les deux clients), enregistrée dans
 `config/phantasmon-fingerprint-override.txt` et appliquée immédiatement (nouveau `JoinServerGroup`). Sans
 argument, la commande supprime la surcharge. **Commande de test à retirer** quand un vrai serveur dédié sera utilisé.
@@ -79,7 +79,7 @@ Les constantes sont en tête de `GhostEntityManager`.
 
 | Cause | Effet |
 |---|---|
-| Rappel (touche H ou R sur l'overlay Ghost), Ghost échangé, mort du propriétaire | `GhostEntityDespawn` : faisceau de rappel vers le propriétaire (`BEAM_MODE = 3`) s'il est chargé chez ce client, sinon suppression immédiate |
+| Rappel (R sur l'overlay de l'équipe Phantasm), Ghost échangé, mort du propriétaire | `GhostEntityDespawn` : faisceau de rappel vers le propriétaire (`BEAM_MODE = 3`) s'il est chargé chez ce client, sinon suppression immédiate |
 | Déconnexion du propriétaire, changement de dimension | Suppression immédiate |
 | Déconnexion locale | Suppression immédiate de tous les Ghost |
 
