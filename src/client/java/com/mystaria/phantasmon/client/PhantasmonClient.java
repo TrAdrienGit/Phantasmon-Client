@@ -30,6 +30,7 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final AuthService authService = new AuthService(httpClient, authSession);
 	private final SessionRefreshScheduler refreshScheduler = new SessionRefreshScheduler(authService);
 	private final PokemonClient pokemonClient = new PokemonClient(httpClient);
+	private final com.mystaria.phantasmon.client.admin.AdminClient adminClient = new com.mystaria.phantasmon.client.admin.AdminClient(httpClient);
 	private final PokemonCommandHandler pokemonCommands = new PokemonCommandHandler(pokemonClient, authSession);
 	private final GhostSession ghostSession = new GhostSession(authSession);
 	private final com.mystaria.phantasmon.client.ghost.GhostPartyHud ghostPartyHud =
@@ -41,7 +42,11 @@ public class PhantasmonClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
-		authService.setOnAuthenticated(ghostSession::start);
+		authService.setOnAuthenticated(() -> {
+			ghostSession.start();
+			// Admin (TODO-25): the backend says whether this player may use /phantasmon admin.
+			com.mystaria.phantasmon.client.admin.AdminSession.refresh(adminClient, authSession);
+		});
 		ghostSession.setTradeNotificationListener(tradeCommands);
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
@@ -58,6 +63,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+			com.mystaria.phantasmon.client.admin.AdminSession.clear();
 			authSession.clear();
 		});
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
@@ -81,6 +87,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
+		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pokemonCommands, pingToggle);
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
 	}
 }

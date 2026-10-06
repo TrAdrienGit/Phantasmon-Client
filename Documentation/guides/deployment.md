@@ -42,17 +42,17 @@ L'hôte LAN calcule `"singleplayer"`, l'invité un hash de l'adresse : le backen
 client, taper une fois la même valeur :
 
 ```text
-/phantasmon debug fingerprint test
+/phantasmon admin debug fingerprint test
 ```
 
 La valeur est enregistrée (`config/phantasmon-fingerprint-override.txt`) et appliquée immédiatement, puis à chaque
-connexion. `/phantasmon debug fingerprint` sans argument revient au calcul normal. Sur un vrai serveur dédié, cette
+connexion. `/phantasmon admin debug fingerprint` sans argument revient au calcul normal. Sur un vrai serveur dédié, cette
 manipulation est inutile.
 
 ## 3. Avant une publication
 
 - URL du backend configurable (aujourd'hui en dur).
-- Retirer `/phantasmon debug fingerprint`.
+- Retirer `/phantasmon admin debug fingerprint`.
 - Renseigner les liens de `fabric.mod.json` et le lien de mise à jour (`AuthService`).
 - Traiter les points de priorité haute de [`project/known-issues.md`](../project/known-issues.md).
 - Aligner `version` (`gradle.properties`) et `phantasmon.version.current` / `min-supported` du backend.

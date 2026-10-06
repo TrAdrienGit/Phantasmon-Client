@@ -19,6 +19,11 @@ public final class PokemonClient {
 		return httpClient.post(BackendConfig.BASE_URL.resolve("/pokemon"), request, bearerToken, PokemonDto.class);
 	}
 
+	/** Admin (TODO-25): creates in {@code ownerUuid}'s PC — the backend refuses it to non-admins. */
+	public CompletableFuture<PokemonDto> createFor(String bearerToken, PokemonCreateRequestDto request, UUID ownerUuid) {
+		return httpClient.post(BackendConfig.BASE_URL.resolve("/pokemon?owner=" + ownerUuid), request, bearerToken, PokemonDto.class);
+	}
+
 	public CompletableFuture<PokemonDto[]> listForOwner(String bearerToken, UUID ownerUuid) {
 		return httpClient.get(BackendConfig.BASE_URL.resolve("/players/" + ownerUuid + "/pokemon"), bearerToken, PokemonDto[].class);
 	}

@@ -308,10 +308,22 @@ public final class PokemonCommandHandler {
 	}
 
 	/** Called once per client tick (see {@link #openPc}) — opens the PC screen if one was requested. */
+	/** Admin (TODO-25): another player's PC, opened on the next tick like the player's own. */
+	private java.util.UUID pcOwnerRequested;
+	private String pcOwnerNameRequested;
+
+	public void openPcOf(java.util.UUID ownerUuid, String ownerName) {
+		pcOwnerRequested = ownerUuid;
+		pcOwnerNameRequested = ownerName;
+		pcScreenRequested = true;
+	}
+
 	public void tick() {
 		if (pcScreenRequested) {
 			pcScreenRequested = false;
-			Minecraft.getInstance().setScreen(new PhantasmonPcScreen(pokemonClient, session));
+			java.util.UUID owner = pcOwnerRequested;
+			pcOwnerRequested = null;
+			Minecraft.getInstance().setScreen(new PhantasmonPcScreen(pokemonClient, session, owner, pcOwnerNameRequested));
 		}
 	}
 

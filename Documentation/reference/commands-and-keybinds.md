@@ -36,7 +36,6 @@ dans la barre de saisie.
 | Commande | Effet |
 |---|---|
 | `/phantasmon login` | Connexion manuelle (normalement automatique à l'entrée dans un monde) : version, preuve Mojang, JWT |
-| `/phantasmon toggle-ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (désactivé par défaut, non persisté) |
 
 ### PC et Pokémon
 
@@ -82,11 +81,16 @@ Ces commandes ne servent qu'aux boutons du chat.
 | `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
 | `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
 
-### Test uniquement
+### Administration (TODO-25)
+
+Réservées aux joueurs listés dans le fichier `admins.txt` du backend (un pseudo Minecraft par ligne, comme les ops
+d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande lui-même.
 
 | Commande | Effet |
 |---|---|
-| `/phantasmon debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` |
-| `/phantasmon debug fingerprint` | Supprime la surcharge |
-
-**À retirer** avant publication (voir `project/status.md`).
+| `/phantasmon admin pc <joueur>` | Ouvre le PC de ce joueur et permet tout comme si c'était le sien (déplacer, éditer, importer, exporter, supprimer) |
+| `/phantasmon admin stopbattle <joueur>` | Arrête le combat de ce joueur (match nul, aucun vainqueur) ou annule son lobby |
+| `/phantasmon admin reboot` | Redémarre le backend, après un clic sur [Confirmer] (combats en cours : match nul ; les clients se reconnectent seuls) |
+| `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
+| `/phantasmon admin debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` ; **à retirer** avant publication (TODO-2) |
+| `/phantasmon admin debug fingerprint` | Supprime la surcharge |

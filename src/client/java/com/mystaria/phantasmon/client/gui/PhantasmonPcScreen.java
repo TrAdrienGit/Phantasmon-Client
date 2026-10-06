@@ -130,10 +130,25 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private boolean statusIsError;
 	private boolean deleteConfirmOpen;
 
+	/** Whose PC this is: the player's own, or — admin (TODO-25) — another player's, handled as if it were theirs. */
+	private final java.util.UUID ownerUuid;
+	private final String ownerName;
+
 	public PhantasmonPcScreen(PokemonClient pokemonClient, AuthSession session) {
+		this(pokemonClient, session, null, null);
+	}
+
+	/** {@code ownerUuid} null = the player's own PC. */
+	public PhantasmonPcScreen(PokemonClient pokemonClient, AuthSession session, java.util.UUID ownerUuid, String ownerName) {
 		super(Component.translatable("phantasmon.pc.title"));
 		this.pokemonClient = pokemonClient;
 		this.session = session;
+		this.ownerUuid = ownerUuid;
+		this.ownerName = ownerName;
+	}
+
+	private boolean someoneElses() {
+		return ownerUuid != null && !ownerUuid.equals(session.playerUuid());
 	}
 
 	@Override
@@ -160,7 +175,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			return;
 		}
 		loading = true;
-		pokemonClient.listForOwner(session.accessToken(), session.playerUuid())
+		pokemonClient.listForOwner(session.accessToken(), someoneElses() ? ownerUuid : session.playerUuid())
 				.thenAccept(pokemons -> Minecraft.getInstance().execute(() -> {
 					this.allPokemon = List.of(pokemons);
 					this.loading = false;
@@ -317,7 +332,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				setStatus(Component.translatable("phantasmon.pokemon.import.parse_error_for", set.speciesToken(), ex.getMessage()).getString(), true);
 				continue;
 			}
-			creations.add(pokemonClient.create(bearerToken, request));
+			creations.add(someoneElses() ? pokemonClient.createFor(bearerToken, request, ownerUuid)
+					: pokemonClient.create(bearerToken, request));
 		}
 		if (creations.isEmpty()) {
 			return;
@@ -615,6 +631,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private String playerName() {
+		if (someoneElses()) {
+			return ownerName;
+		}
 		String name = session.username();
 		if (name == null && Minecraft.getInstance().player != null) {
 			name = Minecraft.getInstance().player.getGameProfile().getName();
@@ -625,7 +644,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	/** Header plates: who's PC this is (left), IMPORTER as the primary action (center, ÉCHANGER's spot), totals (right). */
 	private void renderHeader(GuiGraphics g, double mx, double my) {
 		renderHeaderPlates(g, HEADER_PAIR_PLATE_W);
-		String title = upper(Component.translatable("phantasmon.pc.screen.header", playerName()).getString());
+		String title = upper(Component.translatable(someoneElses() ? "phantasmon.pc.screen.header_admin" : "phantasmon.pc.screen.header",
+				playerName()).getString());
 		drawText(g, fitText(title, HEADER_PAIR_TITLE_W, 2f, true, 1.5f), 31, 32, 2f, WHITE, true, 1.5f);
 
 		long teamCount = Arrays.stream(teamSlots).filter(p -> p != null).count();

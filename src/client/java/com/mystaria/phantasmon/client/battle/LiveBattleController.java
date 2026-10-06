@@ -413,6 +413,8 @@ public final class LiveBattleController implements LiveBattleListener {
 			chat(Component.translatable("phantasmon.battle.lobby.partner_disconnected").withStyle(ChatFormatting.GOLD));
 		} else if ("BACKEND_LOST".equals(reason)) {
 			chat(Component.translatable("phantasmon.battle.lobby.backend_lost").withStyle(ChatFormatting.GOLD));
+		} else if ("ADMIN_STOPPED".equals(reason)) {
+			chat(Component.translatable("phantasmon.battle.lobby.admin_stopped").withStyle(ChatFormatting.GOLD));
 		} else if ("TEAM_NOT_ALLOWED".equals(reason)) {
 			chat(Component.translatable("phantasmon.battle.lobby.team_not_allowed").withStyle(ChatFormatting.RED));
 		} else {
@@ -648,6 +650,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		Component message;
 		if ("PARTNER_DISCONNECTED".equals(reason)) {
 			message = Component.translatable("phantasmon.battle.ended.disconnected").withStyle(ChatFormatting.GOLD);
+		} else if ("ADMIN_STOPPED".equals(reason)) {
+			message = Component.translatable("phantasmon.battle.ended.admin_stopped").withStyle(ChatFormatting.GOLD);
 		} else if ("BACKEND_LOST".equals(reason)) {
 			// The backend is stopping (CAD Partie 1 §44): draw, no winner.
 			message = Component.translatable("phantasmon.battle.ended.backend_lost").withStyle(ChatFormatting.GOLD);

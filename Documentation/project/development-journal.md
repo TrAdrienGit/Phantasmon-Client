@@ -2188,3 +2188,24 @@ et un mod purement client ne peut pas ajouter d'objets. Le moteur de Cobblemon g
   Dex — déjà couvert par la validation de TODO-24.
 - TODO-24 clos (validé en jeu). Test client ajouté (58 tests verts) ; client compilé et déployé. Non testé en jeu.
 
+### 4.85 Rôle administrateur — TODO-25 (2026-10-06)
+
+Demande d'Adrien (décision D-26) : des admins listés dans un fichier, comme les ops ; des commandes en plus, pas de
+touche.
+
+- **Backend** (`admin/`) : `AdminService` lit `admins.txt` (`phantasmon.admin.file`, créé vide avec son mode
+  d'emploi ; un pseudo par ligne, insensible à la casse ; relu dès que sa date change) et compare au pseudo de
+  dernière connexion. `AdminController` : `GET /admin/me`, `GET /admin/players/{name}`, `POST /admin/battles/stop`
+  (`LiveBattleService.adminStop` : combat en match nul `ADMIN_STOPPED` ou lobby annulé), `POST /admin/reboot`
+  (`BackendRestarter` : fermeture puis relance du contexte Spring dans le même processus, arguments d'origine
+  conservés par `PhantasmonBackendApplication`). `PokemonController` : les routes du PC acceptent un admin, les
+  modifications passent au nom du propriétaire (`PokemonService.ownerOf`), `POST /pokemon?owner=` pour importer
+  dans le PC d'un autre. Actions d'admin journalisées.
+- **Client** : `AdminSession` (statut demandé après chaque connexion), `AdminClient`, `AdminCommands`
+  (`/phantasmon admin pc|stopbattle|reboot [confirm]|ping|debug fingerprint`, `requires` admin, pseudos suggérés) ;
+  `PhantasmonPcScreen` sur le PC d'un autre joueur (titre « PC de X (admin) », import dans son PC) ; `toggle-ping`
+  et `debug` retirés des commandes des joueurs ; messages d'arrêt par un admin.
+- `admins.txt` ignoré par git ; `MystAria_` ajouté au fichier du dépôt backend.
+- Tests d'abord : 5 tests REST d'administration + 1 test WebSocket (181 tests backend verts) ; client compilé, tests
+  verts, déployé. Non testé en jeu par Claude ; le backend doit être relancé.
+

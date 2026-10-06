@@ -25,8 +25,8 @@ import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
  * simplest way to prove the flow end to end; a dedicated login screen can
  * replace/complement it later without changing {@link AuthService}.
  *
- * <p>{@code /phantasmon toggle-ping} switches the {@code GET /health} heartbeat
- * on/off for the current session — off by default (Adrien: 2026-09-26).
+ * <p>The ping toggle and the debug commands moved under {@code /phantasmon admin} (TODO-25,
+ * {@link com.mystaria.phantasmon.client.admin.AdminCommands}).
  *
  * <p>No command opens the PC or starts a trade or a battle (TODO-22, Adrien 2026-10-05): the PC opens with its
  * key, trades and battles start from Cobblemon's interaction wheel. What remains of {@code trade} / {@code battle}
@@ -174,27 +174,6 @@ public final class PhantasmonCommands {
 						authService.login();
 						return Command.SINGLE_SUCCESS;
 					}))
-					.then(ClientCommandManager.literal("toggle-ping").executes(context -> {
-						boolean enabled = pingToggle.toggle();
-						context.getSource().sendFeedback(Component.translatable(
-								enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("debug")
-							.then(ClientCommandManager.literal("fingerprint")
-									.executes(context -> {
-										GhostSession.setFingerprintOverride(null);
-										context.getSource().sendFeedback(Component.literal(
-												"[Phantasmon] server_fingerprint override retiré, valeur calculée normalement."));
-										return Command.SINGLE_SUCCESS;
-									})
-									.then(ClientCommandManager.argument("value", StringArgumentType.word()).executes(context -> {
-										String value = StringArgumentType.getString(context, "value");
-										GhostSession.setFingerprintOverride(value);
-										context.getSource().sendFeedback(Component.literal(
-												"[Phantasmon] server_fingerprint forcé à \"" + value + "\" (test uniquement)."));
-										return Command.SINGLE_SUCCESS;
-									}))))
 					.then(pokemonNode)
 					.then(tradeNode)
 					.then(battleNode));
