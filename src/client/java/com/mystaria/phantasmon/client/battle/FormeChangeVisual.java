@@ -5,7 +5,8 @@ import java.nio.charset.StandardCharsets;
 import com.google.gson.Gson;
 
 /**
- * A Mega Evolution or Primal Reversion in a Ghost battle, for both clients' world scene (Adrien 2026-10-05).
+ * A Mega Evolution, Primal Reversion, Z-Move or Terastallization in a Ghost battle, for both clients' world scene
+ * (Adrien 2026-10-05/06; played by {@link BattleSpectacle}).
  * Cobblemon's engine only announces it ({@code MEGA_EVOLUTION} / {@code FORME_CHANGE} events) — on a Cobblemon Delta
  * server, Delta's server mod then gives the Pokémon its aspect; here the host does it ({@link GhostBattles}) and
  * relays this to the guest. {@code aspect} is what the model resolvers of the pack's resource pack (CCC) key on:
@@ -32,6 +33,22 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 
 	public boolean zPower() {
 		return Z_POWER.equals(aspect);
+	}
+
+	/** Not an aspect either: a Terastallization, {@code tera:<type>} (fire, water... stellar). */
+	public static final String TERA_PREFIX = "tera:";
+
+	public boolean tera() {
+		return aspect != null && aspect.startsWith(TERA_PREFIX);
+	}
+
+	public String teraType() {
+		return tera() ? aspect.substring(TERA_PREFIX.length()) : null;
+	}
+
+	/** Whether the Pokémon's model changes (Mega Evolution, Primal Reversion). */
+	public static boolean changesModel(String aspect) {
+		return aspect != null && !Z_POWER.equals(aspect) && !aspect.startsWith(TERA_PREFIX);
 	}
 
 	public byte[] toBytes() {

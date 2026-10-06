@@ -446,7 +446,9 @@ public final class LiveBattleController implements LiveBattleListener {
 				.append(" ")
 				.append(chatButton("phantasmon.battle.timer.button", "/phantasmon battle timer", ChatFormatting.AQUA)));
 		List<PokemonDto> opponentTeam = host ? team(data.get("opponent_team")) : List.of();
-		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize);
+		// TODO-26: the backend draws the intro, the same for both players (an older backend sends none: X/Y).
+		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize, team(data.get("own_team")).size(),
+				BattleCinematic.Intro.of(data.get("intro") instanceof Number number ? number.intValue() : 0));
 		heldPackets.clear();
 		if (!host) {
 			// The host's engine will send us the battle through BattlePacket, once its intro is over too.

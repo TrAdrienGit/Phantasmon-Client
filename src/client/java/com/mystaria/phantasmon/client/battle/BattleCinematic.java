@@ -28,9 +28,9 @@ import com.mystaria.phantasmon.client.gui.PhantasmonBattleIntroScreen;
  *
  * <ol>
  *   <li><b>Intro</b>, played by both players as soon as the battle session starts ({@link #INTRO_END} ms, the
- *   same on both clients — the host's engine starts with it, and both clients hold the battle's packets
- *   until it ends): "eyes meet" side shot of the two players with a "!" over the opponent, diamond wipe to black, the
- *   challenger panel ({@link PhantasmonBattleIntroScreen}), white flash.</li>
+ *   same on both clients and for every {@link Intro} — the host's engine starts with it, and both clients hold the
+ *   battle's packets until it ends): "eyes meet" side shot of the two players with a "!" over the opponent, then the
+ *   2D part of the drawn {@link Intro} ({@link PhantasmonBattleIntroScreen}), white flash.</li>
  *   <li><b>Send-outs</b>, when the battle's first packet arrives: the opponent's Pokémon comes out first, filmed
  *   from the front, then ours, over our shoulder; the camera then blends back to the player's own view.</li>
  * </ol>
@@ -61,6 +61,7 @@ public final class BattleCinematic {
 	private static UUID opponentUuid;
 	private static String opponentName = "?";
 	private static int opponentTeamSize;
+	private static int ownTeamSize;
 	private static boolean sendOutPending;
 	private static long sendOutStart = -1;
 	private static Vec3 localSpot;
@@ -69,6 +70,7 @@ public final class BattleCinematic {
 	private static boolean exclamationSoundPlayed;
 	/** The intro's music gives way to the battle music when the intro ends, not when its file does (Adrien). */
 	private static boolean battleMusicStarted;
+	private static boolean previewing;
 
 	private BattleCinematic() {
 	}
@@ -76,13 +78,42 @@ public final class BattleCinematic {
 	public record CameraPose(Vec3 position, float yaw, float pitch, boolean detached) {
 	}
 
+	/**
+	 * The intros (TODO-26, Adrien 2026-10-06), each after a Pokémon game; the backend draws one per battle
+	 * ({@code BattleSessionStarted.intro}, the ordinal) so that both players watch the same.
+	 */
+	public enum Intro {
+		/** X/Y: eyes-meet box, diamond wipe, challenger panel on speed lines. */
+		XY,
+		/** Sword/Shield: diagonal blue/pink "VS" split screen, then the opponent's throw. */
+		SWORD_SHIELD,
+		/** Diamond/Pearl/Platinum: Poké Ball wipe, radial burst, the field's platforms sliding in. */
+		DIAMOND_PEARL,
+		/** Emerald: rolling Poké Ball wipe, the screen opening on a line, trainers sliding across. */
+		EMERALD,
+		/** Black/White: zoom blur into the opponent, white, the camera pulling back from their silhouette. */
+		BLACK_WHITE;
+
+		public static Intro of(int index) {
+			Intro[] all = values();
+			return index >= 0 && index < all.length ? all[index] : XY;
+		}
+	}
+
+	/** End of the Black/White zoom into the opponent (world camera, before the white). */
+	public static final long ZOOM_END = 2700;
+	private static Intro intro = Intro.XY;
+
 	// =====================================================================
 	// Lifecycle
 	// =====================================================================
 
 	/** Battle session started: plays the intro (both roles). */
-	public static void startIntro(UUID opponent, String name, int teamSize) {
+	public static void startIntro(UUID opponent, String name, int teamSize, int ownSize, Intro which) {
+		ownTeamSize = Mth.clamp(ownSize, 0, 6);
 		introStart = System.currentTimeMillis();
+		intro = which == null ? Intro.XY : which;
+		previewing = false;
 		opponentUuid = opponent;
 		opponentName = name == null ? "?" : name;
 		opponentTeamSize = Mth.clamp(teamSize, 0, 6);
@@ -94,6 +125,22 @@ public final class BattleCinematic {
 		com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.INTRO,
 				com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
 		Minecraft.getInstance().setScreen(new PhantasmonBattleIntroScreen());
+	}
+
+	/**
+	 * Admin preview ({@code /phantasmon admin debug intro}): plays an intro alone, against the nearest other player
+	 * (or oneself), without a battle behind it; the music stops with it.
+	 */
+	public static void preview(Intro which) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null || mc.level == null) {
+			return;
+		}
+		Player opponent = mc.level.players().stream().filter(p -> p != mc.player)
+				.min(java.util.Comparator.comparingDouble(p -> p.distanceToSqr(mc.player))).orElse(mc.player);
+		startIntro(opponent.getUUID(), opponent.getGameProfile().getName(), 6, 6, which);
+		sendOutPending = false;
+		previewing = true;
 	}
 
 	/** Local clock time at which the intro is over (engine start / end of the guest's packet hold). */
@@ -109,12 +156,20 @@ public final class BattleCinematic {
 		return introStart < 0 ? Long.MAX_VALUE : System.currentTimeMillis() - introStart;
 	}
 
+	public static Intro intro() {
+		return intro;
+	}
+
 	public static UUID opponentUuid() {
 		return opponentUuid;
 	}
 
 	public static String opponentName() {
 		return opponentName;
+	}
+
+	public static int ownTeamSize() {
+		return ownTeamSize;
 	}
 
 	public static int opponentTeamSize() {
@@ -159,13 +214,18 @@ public final class BattleCinematic {
 		}
 		if (introStart >= 0 && !battleMusicStarted && now - introStart >= INTRO_END) {
 			battleMusicStarted = true;
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
+			if (previewing) {
+				previewing = false;
+				com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+			} else {
+				com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
+			}
 		}
 		if (introPlaying() && !exclamationSoundPlayed && introElapsed() >= EXCLAMATION_START) {
 			exclamationSoundPlayed = true;
 			play(net.minecraft.sounds.SoundEvents.NOTE_BLOCK_PLING.value(), 1.6f, 0.8f);
 		}
-		applyHideGui(introPlaying() || (sendOutStart >= 0 && now - sendOutStart < SHOT_SELF_END));
+		applyHideGui(introPlaying() || (sendOutStart >= 0 && now - sendOutStart < SHOT_SELF_END) || BattleSpectacle.playing());
 	}
 
 	private static void applyHideGui(boolean hide) {
@@ -196,7 +256,11 @@ public final class BattleCinematic {
 			return null;
 		}
 		if (introPlaying()) {
-			return eyesMeetShot(level, self, partialTick, introElapsed());
+			long elapsed = introElapsed();
+			if (intro == Intro.BLACK_WHITE && elapsed >= EYES_MEET_END) {
+				return zoomShot(level, self, partialTick, Math.min(1f, (elapsed - EYES_MEET_END) / (float) (ZOOM_END - EYES_MEET_END)));
+			}
+			return eyesMeetShot(level, self, partialTick, elapsed);
 		}
 		if (sendOutStart < 0) {
 			return null;
@@ -240,6 +304,20 @@ public final class BattleCinematic {
 			position = solid(level, other) ? middle.add(side.scale(2.0)).add(0, 0.5, 0) : other;
 		}
 		return lookAt(position, middle.add(0, -0.2, 0), true);
+	}
+
+	/** Black/White: from the end of the eyes-meet shot, rushing at the opponent's face (or ours if not loaded). */
+	private static CameraPose zoomShot(ClientLevel level, Player self, float partialTick, float progress) {
+		CameraPose start = eyesMeetShot(level, self, partialTick, EYES_MEET_END);
+		Player opponent = opponentUuid == null ? null : level.getPlayerByUUID(opponentUuid);
+		Player target = opponent != null ? opponent : self;
+		Vec3 face = target.getEyePosition(partialTick);
+		Vec3 toward = face.subtract(start.position());
+		double length = toward.length();
+		float k = progress * progress * progress;
+		Vec3 position = length < 1.0E-3 ? start.position()
+				: start.position().add(toward.scale(k * Math.max(0, (length - 0.9) / length)));
+		return lookAt(position, face.add(0, -0.1, 0), true);
 	}
 
 	/** Facing the opponent's Pokémon as it comes out, from our side of the field, slow push-in. */

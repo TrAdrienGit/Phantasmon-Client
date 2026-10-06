@@ -28,7 +28,7 @@ SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN »
 `config/phantasmon-fingerprint-override.txt` et appliquée immédiatement (nouveau `JoinServerGroup`). Sans
 argument, la commande supprime la surcharge. **Commande de test à retirer** quand un vrai serveur dédié sera utilisé.
 
-**Sortie et rappel** : sur l'overlay de l'équipe Ghost (touche O de Cobblemon), haut / bas et R (touches de
+**Sortie et rappel** : sur l'overlay de l'équipe Phantasm (touche O de Cobblemon), haut / bas et R (touches de
 Cobblemon) choisissent et sortent / rappellent un Ghost (`GhostPartyHud`). Plus de touche dédiée ni de commande. Le chat affiche « Envoi en cours… », puis la confirmation quand le
 serveur renvoie l'événement au propriétaire.
 

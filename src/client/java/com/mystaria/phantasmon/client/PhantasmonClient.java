@@ -72,6 +72,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveTrade.tick();
 			liveBattle.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
+			com.mystaria.phantasmon.client.battle.BattleSpectacle.tick();
 			ghostPartyHud.tick();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.tick();
 			PhantasmonKeybinds.tick(pokemonCommands);

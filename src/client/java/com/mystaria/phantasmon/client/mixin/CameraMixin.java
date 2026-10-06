@@ -32,9 +32,17 @@ public abstract class CameraMixin {
 	@Inject(method = "setup", at = @At("TAIL"))
 	private void phantasmon$battleCinematic(BlockGetter level, Entity entity, boolean detachedArg, boolean mirrored,
 			float partialTick, CallbackInfo ci) {
-		BattleCinematic.CameraPose pose = BattleCinematic.cameraPose((Camera) (Object) this, partialTick);
+		Camera camera = (Camera) (Object) this;
+		BattleCinematic.CameraPose pose = BattleCinematic.cameraPose(camera, partialTick);
 		if (pose == null) {
-			pose = com.mystaria.phantasmon.client.battle.BattleCameraDirector.cameraPose((Camera) (Object) this, partialTick);
+			pose = com.mystaria.phantasmon.client.battle.BattleCameraDirector.cameraPose(camera, partialTick);
+			// A Mega Evolution / Z-Move / Terastallization takes the camera, blending from and back to the shot below.
+			BattleCinematic.CameraPose base = pose != null ? pose
+					: new BattleCinematic.CameraPose(camera.getPosition(), camera.getYRot(), camera.getXRot(), detached);
+			BattleCinematic.CameraPose spectacle = com.mystaria.phantasmon.client.battle.BattleSpectacle.cameraPose(camera, base, partialTick);
+			if (spectacle != null) {
+				pose = spectacle;
+			}
 		}
 		if (pose != null) {
 			setRotation(pose.yaw(), pose.pitch());

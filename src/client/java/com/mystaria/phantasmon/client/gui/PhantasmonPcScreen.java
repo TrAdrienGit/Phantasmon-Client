@@ -151,10 +151,24 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		return ownerUuid != null && !ownerUuid.equals(session.playerUuid());
 	}
 
+	/** The "PC on" sound plays once, not again when coming back from the editor (TODO-21). */
+	private boolean loginSoundPlayed;
+
 	@Override
 	protected void init() {
 		super.init();
+		if (!loginSoundPlayed) {
+			loginSoundPlayed = true;
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PC_LOGIN);
+		}
 		refresh();
+	}
+
+	/** Closed by the player (Escape, the close button) — opening the editor doesn't come here. */
+	@Override
+	public void onClose() {
+		com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PC_LOGOUT);
+		super.onClose();
 	}
 
 	@Override
@@ -423,6 +437,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			if (inside(x, y, MODAL_CANCEL_X, MODAL_BUTTON_Y, MODAL_CANCEL_W, MODAL_BUTTON_H)) {
 				deleteConfirmOpen = false;
 			} else if (inside(x, y, MODAL_DELETE_X, MODAL_BUTTON_Y, MODAL_DELETE_W, MODAL_BUTTON_H)) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 				handleDelete();
 			}
 			return true;
@@ -432,10 +447,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			return true;
 		}
 		if (inside(x, y, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			importFromClipboard();
 			return true;
 		}
 		if (inside(x, y, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			exportTeamToClipboard();
 			return true;
 		}
@@ -449,10 +466,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		}
 		if (selectedPokemon() != null) {
 			if (inside(x, y, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H)) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 				openEditor();
 				return true;
 			}
 			if (inside(x, y, DELETE_X, FOOTER_BUTTON_Y, DELETE_W, FOOTER_BUTTON_H)) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 				deleteConfirmOpen = true;
 				return true;
 			}
@@ -545,6 +564,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				return true;
 			}
 			if (keyCode == 257 || keyCode == 335) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 				handleDelete();
 				return true;
 			}

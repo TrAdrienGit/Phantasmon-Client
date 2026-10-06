@@ -2209,3 +2209,65 @@ touche.
 - Tests d'abord : 5 tests REST d'administration + 1 test WebSocket (181 tests backend verts) ; client compilé, tests
   verts, déployé. Non testé en jeu par Claude ; le backend doit être relancé.
 
+### 4.86 Cinq intros de combat — TODO-26 (2026-10-06)
+
+Demande d'Adrien, avec quatre vidéos de référence : plusieurs cinématiques d'intro inspirées des jeux Pokémon, jouées
+au hasard, la même pour les deux joueurs, cinq en tout.
+
+- **Backend** : `LiveBattleService` tire l'intro (`INTRO_COUNT` = 5) et l'ajoute aux deux `BattleSessionStarted`
+  (`intro`). Test d'abord : `bothPlayersGetTheSameRandomIntro` (182 tests backend verts).
+- **Client** : `BattleCinematic.Intro` (XY, SWORD_SHIELD, DIAMOND_PEARL, EMERALD, BLACK_WHITE), `startIntro` reçoit
+  l'intro et la taille de sa propre équipe. Toutes gardent la même durée (5,5 s) : les retenues de paquets de l'hôte et
+  de l'invité ne changent pas. Toutes partagent le plan « regards croisés » des 2 premières secondes et le flash final ;
+  Noir/Blanc y ajoute une poussée de la caméra du monde vers le visage de l'adversaire (`zoomShot`).
+- `PhantasmonBattleIntroScreen` : une scène par intro (voir `architecture/battle-engine.md`), avec ses sons ; notre
+  propre dresseur en 3D (dos ou face à l'adversaire) dans Épée/Bouclier, Diamant/Perle et Émeraude ; aides communes
+  (plateformes en ellipses, rayons, barres de balles, texte tapé). Ce qui suit les modèles 3D est avancé en z pour
+  passer devant eux.
+- `/phantasmon admin debug intro <nom>` : aperçu d'une intro seule (musique arrêtée à la fin).
+- Client compilé, tests verts, déployé. Non vérifié en jeu par Claude ; le backend doit être relancé pour le tirage.
+
+### 4.87 Premiers effets sonores — TODO-21 (2026-10-06)
+
+Demande d'Adrien, avec trois fichiers .ogg : un son à l'ouverture du PC, un à sa fermeture, un sur les boutons qui
+confirment (Prêt dans le lobby de combat et dans l'échange, Importer, Exporter, Éditer, Supprimer).
+
+- `PhantasmonSounds` joue `assets/phantasmon/sounds/sfx/<nom>.ogg`, sans fichier à déclarer, rien si le fichier
+  manque ; volume général, comme les clics de Minecraft. D'abord livrés par le pack de ressources comme la musique,
+  puis, à la demande d'Adrien, **embarqués dans le mod** (`src/main/resources/assets/phantasmon/sounds/sfx/`, ~53 Ko) ;
+  retirés du pack modèle et du pack installé.
+- `pc_login` : première ouverture de `PhantasmonPcScreen` (pas au retour de l'éditeur) ; `pc_logout` : `onClose`
+  (Échap, bouton fermer ; l'ouverture de l'éditeur ne le joue pas) ; `pressing_a` : Prêt (lobby, échange), Importer,
+  Exporter, Éditer, Supprimer (bouton du bas et confirmation, à la souris ou avec Entrée).
+- Les trois fichiers d'Adrien sont renommés sans `_sound_effect`.
+- Client compilé, tests verts, déployé. Non vérifié en jeu par Claude.
+- Pack « Phantasmon Music » : icône Phantasmon (`pack.png`, copie de `assets/phantasmon/icon.png`, 128×128) dans le
+  modèle et dans le pack installé.
+- Libellé « Équipe Ghost » renommé « Équipe Phantasm » (« Phantasm team » en anglais) à la demande d'Adrien : titre de
+  l'overlay d'équipe et choix d'équipe du lobby ; guides utilisateur et touches mis à jour.
+
+### 4.88 Méga-Évolution, capacités Z et Téracristallisation mises en scène (2026-10-06)
+
+Demande d'Adrien, avec une vidéo de la Méga-Évolution de X/Y : refaire ces animations pour un effet « whoua »,
+avec particules et effets de caméra ; Méga comme dans le jeu, Téra avec un halo et des particules de la couleur du
+type, Z au choix. TODO-17 (disque USB) retiré de la liste à sa demande.
+
+- `BattleSpectacle` (monde : particules, sons, caméra, halo Téra) et `SpectacleOverlay` (calque 2D en triangles
+  colorés, mélange additif pour la lumière ; le Pokémon reste au centre de l'écran, les effets sont dessinés autour).
+  Méga 5,2 s, Primo 5,2 s, Z 3,8 s, Téra 4 s (déroulé dans `architecture/battle-engine.md`).
+- Caméra : plans propres à chaque effet (orbite, plongée / contre-plongée, tremblement aux moments forts, travelling
+  compensé pour le Z), fondus depuis et vers le plan du réalisateur de combat ; `GameRendererSpectacleMixin` pour le
+  champ de vision (vertigo, « coups » au moment de l'éclatement) et pour dessiner le calque après tout le reste.
+- `BattleGuiSpectacleMixin` cache l'écran de combat de Cobblemon (et nos boutons) pendant l'effet ; le HUD aussi.
+- Téra : nouvel événement `TERASTALLIZATION` côté hôte, relayé comme les autres (`tera:<type>`) ; halo via le contour
+  lumineux de Minecraft (`EntityGlowMixin` : `isCurrentlyGlowing` / `getTeamColor`), couleur du type qui scintille ;
+  particules (poussière colorée, éclats de verre teinté, étincelles) ; gardé par Pokémon de combat, réappliqué à
+  chaque entrée (`onSentOut`).
+- L'hôte met le combat en pause pendant l'effet (`dispatchWaitingToFront`) : la suite du tour n'arrive qu'après,
+  chez les deux joueurs.
+- Ancienne hélice (`BattleVisuals.helix`) retirée ; le changement de modèle se fait au moment de l'éclatement.
+- `/phantasmon admin debug spectacle <mega|primal|zmove|tera> [type]` : aperçu sur le Pokémon le plus proche (un
+  Ghost sorti suffit), sans le modifier ; le halo d'aperçu s'éteint après 12 s.
+- Cibles des mixins vérifiées dans les classes Minecraft / Cobblemon mappées ; client compilé, tests verts, déployé.
+  Non vérifié en jeu par Claude.
+

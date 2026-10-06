@@ -119,6 +119,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			return true;
 		}
 		if (inside(x, y, 715, 15, 170, 48)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.lobbyToggleReady();
 		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
 			formatListOpen = true;

@@ -58,7 +58,7 @@ sauvegarde ; Échap ferme (avec confirmation s'il reste des modifications).
 
 ## 4. Faire sortir un Ghost
 
-Appuyez sur **O** (touche « Cacher l'équipe » de Cobblemon) jusqu'à afficher l'équipe Ghost à gauche de l'écran,
+Appuyez sur **O** (touche « Cacher l'équipe » de Cobblemon) jusqu'à afficher l'équipe Phantasm à gauche de l'écran,
 choisissez un Ghost avec **haut / bas**, puis **R** le fait sortir avec l'animation de Poké Ball ; **R** à nouveau le
 rappelle. Il vous suit, se promène autour de vous quand vous restez immobile, et rentre
 automatiquement si vous mourez, changez de dimension ou vous déconnectez. Les joueurs qui ont le mod et sont

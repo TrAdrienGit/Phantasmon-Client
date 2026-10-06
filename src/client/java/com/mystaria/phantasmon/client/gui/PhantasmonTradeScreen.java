@@ -97,6 +97,7 @@ public final class PhantasmonTradeScreen extends PhantasmonCanvasScreen {
 			return true;
 		}
 		if (inside(x, y, 715, 15, 170, 48)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.toggleReady();
 			return true;
 		}

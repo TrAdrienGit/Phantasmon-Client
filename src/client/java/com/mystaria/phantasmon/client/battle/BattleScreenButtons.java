@@ -44,7 +44,7 @@ public final class BattleScreenButtons {
 				return;
 			}
 			ScreenEvents.afterRender(screen).register((current, graphics, mouseX, mouseY, tickDelta) -> {
-				if (BattleCameraDirector.inBattle()) {
+				if (BattleCameraDirector.inBattle() && !BattleSpectacle.playing()) {
 					render(current, graphics, mouseX, mouseY, controller);
 				}
 			});

@@ -15,8 +15,8 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
-Cobblemon → équipe Ghost (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
-Cobblemon. Quand l'équipe Ghost est affichée, les touches d'équipe de Cobblemon agissent sur elle : **haut / bas**
+Cobblemon → équipe Phantasm (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe
+Cobblemon. Quand l'équipe Phantasm est affichée, les touches d'équipe de Cobblemon agissent sur elle : **haut / bas**
 choisissent un Ghost (case mise en avant), **R** le sort (en rappelant celui qui est dehors) ou le rappelle s'il est
 déjà sorti (Poké Ball ouverte). En visant un joueur ou un vrai Pokémon, ou en chevauchant une monture, R reste à
 Cobblemon (roue d'interaction, défi, descente).
@@ -94,3 +94,5 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
 | `/phantasmon admin debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` ; **à retirer** avant publication (TODO-2) |
 | `/phantasmon admin debug fingerprint` | Supprime la surcharge |
+| `/phantasmon admin debug spectacle <mega\|primal\|zmove\|tera> [type]` | Joue la mise en scène de Méga-Évolution, Retour primal, capacité Z ou Téracristallisation (type : fire, water…, stellar) sur le Pokémon le plus proche, sans le modifier |
+| `/phantasmon admin debug intro <xy\|sword_shield\|diamond_pearl\|emerald\|black_white>` | Joue une des intros de combat seule, contre le joueur le plus proche (ou soi-même), sans combat derrière (TODO-26) |

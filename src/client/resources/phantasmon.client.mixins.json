@@ -16,7 +16,10 @@
 		"HidePartyBindingMixin",
 		"PartyShiftBindingMixin",
 		"PartySendBindingMixin",
-		"MusicManagerMixin"
+		"MusicManagerMixin",
+		"GameRendererSpectacleMixin",
+		"EntityGlowMixin",
+		"BattleGuiSpectacleMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

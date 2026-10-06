@@ -72,6 +72,10 @@ public final class GhostBattles {
 		Consumer<com.cobblemon.mod.common.api.events.battles.instruction.ZMoveUsedEvent> onZPower =
 				event -> onFormeChange(event.getBattle(), event.getPokemon(), FormeChangeVisual.Z_POWER);
 		com.cobblemon.mod.common.api.events.CobblemonEvents.ZPOWER_USED.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onZPower);
+		// Terastallization: no model change, the crystal set piece then a glow in the Tera type's colour.
+		Consumer<com.cobblemon.mod.common.api.events.battles.instruction.TerastallizationEvent> onTera =
+				event -> onFormeChange(event.getBattle(), event.getPokemon(), FormeChangeVisual.TERA_PREFIX + event.getTeraType().getId().getPath());
+		com.cobblemon.mod.common.api.events.CobblemonEvents.TERASTALLIZATION.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onTera);
 		com.cobblemon.mod.common.api.events.CobblemonEvents.FORME_CHANGE.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onForme);
 	}
 
@@ -83,7 +87,7 @@ public final class GhostBattles {
 		}
 		String pnx = pnxOf(pokemon);
 		Pokemon effected = pokemon.getEffectedPokemon();
-		if (!FormeChangeVisual.Z_POWER.equals(aspect)) {
+		if (FormeChangeVisual.changesModel(aspect)) {
 			java.util.Set<String> forced = new java.util.HashSet<>(effected.getForcedAspects());
 			forced.add(aspect);
 			effected.setForcedAspects(forced);
@@ -92,6 +96,8 @@ public final class GhostBattles {
 		if (pnx != null) {
 			route.accept(new FormeChangeVisual(pnx, pokemon.getUuid().toString(),
 					effected.getSpecies().getResourceIdentifier().getPath(), aspect));
+			// The battle waits for the set piece (both players: the guest gets the host's packets as they come).
+			battle.dispatchWaitingToFront(BattleSpectacle.pauseSeconds(aspect), () -> kotlin.Unit.INSTANCE);
 		}
 	}
 
