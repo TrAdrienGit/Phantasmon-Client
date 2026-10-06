@@ -190,6 +190,44 @@ public final class PokemonGuiRendering {
 	}
 
 	/** Vanilla item icons always render at a fixed 16×16 — scaled here via pose to the requested size. */
+	private static final net.minecraft.resources.ResourceLocation Z_ICON =
+			net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/gui/battle/battle_gimmick_zmove.png");
+
+	/**
+	 * A held item's icon: its Minecraft item, or Cobblemon's Z symbol for a Z-Crystal (no item in the pack, TODO-28).
+	 * Returns whether something was drawn.
+	 */
+	public static boolean renderHeldItem(GuiGraphics graphics, String heldItemId, float x, float y, float size) {
+		ItemStack stack = heldItemStack(heldItemId);
+		if (!stack.isEmpty()) {
+			renderItemIcon(graphics, stack, x, y, size);
+			return true;
+		}
+		if (com.mystaria.phantasmon.client.pokemon.ZCrystals.isZCrystal(heldItemId)) {
+			PoseStack pose = graphics.pose();
+			pose.pushPose();
+			pose.translate(x, y, 0);
+			pose.scale(size / 34f, size / 34f, 1f);
+			graphics.blit(Z_ICON, 0, 0, 1, 0, 34, 34, 36, 68);
+			pose.popPose();
+			return true;
+		}
+		return false;
+	}
+
+	/** A held item's display name: its Minecraft item's, a Z-Crystal's, else the raw id; null if none. */
+	public static String heldItemName(String heldItemId) {
+		if (heldItemId == null || heldItemId.isBlank()) {
+			return null;
+		}
+		ItemStack stack = heldItemStack(heldItemId);
+		if (!stack.isEmpty()) {
+			return stack.getHoverName().getString();
+		}
+		String z = com.mystaria.phantasmon.client.pokemon.ZCrystals.name(heldItemId);
+		return z != null ? z : heldItemId;
+	}
+
 	public static void renderItemIcon(GuiGraphics graphics, ItemStack stack, float x, float y, float size) {
 		PoseStack poseStack = graphics.pose();
 		poseStack.pushPose();

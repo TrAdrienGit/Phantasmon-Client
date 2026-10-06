@@ -562,6 +562,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private static List<String> allHeldItemIds() {
 		if (allHeldItemIds == null) {
 			List<String> ids = new ArrayList<>(CobblemonHeldItems.byId().keySet());
+			ids.addAll(com.mystaria.phantasmon.client.pokemon.ZCrystals.ids()); // held virtually (TODO-28)
 			ids.sort(String::compareTo);
 			allHeldItemIds = ids;
 		}
@@ -582,7 +583,8 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			return Component.translatable("phantasmon.trade.screen.no_item").getString();
 		}
 		Item item = CobblemonHeldItems.resolve(id);
-		return item != null ? item.getDescription().getString() : capitalize(id);
+		String z = com.mystaria.phantasmon.client.pokemon.ZCrystals.name(id);
+		return item != null ? item.getDescription().getString() : z != null ? z : capitalize(id);
 	}
 
 	private static String moveDisplayName(String moveId) {
@@ -1007,9 +1009,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 					x + 9, valueY, VALUE_SCALE, WHITE, false, 0f);
 			case ITEM -> {
 				float textX = x + 9;
-				ItemStack stack = PokemonGuiRendering.heldItemStack(heldItemId);
-				if (!stack.isEmpty()) {
-					PokemonGuiRendering.renderItemIcon(g, stack, textX, valueY - 3, 20);
+				if (PokemonGuiRendering.renderHeldItem(g, heldItemId, textX, valueY - 3, 20)) {
 					textX += 26;
 				}
 				drawText(g, fitText(itemDisplayName(heldItemId), x + w - 40 - textX, VALUE_SCALE, false, 0f),
@@ -1229,9 +1229,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			case ABILITY -> drawText(g, fitText(abilityDisplayName(value), w, VALUE_SCALE, false, 0f), x, textY, VALUE_SCALE, WHITE, false, 0f);
 			case ITEM -> {
 				float textX = x;
-				ItemStack stack = PokemonGuiRendering.heldItemStack(value);
-				if (!stack.isEmpty()) {
-					PokemonGuiRendering.renderItemIcon(g, stack, textX, rowY + 8, 20);
+				if (PokemonGuiRendering.renderHeldItem(g, value, textX, rowY + 8, 20)) {
 					textX += 28;
 				}
 				drawText(g, fitText(itemDisplayName(value), x + w - textX, VALUE_SCALE, false, 0f), textX, textY,

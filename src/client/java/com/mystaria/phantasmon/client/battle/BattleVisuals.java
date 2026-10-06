@@ -310,7 +310,8 @@ public final class BattleVisuals {
 		if (level == null || entity == null) {
 			return;
 		}
-		float[][] palette = change.primal()
+		float[][] palette = change.zPower() ? new float[][] { { 1f, 0.85f, 0.2f }, { 1f, 0.95f, 0.55f }, { 1f, 0.7f, 0.1f } }
+				: change.primal()
 				? new float[][] { "kyogre".equals(change.species()) ? new float[] { 0.2f, 0.5f, 1f } : new float[] { 1f, 0.25f, 0.1f },
 						"kyogre".equals(change.species()) ? new float[] { 0.5f, 0.9f, 1f } : new float[] { 1f, 0.7f, 0.2f } }
 				: RAINBOW;
@@ -324,9 +325,11 @@ public final class BattleVisuals {
 			if (entity.isRemoved()) {
 				return;
 			}
-			java.util.Set<String> aspects = new HashSet<>(entity.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
-			aspects.add(change.aspect());
-			entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
+			if (!change.zPower()) {
+				java.util.Set<String> aspects = new HashSet<>(entity.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
+				aspects.add(change.aspect());
+				entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
+			}
 			double height = entity.getBbHeight();
 			level.addParticle(net.minecraft.core.particles.ParticleTypes.FLASH, entity.getX(), entity.getY() + height / 2, entity.getZ(), 0, 0, 0);
 			for (int i = 0; i < 40; i++) {

@@ -93,6 +93,9 @@ public final class GhostBattlePokemonFactory {
 				// crashed the battle start when the host is a pure client (LAN guest, Adrien 2026-10-04). A throwaway
 				// battle copy needs no event. setHeldItem$common is the JVM name of Kotlin's internal setter.
 				pokemon.setHeldItem$common(stack);
+			} else if (com.mystaria.phantasmon.client.pokemon.ZCrystals.isZCrystal(item.toString())) {
+				// No Minecraft item for Z-Crystals: held virtually, given to the engine by GhostZCrystals (TODO-28).
+				GhostZCrystals.hold(pokemon, com.mystaria.phantasmon.client.pokemon.ZCrystals.showdownId(item.toString()));
 			}
 		}
 		Object gender = data.get("gender");

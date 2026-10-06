@@ -354,10 +354,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		drawText(g, fitText(displayName(lead), maxWidth - starWidth, 2f, true, 0.6f), textX + starWidth, 556, 2f, WHITE, true, 0.6f);
 		drawText(g, Component.translatable("phantasmon.trade.screen.level", lead.level()).getString(), textX, 600, 2f, TEXT2, false, 0f);
-		ItemStack item = heldItem(lead);
-		if (!item.isEmpty()) {
-			PokemonGuiRendering.renderItemIcon(g, item, textX, 640, 20);
-			drawText(g, fitText(item.getHoverName().getString(), maxWidth - 26, 2f, false, 0f), textX + 26, 643, 2f, TEXT2, false, 0f);
+		String itemName = PokemonGuiRendering.heldItemName(heldItemId(lead));
+		if (itemName != null && PokemonGuiRendering.renderHeldItem(g, heldItemId(lead), textX, 640, 20)) {
+			drawText(g, fitText(itemName, maxWidth - 26, 2f, false, 0f), textX + 26, 643, 2f, TEXT2, false, 0f);
 		}
 	}
 

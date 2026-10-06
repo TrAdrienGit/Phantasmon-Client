@@ -290,9 +290,8 @@ public final class GhostPartyHud {
 
 		// Held item in its little box.
 		Object heldItem = pokemon.data() == null ? null : pokemon.data().get("held_item");
-		ItemStack item = heldItem == null ? ItemStack.EMPTY : PokemonGuiRendering.heldItemStack(heldItem.toString());
-		if (!item.isEmpty()) {
-			PokemonGuiRendering.renderItemIcon(g, item, x + 12, y + 14, 8);
+		if (heldItem != null) {
+			PokemonGuiRendering.renderHeldItem(g, heldItem.toString(), x + 12, y + 14, 8);
 		}
 
 		// Ghosts have no HP outside a battle: the bar is always full, in Phantasmon cyan.

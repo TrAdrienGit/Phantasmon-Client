@@ -354,9 +354,8 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		}
 		drawText(g, name, nameStart + starWidth, y + layout.nameY(), 1f, WHITE, true, 0f);
 
-		ItemStack item = details ? heldItem(pokemon) : ItemStack.EMPTY;
-		if (!item.isEmpty()) {
-			PokemonGuiRendering.renderItemIcon(g, item, x + layout.itemX(), y + layout.itemY(), layout.itemSize());
+		if (details) {
+			PokemonGuiRendering.renderHeldItem(g, heldItemId(pokemon), x + layout.itemX(), y + layout.itemY(), layout.itemSize());
 		}
 	}
 
@@ -465,17 +464,13 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		// Z18 Objet tenu
 		infoBox(g, 228 + dx, 361, 276, 56, "phantasmon.trade.screen.held_item");
 		float valueY = 361 + 25;
-		ItemStack item = heldItem(pokemon);
-		String itemText;
+		String itemText = PokemonGuiRendering.heldItemName(heldItemId(pokemon));
 		float valueX = 237 + dx;
-		if (!item.isEmpty()) {
-			PokemonGuiRendering.renderItemIcon(g, item, valueX, valueY - 3, 20);
+		if (PokemonGuiRendering.renderHeldItem(g, heldItemId(pokemon), valueX, valueY - 3, 20)) {
 			valueX += 26;
-			itemText = item.getHoverName().getString();
-		} else {
-			Object raw = data.get("held_item");
-			itemText = raw != null && !raw.toString().isBlank() ? raw.toString()
-					: Component.translatable("phantasmon.trade.screen.no_item").getString();
+		}
+		if (itemText == null) {
+			itemText = Component.translatable("phantasmon.trade.screen.no_item").getString();
 		}
 		drawText(g, fitText(itemText, 504 + dx - 9 - valueX, VALUE_SCALE, false, 0f), valueX, valueY, VALUE_SCALE, WHITE, false, 0f);
 
@@ -938,6 +933,12 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			}
 		}
 		return template == null ? null : template.getElementalType();
+	}
+
+	/** The raw {@code held_item} id, or null. */
+	protected static String heldItemId(PokemonDto pokemon) {
+		Object raw = pokemon.data() == null ? null : pokemon.data().get("held_item");
+		return raw == null ? null : raw.toString();
 	}
 
 	protected static ItemStack heldItem(PokemonDto pokemon) {

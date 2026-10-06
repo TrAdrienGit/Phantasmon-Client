@@ -78,6 +78,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		});
 
 		com.mystaria.phantasmon.client.battle.BattleScreenButtons.register(liveBattle);
+		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);

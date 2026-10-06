@@ -23,8 +23,15 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 
 	private static final Gson GSON = new Gson();
 
+	/** Not an aspect: a Z-Move's burst (TODO-28), the model doesn't change. */
+	public static final String Z_POWER = "zpower";
+
 	public boolean primal() {
 		return "primal".equals(aspect);
+	}
+
+	public boolean zPower() {
+		return Z_POWER.equals(aspect);
 	}
 
 	public byte[] toBytes() {

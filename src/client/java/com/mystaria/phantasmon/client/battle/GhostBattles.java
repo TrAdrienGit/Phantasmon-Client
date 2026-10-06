@@ -68,6 +68,10 @@ public final class GhostBattles {
 			}
 		};
 		com.cobblemon.mod.common.api.events.CobblemonEvents.MEGA_EVOLUTION.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onMega);
+		// Z-Move (TODO-28): no model change, just the Z-Power burst on both clients.
+		Consumer<com.cobblemon.mod.common.api.events.battles.instruction.ZMoveUsedEvent> onZPower =
+				event -> onFormeChange(event.getBattle(), event.getPokemon(), FormeChangeVisual.Z_POWER);
+		com.cobblemon.mod.common.api.events.CobblemonEvents.ZPOWER_USED.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onZPower);
 		com.cobblemon.mod.common.api.events.CobblemonEvents.FORME_CHANGE.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onForme);
 	}
 
@@ -79,10 +83,12 @@ public final class GhostBattles {
 		}
 		String pnx = pnxOf(pokemon);
 		Pokemon effected = pokemon.getEffectedPokemon();
-		java.util.Set<String> forced = new java.util.HashSet<>(effected.getForcedAspects());
-		forced.add(aspect);
-		effected.setForcedAspects(forced);
-		effected.updateAspects();
+		if (!FormeChangeVisual.Z_POWER.equals(aspect)) {
+			java.util.Set<String> forced = new java.util.HashSet<>(effected.getForcedAspects());
+			forced.add(aspect);
+			effected.setForcedAspects(forced);
+			effected.updateAspects();
+		}
 		if (pnx != null) {
 			route.accept(new FormeChangeVisual(pnx, pokemon.getUuid().toString(),
 					effected.getSpecies().getResourceIdentifier().getPath(), aspect));

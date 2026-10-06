@@ -2169,3 +2169,22 @@ mise à jour des règles à chaque relance du backend ; Pokémon hors format ent
   ND Uber) ; `TeamValidator.checkMegaStone` vérifie la forme Méga (champ `megaStone` des objets) contre les
   bannissements du format. Test ajouté (175 tests backend verts). Backend à relancer.
 
+### 4.84 Cristaux Z — TODO-28 (2026-10-06)
+
+Constat : aucun mod du modpack ne fournit de cristaux Z (ni Cobblemon 1.8.1, ni DeltaClient, qui a les Méga-Gemmes),
+et un mod purement client ne peut pas ajouter d'objets. Le moteur de Cobblemon gère pourtant les capacités Z
+(`ZPOWER_USED`, bouton Z de son écran de combat) et laisse d'autres fournisseurs déclarer l'objet tenu
+(`HeldItemProvider`, premier fournisseur qui répond).
+
+- `ZCrystals` : les 35 cristaux de Showdown (18 de type, 17 d'espèce), reconnus sous l'id Showdown (`firiumz`) comme
+  sous la forme d'un import (`firium_z`).
+- `GhostZCrystals` (fournisseur en priorité la plus haute) : un Ghost qui tient un cristal Z le tient « virtuellement »
+  — `GhostBattlePokemonFactory` l'enregistre pour la copie de combat, le moteur reçoit son id Showdown ; les autres
+  Pokémon restent à Cobblemon.
+- Effet en combat : à `ZPOWER_USED`, hélice dorée, flash et cri sur les deux clients (même relais que la
+  Méga-Évolution, sans changement de modèle).
+- Affichage : icône Z de Cobblemon et nom (« Firium Z ») dans le PC, l'éditeur (cristaux ajoutés à la liste des
+  objets), le lobby et l'overlay Ghost. Formats : les cristaux Z sont « Past » en Gen 9 (refusés), permis en National
+  Dex — déjà couvert par la validation de TODO-24.
+- TODO-24 clos (validé en jeu). Test client ajouté (58 tests verts) ; client compilé et déployé. Non testé en jeu.
+
