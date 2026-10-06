@@ -81,7 +81,8 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 1. Visez un joueur et ouvrez la roue de Cobblemon (**R**) → « Combat Ghost ».
 2. L'autre joueur clique **[Accepter]** : l'écran de préparation s'ouvre chez les deux. Vous y voyez votre équipe et
    seulement les modèles et noms des Pokémon adverses. Choisissez vos Ghost ou votre équipe Cobblemon (bouton
-   ⇄), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
+   ⇄), choisissez ensemble le **format** (liste en bas à gauche : Libre, National Dex, Gen 9 — les Pokémon qui ne
+   le respectent pas sont entourés en rouge, survolez les vôtres pour savoir pourquoi), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
    commence quand les deux joueurs sont prêts. **Timer** (en bas) : 150 s, ensuite le premier Pokémon est choisi
    pour qui n'est pas prêt, et le chrono de combat s'active.
 3. Le combat utilise l'interface de Cobblemon, avec ses animations. Vos Pokémon apparaissent devant vous.

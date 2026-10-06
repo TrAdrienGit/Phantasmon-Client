@@ -32,6 +32,8 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_WS_RATE_LIMITED", "phantasmon.error.rate_limited"),
 			Map.entry("ERROR_BATTLE_INVALID_PARTY", "phantasmon.battle.error.invalid_party"),
 			Map.entry("ERROR_BATTLE_LOBBY_LOCKED", "phantasmon.battle.error.lobby_locked"),
+			Map.entry("ERROR_BATTLE_TEAM_NOT_ALLOWED", "phantasmon.battle.error.team_not_allowed"),
+			Map.entry("ERROR_BATTLE_UNKNOWN_FORMAT", "phantasmon.battle.error.unknown_format"),
 			Map.entry("ERROR_BATTLE_LOBBY_NOT_FOUND", "phantasmon.battle.error.lobby_not_found"),
 			Map.entry("ERROR_VALIDATION_FAILED", "phantasmon.error.validation_failed"),
 			Map.entry("ERROR_MALFORMED_REQUEST", "phantasmon.error.malformed_request"),

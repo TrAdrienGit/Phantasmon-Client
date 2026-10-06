@@ -218,6 +218,13 @@ public final class LiveBattleController implements LiveBattleListener {
 		send("BattleLobbySetTeam", message);
 	}
 
+	/** Battle format, for both players (TODO-24): the backend unreadies everyone. */
+	public void lobbySetFormat(String formatId) {
+		if (lobby != null && formatId != null && !formatId.equals(lobby.formatId())) {
+			send("BattleLobbySetFormat", Map.of("lobby_uuid", lobby.lobbyUuid(), "format_id", formatId));
+		}
+	}
+
 	public void lobbyEnableTimer() {
 		if (lobby != null && !lobby.timerOn()) {
 			send("BattleLobbyTimerEnable", Map.of("lobby_uuid", lobby.lobbyUuid()));
@@ -406,6 +413,8 @@ public final class LiveBattleController implements LiveBattleListener {
 			chat(Component.translatable("phantasmon.battle.lobby.partner_disconnected").withStyle(ChatFormatting.GOLD));
 		} else if ("BACKEND_LOST".equals(reason)) {
 			chat(Component.translatable("phantasmon.battle.lobby.backend_lost").withStyle(ChatFormatting.GOLD));
+		} else if ("TEAM_NOT_ALLOWED".equals(reason)) {
+			chat(Component.translatable("phantasmon.battle.lobby.team_not_allowed").withStyle(ChatFormatting.RED));
 		} else {
 			chat(Component.translatable("phantasmon.battle.error.empty_team").withStyle(ChatFormatting.RED));
 		}
@@ -449,6 +458,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		hostHeld.clear();
 		holdHostUntil = BattleCinematic.introEndsAt();
 		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
+				battleRules(data.get("format")), adjustLevel(data.get("format")),
 				this::deliverToHostUi, this::relayToGuest, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
@@ -770,6 +780,20 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		team.sort((a, b) -> Integer.compare(a.teamSlot() == null ? 99 : a.teamSlot(), b.teamSlot() == null ? 99 : b.teamSlot()));
 		return team;
+	}
+
+	/** Rules Showdown's engine applies itself for the picked format (Sleep Clause Mod...), from BattleSessionStarted. */
+	private static List<String> battleRules(Object format) {
+		List<String> rules = new ArrayList<>();
+		if (format instanceof Map<?, ?> map && map.get("battle_rules") instanceof List<?> list) {
+			list.forEach(rule -> rules.add(String.valueOf(rule)));
+		}
+		return rules;
+	}
+
+	/** Level every Pokémon fights at in the picked format (100, 5 in Little Cup), 0 = its own. */
+	private static int adjustLevel(Object format) {
+		return format instanceof Map<?, ?> map && map.get("adjust_level") instanceof Number level ? level.intValue() : 0;
 	}
 
 	private static Component teamLabel(Object source) {

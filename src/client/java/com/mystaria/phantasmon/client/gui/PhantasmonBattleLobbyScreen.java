@@ -1,5 +1,6 @@
 package com.mystaria.phantasmon.client.gui;
 
+import java.util.List;
 import java.util.UUID;
 
 import org.joml.Quaternionf;
@@ -47,6 +48,15 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	/** The music screen opens over the lobby: leaving the lobby screen for it is not leaving the lobby. */
 	private boolean openingMusic;
 
+	// ---- Battle format drop-down (TODO-24), bottom left; its list opens upward ----
+	private static final int FORMAT_X = 27;
+	private static final int FORMAT_W = 470;
+	private static final int FORMAT_ROW_H = 30;
+	private static final int STATUS_X = FORMAT_X + FORMAT_W + 14;
+	private boolean formatListOpen;
+	/** Issues of the own Pokémon under the cursor (footer explains them), refreshed every frame. */
+	private List<BattleLobbyState.Issue> hoveredIssues = List.of();
+
 	private final LiveBattleController controller;
 	private boolean quitConfirmOpen;
 
@@ -88,6 +98,17 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		double x = toCanvasX(mouseX);
 		double y = toCanvasY(mouseY);
+		if (formatListOpen) {
+			List<BattleLobbyState.FormatOption> formats = state.formats();
+			int top = formatListTop(formats.size());
+			for (int i = 0; i < formats.size(); i++) {
+				if (inside(x, y, FORMAT_X, top + i * FORMAT_ROW_H, FORMAT_W, FORMAT_ROW_H)) {
+					controller.lobbySetFormat(formats.get(i).id());
+				}
+			}
+			formatListOpen = false;
+			return true;
+		}
 		if (quitConfirmOpen) {
 			if (inside(x, y, 695, 476, 103, 28)) {
 				quitConfirmOpen = false;
@@ -99,6 +120,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		if (inside(x, y, 715, 15, 170, 48)) {
 			controller.lobbyToggleReady();
+		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
+			formatListOpen = true;
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
@@ -121,6 +144,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 		if (keyCode == 256) {
+			if (formatListOpen) {
+				formatListOpen = false;
+				return true;
+			}
 			// Échap = same as QUITTER: opens the confirmation, or closes it again.
 			quitConfirmOpen = !quitConfirmOpen;
 			return true;
@@ -157,8 +184,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (state == null) {
 			return;
 		}
-		double mx = quitConfirmOpen ? -1 : toCanvasX(mouseX);
-		double my = quitConfirmOpen ? -1 : toCanvasY(mouseY);
+		double mx = quitConfirmOpen || formatListOpen ? -1 : toCanvasX(mouseX);
+		double my = quitConfirmOpen || formatListOpen ? -1 : toCanvasY(mouseY);
+		int hovered = slotAt(mx, my);
+		hoveredIssues = state.ownIssues(hovered);
 		double lookX = toCanvasX(mouseX);
 		double lookY = toCanvasY(mouseY);
 
@@ -171,6 +200,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		renderPlayerCard(graphics, state, false, lookX, lookY, mx, my);
 		renderFooter(graphics, state, mx, my);
 		endCanvas(graphics);
+		if (formatListOpen) {
+			renderFormatList(graphics, state, mouseX, mouseY);
+		}
 
 		if (quitConfirmOpen) {
 			renderQuitModal(graphics, mouseX, mouseY);
@@ -217,6 +249,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			SlotLook look = pokemon != null && i == state.ownLead() ? SlotLook.SELECTED
 					: (i == hovered && pokemon != null ? SlotLook.HOVER : SlotLook.NORMAL);
 			renderSlot(g, slotX(i), slotY(i), 85, 214, pokemon, look, RAIL_SLOT);
+			if (pokemon != null && !state.ownIssues(i).isEmpty()) {
+				renderRuleBreak(g, slotX(i), slotY(i));
+			}
 		}
 	}
 
@@ -226,6 +261,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 				Component.translatable("phantasmon.battle.lobby.rail_hint_opponent", state.opponentName()));
 		for (int i = 0; i < BattleLobbyState.TEAM_SIZE; i++) {
 			renderSlot(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i), 85, 214, state.opponentSlot(i), SlotLook.NORMAL, RAIL_SLOT, false);
+			if (state.opponentSlot(i) != null && state.opponentFlagged(i)) {
+				renderRuleBreak(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i));
+			}
 		}
 	}
 
@@ -380,8 +418,26 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	// ---- Footer ----
 
+	/** A Pokémon breaking the battle format: circled in red (TODO-24). */
+	private void renderRuleBreak(GuiGraphics g, int x, int y) {
+		glowInside(g, x, y, 85, 214, 0xFF5078, 0.35f, 8);
+		outline(g, x - 2, y - 2, 89, 218, DANGER_BORDER);
+		outline(g, x - 1, y - 1, 87, 216, DANGER_BORDER);
+		outline(g, x, y, 85, 214, DANGER_BORDER);
+		drawText(g, "!", x + 8, y + 190, 2f, DANGER_BORDER, true, 0f);
+	}
+
 	private void renderFooter(GuiGraphics g, BattleLobbyState state, double mx, double my) {
-		renderFooterBar(g, statusLine(state), state.lastErrorCode() != null ? ERROR_TEXT : MUTED, MUSIC_X - 40);
+		renderFooterBar(g, null, MUTED, 0);
+		String status = statusLine(state);
+		int statusColor = state.lastErrorCode() != null || !hoveredIssues.isEmpty() ? ERROR_TEXT : MUTED;
+		if (status != null) {
+			drawText(g, fitText(status, MUSIC_X - 30 - STATUS_X, 2f, false, 0f), STATUS_X, 855.5f, 2f, statusColor, false, 0f);
+		}
+		boolean formatHovered = inside(mx, my, FORMAT_X, 849, FORMAT_W, 28);
+		renderPrimaryButtonFrame(g, FORMAT_X, 849, FORMAT_W, 28, formatHovered, false);
+		String label = Component.translatable("phantasmon.battle.lobby.format", formatName(state.format())).getString() + "  ▲";
+		drawText(g, fitText(label, FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8, 856, 2f, CYAN, false, 0f);
 		renderButton(g, MUSIC_X, 849, MUSIC_W, 28, "phantasmon.music.button", false, inside(mx, my, MUSIC_X, 849, MUSIC_W, 28));
 		if (state.timerOn()) {
 			long left = state.timerSecondsLeft();
@@ -393,7 +449,12 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		renderButton(g, 1475, 849, 97, 28, "phantasmon.battle.lobby.quit", true, inside(mx, my, 1475, 849, 97, 28));
 	}
 
-	private static String statusLine(BattleLobbyState state) {
+	private String statusLine(BattleLobbyState state) {
+		if (!hoveredIssues.isEmpty()) {
+			return hoveredIssues.stream()
+					.map(issue -> Component.translatable("phantasmon.battle.lobby.issue." + issue.code(), issue.subject()).getString())
+					.distinct().collect(java.util.stream.Collectors.joining(" · "));
+		}
 		if (state.lastErrorCode() != null) {
 			return stripPrefix(Component.translatable(BackendErrorMessages.translationKey(state.lastErrorCode())).getString());
 		}
@@ -402,6 +463,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		if (!state.ownReady() && state.opponentReady()) {
 			return Component.translatable("phantasmon.battle.lobby.opponent_is_ready", state.opponentName()).getString();
+		}
+		if (state.ownTeamBreaksRules()) {
+			long count = java.util.stream.IntStream.range(0, BattleLobbyState.TEAM_SIZE).filter(i -> !state.ownIssues(i).isEmpty()).count();
+			return Component.translatable("phantasmon.battle.lobby.issues", count).getString();
 		}
 		if (state.timerOn()) {
 			return Component.translatable("phantasmon.battle.lobby.timer_on", clock(state.timerTotalSeconds()),
@@ -412,6 +477,43 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	private static String clock(long seconds) {
 		return (seconds / 60) + ":" + String.format("%02d", seconds % 60);
+	}
+
+	// ---- Format list ----
+
+	private static int formatListTop(int count) {
+		return 845 - count * FORMAT_ROW_H;
+	}
+
+	private static String formatName(BattleLobbyState.FormatOption format) {
+		return "free".equals(format.id()) ? Component.translatable("phantasmon.battle.lobby.format.free").getString() : format.name();
+	}
+
+	/** Above everything (models included), on the canvas transform. */
+	private void renderFormatList(GuiGraphics g, BattleLobbyState state, int mouseX, int mouseY) {
+		beginModalLayer(g, 0f);
+		double mx = toCanvasX(mouseX);
+		double my = toCanvasY(mouseY);
+		List<BattleLobbyState.FormatOption> formats = state.formats();
+		int top = formatListTop(formats.size());
+		g.fill(FORMAT_X - 4, top - 4, FORMAT_X + FORMAT_W + 4, 849, 0xF0081422);
+		outline(g, FORMAT_X - 4, top - 4, FORMAT_W + 8, 849 - top + 4, CYAN);
+		for (int i = 0; i < formats.size(); i++) {
+			BattleLobbyState.FormatOption format = formats.get(i);
+			int rowY = top + i * FORMAT_ROW_H;
+			boolean selected = format.id().equals(state.formatId());
+			boolean hovered = inside(mx, my, FORMAT_X, rowY, FORMAT_W, FORMAT_ROW_H);
+			if (hovered || selected) {
+				g.fill(FORMAT_X, rowY, FORMAT_X + FORMAT_W, rowY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
+			}
+			// A thin line between "Free", the National Dex formats and the Gen 9 ones.
+			if (i == 1 || "gen9ou".equals(format.id())) {
+				g.fill(FORMAT_X + 6, rowY, FORMAT_X + FORMAT_W - 6, rowY + 1, LINE_30);
+			}
+			drawText(g, fitText((selected ? "✔ " : "   ") + formatName(format), FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8,
+					rowY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+		}
+		endModalLayer(g);
 	}
 
 	// ---- Quit modal ----

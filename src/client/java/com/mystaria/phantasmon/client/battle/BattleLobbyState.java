@@ -38,6 +38,18 @@ public final class BattleLobbyState {
 	private String timerByName;
 	private String lastErrorCode;
 
+	/** Battle format (TODO-24): offered ones (id, name), the picked one, what breaks it. */
+	public record FormatOption(String id, String name) {
+	}
+
+	public record Issue(String code, String subject) {
+	}
+
+	private List<FormatOption> formats = List.of();
+	private String formatId = "free";
+	private List<List<Issue>> ownIssues = List.of();
+	private List<Boolean> opponentFlags = List.of();
+
 	BattleLobbyState(UUID lobbyUuid) {
 		this.lobbyUuid = lobbyUuid;
 	}
@@ -58,6 +70,38 @@ public final class BattleLobbyState {
 		timerDeadline = data.get("timer_seconds_left") instanceof Number left ? System.currentTimeMillis() + left.longValue() * 1000L : 0;
 		timerByName = data.get("timer_by_name") == null ? null : data.get("timer_by_name").toString();
 		lastErrorCode = null;
+		if (data.get("format_id") != null) {
+			formatId = data.get("format_id").toString();
+		}
+		if (data.get("formats") instanceof List<?> list) {
+			List<FormatOption> options = new ArrayList<>();
+			for (Object entry : list) {
+				if (entry instanceof Map<?, ?> map && map.get("id") != null) {
+					options.add(new FormatOption(map.get("id").toString(), String.valueOf(map.get("name"))));
+				}
+			}
+			formats = options;
+		}
+		List<List<Issue>> issues = new ArrayList<>();
+		if (data.get("own_team_issues") instanceof List<?> perMember) {
+			for (Object member : perMember) {
+				List<Issue> own = new ArrayList<>();
+				if (member instanceof List<?> entries) {
+					for (Object entry : entries) {
+						if (entry instanceof Map<?, ?> map) {
+							own.add(new Issue(String.valueOf(map.get("code")), String.valueOf(map.get("subject"))));
+						}
+					}
+				}
+				issues.add(own);
+			}
+		}
+		ownIssues = issues;
+		List<Boolean> flags = new ArrayList<>();
+		if (data.get("opponent_team_flags") instanceof List<?> list) {
+			list.forEach(flag -> flags.add(Boolean.TRUE.equals(flag)));
+		}
+		opponentFlags = flags;
 	}
 
 	/** Kept in the backend's order: lead indexes refer to it. */
@@ -167,6 +211,33 @@ public final class BattleLobbyState {
 
 	public String timerByName() {
 		return timerByName;
+	}
+
+	public List<FormatOption> formats() {
+		return formats;
+	}
+
+	public String formatId() {
+		return formatId;
+	}
+
+	public FormatOption format() {
+		return formats.stream().filter(option -> option.id().equals(formatId)).findFirst()
+				.orElse(new FormatOption(formatId, formatId));
+	}
+
+	/** What our Pokémon at {@code index} breaks in the picked format (empty = fine). */
+	public List<Issue> ownIssues(int index) {
+		return index >= 0 && index < ownIssues.size() ? ownIssues.get(index) : List.of();
+	}
+
+	public boolean ownTeamBreaksRules() {
+		return ownIssues.stream().anyMatch(list -> !list.isEmpty());
+	}
+
+	/** Whether the opponent's Pokémon at {@code index} breaks the format (circled in red, reason not known). */
+	public boolean opponentFlagged(int index) {
+		return index >= 0 && index < opponentFlags.size() && opponentFlags.get(index);
 	}
 
 	public String lastErrorCode() {

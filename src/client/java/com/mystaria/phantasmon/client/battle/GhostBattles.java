@@ -201,7 +201,7 @@ public final class GhostBattles {
 	 * go straight to the engine; the guest's arrive through {@link #applyChoice} with the guest's uuid.
 	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
-			UUID guestUuid, String guestName, List<PokemonDto> guestTeam,
+			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
 			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, HostCallbacks callbacks) {
 		BattleThread.get().submit(() -> {
@@ -215,7 +215,14 @@ public final class GhostBattles {
 				}
 				GhostBattleActor host = new GhostBattleActor(hostUuid, hostName, hostPokemon, hostSink);
 				GhostBattleActor guest = new GhostBattleActor(guestUuid, guestName, guestPokemon, guestSink);
-				BattleStartResult result = BattleRegistry.startBattle(BattleFormat.Companion.getGEN_9_SINGLES(),
+				// The picked format (TODO-24): Cobblemon's singles plus the rules Showdown's engine applies itself
+				// (Sleep Clause Mod, Terastal Clause...), and the format's level for everyone (0 = their own).
+				BattleFormat singles = BattleFormat.Companion.getGEN_9_SINGLES();
+				java.util.Set<String> rules = new java.util.LinkedHashSet<>(singles.getRuleSet());
+				rules.addAll(battleRules);
+				BattleFormat format = singles.copy(singles.getMod(), singles.getBattleType(), rules, singles.getGen(),
+						adjustLevel > 0 ? adjustLevel : singles.getAdjustLevel());
+				BattleStartResult result = BattleRegistry.startBattle(format,
 						new BattleSide(host), new BattleSide(guest), false);
 				if (!(result instanceof SuccessfulBattleStart success)) {
 					callbacks.failed();

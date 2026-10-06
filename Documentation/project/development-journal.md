@@ -2133,3 +2133,39 @@ dans GraalJS : plusieurs secondes), puis création du combat, puis relais vers l
 - Chrono : le délai de l'invité part de la fin de l'intro (il ne voit la demande qu'à ce moment-là).
 - Client compilé, tests verts, déployé. Non testé en jeu par Claude.
 
+### 4.82 Étude TODO-24 : régulations Smogon et clauses (2026-10-06)
+
+Étude seule, voir `research/smogon-regulations.md` : pas d'API Smogon officielle, mais Pokémon Showdown publie ses
+formats (`ruleset`, `banlist`) et ses tiers en JavaScript public, à jour ; Cobblemon en embarque une copie de mi-2024.
+Deux familles de clauses : celles du moteur (Sleep Clause Mod, Endless Battle…) s'ajoutent au `ruleSet` du
+`BattleFormat` ; celles d'équipe (Species, OHKO, Evasion, banlists, tiers) relèvent du validateur, jamais lancé par
+Cobblemon — recommandation : validation par le backend au « Prêt » du lobby, données Showdown téléchargées et mises en
+cache. Décisions attendues d'Adrien : formats proposés, niveau forcé ou non.
+
+### 4.83 Formats de combat Smogon dans le lobby — TODO-24 (2026-10-06)
+
+Choix d'Adrien (décision D-25) : 20 formats en simple, choisis en commun dans le lobby, National Dex en premier ;
+mise à jour des règles à chaque relance du backend ; Pokémon hors format entourés en rouge.
+
+- **Backend** (`battle/format`) : `ShowdownDataSource` télécharge au démarrage `formats.js`, `formats-data.js`,
+  `pokedex.js`, `items.js`, `moves.js`, `abilities.js` (play.pokemonshowdown.com) et `rulesets.ts` (dépôt Showdown),
+  compare avec `phantasmon.showdown.cache-dir`, écrit et journalise ce qui a changé ; repli sur le cache puis sur la
+  copie livrée (`resources/showdown/`, utilisée aussi par les tests, `update-on-start=false`). `ShowdownData` lit ces
+  littéraux JavaScript avec Jackson en mode tolérant ; `BattleFormats` résout chaque format comme la table de règles
+  de Showdown (règles composées, format parent, `!`, `+`/`-`, `= n`) ; `TeamValidator` : non-standard (Past en Gen 9…),
+  bannissements (espèces, tiers dont ND, objets, talents, attaques), clauses Species / Nickname / OHKO / Evasion /
+  Sleep Moves / Accuracy Moves / Same Type, Little Cup, taille d'équipe.
+- **Lobby** : `BattleLobbySetFormat` (l'un ou l'autre, les deux plus prêts), `format_id`, `formats`,
+  `own_team_issues`, `opponent_team_flags` ; « Prêt » refusé (`ERROR_BATTLE_TEAM_NOT_ALLOWED`) ; revérification au
+  démarrage (Ghost relus) et à l'expiration du timer (`TEAM_NOT_ALLOWED`). `BattleSessionStarted.format` : règles de
+  moteur et niveau ; 1v1 : le lead seul.
+- **Client** : liste déroulante du format en bas à gauche du lobby (ouverte vers le haut, séparateurs Libre / National
+  Dex / Gen 9), cases entourées en rouge (les siennes et celles de l'adversaire), raisons au survol de ses propres
+  Pokémon, compteur dans le pied de page ; l'hôte ajoute les règles de moteur au `BattleFormat` et impose le niveau.
+- Tests d'abord : 7 tests du validateur, 3 tests d'intégration du lobby (174 tests backend verts) ; client compilé,
+  tests verts, déployé. Non testé en jeu par Claude ; le backend doit être relancé.
+- Correctif (Adrien, test en National Dex Gen 9) : les Méga-Gemmes n'étaient pas interdites. Showdown bannit une
+  gemme à travers la forme Méga qu'elle donne (Gengarite : Méga-Ectoplasma est ND AG ; Lucarionite : Méga-Lucario est
+  ND Uber) ; `TeamValidator.checkMegaStone` vérifie la forme Méga (champ `megaStone` des objets) contre les
+  bannissements du format. Test ajouté (175 tests backend verts). Backend à relancer.
+
