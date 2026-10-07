@@ -284,7 +284,7 @@ public final class BattleCinematic {
 	/** Side shot of the two trainers facing each other (or of us alone if the opponent isn't loaded), slow push-in. */
 	private static CameraPose eyesMeetShot(ClientLevel level, Player self, float partialTick, long elapsed) {
 		Vec3 selfEye = self.getEyePosition(partialTick);
-		Player opponent = opponentUuid == null ? null : level.getPlayerByUUID(opponentUuid);
+		Player opponent = com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(level, opponentUuid);
 		float push = 1.08f - 0.08f * Math.min(1f, elapsed / (float) EYES_MEET_END);
 		if (opponent == null) {
 			Vec3 forward = horizontal(self.getViewVector(partialTick));
@@ -309,7 +309,7 @@ public final class BattleCinematic {
 	/** Black/White: from the end of the eyes-meet shot, rushing at the opponent's face (or ours if not loaded). */
 	private static CameraPose zoomShot(ClientLevel level, Player self, float partialTick, float progress) {
 		CameraPose start = eyesMeetShot(level, self, partialTick, EYES_MEET_END);
-		Player opponent = opponentUuid == null ? null : level.getPlayerByUUID(opponentUuid);
+		Player opponent = com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(level, opponentUuid);
 		Player target = opponent != null ? opponent : self;
 		Vec3 face = target.getEyePosition(partialTick);
 		Vec3 toward = face.subtract(start.position());
@@ -369,7 +369,7 @@ public final class BattleCinematic {
 			return;
 		}
 		Minecraft mc = Minecraft.getInstance();
-		Player opponent = mc.level == null ? null : mc.level.getPlayerByUUID(opponentUuid);
+		Player opponent = com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(mc.level, opponentUuid);
 		if (opponent == null) {
 			return;
 		}

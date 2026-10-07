@@ -84,7 +84,8 @@ Ces commandes ne servent qu'aux boutons du chat.
 ### Global Hub (Phantasmon Network)
 
 Voir le [guide du joueur](../guides/user-guide.md#7-le-global-hub-phantasmon-network). Rien de tout cela n'est
-envoyé au serveur Minecraft.
+envoyé au serveur Minecraft. Échange et combat avec un joueur d'un autre serveur : **R** en visant son avatar
+(roue réduite à « Échange Ghost » et « Combat Ghost »).
 
 | Commande | Effet |
 |---|---|

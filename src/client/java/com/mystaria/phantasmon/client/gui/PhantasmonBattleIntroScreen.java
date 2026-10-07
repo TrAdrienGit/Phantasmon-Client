@@ -876,7 +876,8 @@ public final class PhantasmonBattleIntroScreen extends Screen {
 		}
 		PlayerInfo info = mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(uuid);
 		GameProfile profile = info != null ? info.getProfile() : new GameProfile(uuid, name);
-		Player real = mc.level.getPlayerByUUID(uuid);
+		// A partner met in the Global Hub plays on another server: their avatar stands in (skin, layers, equipment).
+		Player real = com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(mc.level, uuid);
 		IntroTrainer standIn = new IntroTrainer(mc.level, profile, real);
 		if (real != null) {
 			for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -893,10 +894,19 @@ public final class PhantasmonBattleIntroScreen extends Screen {
 	 * intro showed neither the outer layer nor the cape). A subclass, for the protected accessors.
 	 */
 	private static final class IntroTrainer extends RemotePlayer {
+		/** Whose skin to wear when the connection has none for this player (a Hub avatar's, fetched from Mojang). */
+		private final net.minecraft.client.player.AbstractClientPlayer skinSource;
+
 		IntroTrainer(net.minecraft.client.multiplayer.ClientLevel level, GameProfile profile, Player real) {
 			super(level, profile);
 			byte parts = real != null ? real.getEntityData().get(DATA_PLAYER_MODE_CUSTOMISATION) : (byte) 0x7F;
 			getEntityData().set(DATA_PLAYER_MODE_CUSTOMISATION, parts);
+			this.skinSource = real instanceof com.mystaria.phantasmon.client.hub.HubAvatarEntity avatar ? avatar : null;
+		}
+
+		@Override
+		public net.minecraft.client.resources.PlayerSkin getSkin() {
+			return skinSource != null ? skinSource.getSkin() : super.getSkin();
 		}
 
 		/** Advances an arm swing (the Sword/Shield throw); the stand-in never ticks in the world. */

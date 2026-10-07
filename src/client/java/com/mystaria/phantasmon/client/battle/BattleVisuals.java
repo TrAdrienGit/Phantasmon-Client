@@ -372,7 +372,8 @@ public final class BattleVisuals {
 
 	private static Player trainerEntity(ClientLevel level, String actorId) {
 		UUID uuid = trainers.get(actorId);
-		return uuid == null ? null : level.getPlayerByUUID(uuid);
+		// A partner met in the Global Hub plays on another server: their avatar stands in for them.
+		return uuid == null ? null : com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(level, uuid);
 	}
 
 	private static Vec3 horizontal(Vec3 vector) {

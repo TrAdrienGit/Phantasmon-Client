@@ -21,7 +21,13 @@ import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 import com.mystaria.phantasmon.client.ghost.GhostEntityManager;
@@ -61,6 +67,12 @@ public final class HubAvatars {
 	private static final Map<UUID, PlayerSkin> SKINS = new ConcurrentHashMap<>();
 	private static final Set<UUID> SKINS_LOADING = ConcurrentHashMap.newKeySet();
 
+	/** How far R reaches an avatar, like Cobblemon's own reach on a player. */
+	private static final double AIM_REACH = 10.0;
+
+	/** The client's one instance (owned by {@code HubController}), for the static lookups below. */
+	private static HubAvatars instance;
+
 	private final Map<UUID, HubAvatarEntity> avatars = new HashMap<>();
 	/** Last state of every member, shown or not, so a hidden avatar can come back without waiting for a move. */
 	private final Map<UUID, Known> known = new HashMap<>();
@@ -69,6 +81,48 @@ public final class HubAvatars {
 	private final GhostEntityManager hubGhosts = new GhostEntityManager();
 
 	private record Known(String username, Map<String, Object> state, HubCoordinates anchor) {
+	}
+
+	public HubAvatars() {
+		instance = this;
+	}
+
+	/**
+	 * The player to show for {@code playerUuid}: the real one when loaded in this world, else their Hub avatar, else
+	 * null. Milestone 2: a battle or trade partner met in the Hub plays on another server — battle placement, camera,
+	 * lobby and intro stand them on their avatar.
+	 */
+	public static Player playerOrAvatar(ClientLevel level, UUID playerUuid) {
+		if (level == null || playerUuid == null) {
+			return null;
+		}
+		Player real = level.getPlayerByUUID(playerUuid);
+		if (real != null) {
+			return real;
+		}
+		HubAvatarEntity avatar = instance == null ? null : instance.avatars.get(playerUuid);
+		return avatar != null && !avatar.isRemoved() && avatar.level() == level ? avatar : null;
+	}
+
+	/** The avatar the player aims at within reach, blocks in the way excepted; null if none. */
+	public static HubAvatarEntity aimedAvatar(LocalPlayer player) {
+		if (instance == null || instance.avatars.isEmpty()) {
+			return null;
+		}
+		Vec3 eye = player.getEyePosition();
+		Vec3 view = player.getViewVector(1f);
+		Vec3 reach = eye.add(view.scale(AIM_REACH));
+		EntityHitResult hit = ProjectileUtil.getEntityHitResult(player, eye, reach,
+				player.getBoundingBox().expandTowards(view.scale(AIM_REACH)).inflate(1.0),
+				entity -> entity instanceof HubAvatarEntity && !entity.isRemoved(), AIM_REACH * AIM_REACH);
+		if (hit == null) {
+			return null;
+		}
+		HitResult block = player.pick(AIM_REACH, 1f, false);
+		if (block.getType() == HitResult.Type.BLOCK && block.getLocation().distanceToSqr(eye) < hit.getLocation().distanceToSqr(eye)) {
+			return null;
+		}
+		return (HubAvatarEntity) hit.getEntity();
 	}
 
 	/** Creates or moves {@code playerUuid}'s avatar to its Hub {@code state}, seen from {@code anchor}. */

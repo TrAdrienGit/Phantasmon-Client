@@ -96,6 +96,8 @@ Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs diffé
       l'autre ; deux messages en moins d'une seconde : le second est refusé.
 - [ ] Sortir du carré : « Vous avez quitté le Global Hub », l'autre voit le départ.
 - [ ] [Toujours ici] : sortir puis revenir fait rentrer sans invitation ; `/phantasmon hub autojoin off` l'annule.
+- [ ] Rester près d'un Anchor avec le jeu en pause (Échap, monde solo) une minute puis reprendre : pas de rafale de
+      particules ni de saccade.
 - [ ] `/phantasmon hub anchor delete` en étant dans le Hub : « l'Anchor … a été supprimé », sortie du Hub.
 - [ ] Redémarrer le backend en étant dans le Hub : après la reconnexion, retour dans le Hub sans nouvelle invitation.
 
@@ -132,6 +134,18 @@ Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs diffé
       Hub alors que l'autre a déjà un Ghost sorti : son Ghost est là aussi.
 - [ ] Quitter le Hub, se déconnecter, lancer un combat Ghost ou échanger le Ghost : il disparaît chez l'autre.
 - [ ] Deux joueurs du même serveur dans le même Anchor : un seul Ghost visible par joueur (le vrai), pas de doublon.
+
+### Global Hub — échange et combat entre serveurs (Phantasmon Network, jalon 2)
+
+Deux mondes, deux empreintes différentes, chacun dans son Anchor et dans le Hub.
+
+- [ ] Viser l'avatar de l'autre et appuyer sur **R** : roue avec seulement « Échange Ghost » et « Combat Ghost », titre =
+      pseudo du joueur ; viser un avatar derrière un mur n'ouvre rien.
+- [ ] Échange Ghost : l'autre reçoit l'invitation dans le chat, [Accepter] ouvre l'écran d'échange chez les deux,
+      l'échange se termine normalement.
+- [ ] Combat Ghost : lobby avec le modèle 3D de l'avatar, intro avec son skin, Pokémon placés face à l'avatar, caméra
+      cadrant les deux dresseurs ; combat jusqu'au bout, résultat enregistré.
+- [ ] Les Ghost des deux joueurs sont rappelés au début du combat, chez les deux.
 
 ### Roue d'interaction
 

@@ -9,10 +9,13 @@ import org.slf4j.LoggerFactory;
 import com.cobblemon.mod.common.client.gui.interact.wheel.InteractWheelOption;
 import com.cobblemon.mod.common.client.gui.interact.wheel.Orientation;
 import com.cobblemon.mod.common.net.messages.client.PlayerInteractOptionsPacket;
+import com.cobblemon.mod.common.client.gui.interact.wheel.InteractWheelGUI;
+import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 
 import kotlin.Unit;
 import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
 import com.mystaria.phantasmon.client.battle.LiveBattleController;
@@ -26,6 +29,11 @@ import com.mystaria.phantasmon.client.trade.LiveTradeController;
  *
  * <p>Placed on two orientations Cobblemon leaves free (it uses north and north-east). Icons are Cobblemon's own
  * white wheel icons, which the wheel tints with the colour supplied here.
+ *
+ * <p><b>On a Hub avatar</b> (Phantasmon Network, milestone 2): Cobblemon's wheel on a player is filled in by the
+ * Minecraft server, which knows nothing of an avatar (a player of another server). {@link #openOnAvatar} opens the
+ * same wheel locally with only the two Ghost entries — Cobblemon's own trade, battle and spectate act on that
+ * server and cannot apply.
  */
 public final class GhostWheelOptions {
 
@@ -56,6 +64,19 @@ public final class GhostWheelOptions {
 		} catch (RuntimeException ex) {
 			LOG.warn("Could not add the Ghost options to Cobblemon's interaction wheel", ex);
 		}
+	}
+
+	/** The wheel for a player met in the Global Hub: Ghost Trade and Ghost Battle only, aimed at the real player. */
+	public static void openOnAvatar(UUID playerUuid, String playerName) {
+		if (liveTrade == null || liveBattle == null) {
+			return;
+		}
+		Multimap<Orientation, InteractWheelOption> options = ArrayListMultimap.create();
+		options.put(Orientation.EAST, option("trade", "phantasmon.wheel.trade", new Vector3f(0.31f, 0.90f, 1.0f),
+				() -> liveTrade.invitePlayer(playerUuid)));
+		options.put(Orientation.NORTHWEST, option("battle", "phantasmon.wheel.battle", new Vector3f(1.0f, 0.31f, 0.47f),
+				() -> liveBattle.invitePlayer(playerUuid)));
+		Minecraft.getInstance().setScreen(new InteractWheelGUI(options, Component.literal(playerName)));
 	}
 
 	private static InteractWheelOption option(String icon, String tooltipKey, Vector3f tint, Runnable action) {

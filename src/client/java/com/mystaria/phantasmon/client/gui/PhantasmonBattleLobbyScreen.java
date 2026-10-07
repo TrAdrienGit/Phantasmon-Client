@@ -367,7 +367,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	private static LivingEntity opponentEntity(UUID uuid) {
 		var level = Minecraft.getInstance().level;
-		return uuid == null || level == null ? null : level.getPlayerByUUID(uuid);
+		// A partner met in the Global Hub plays on another server: their avatar stands in for them.
+		return com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(level, uuid);
 	}
 
 	/**

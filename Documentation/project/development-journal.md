@@ -2440,3 +2440,33 @@ groupe serveur du Core affichait donc le Ghost de l'autre à ses coordonnées re
 Jalon 1 « Hub social minimal » livré : Anchors partagés par serveur (D-28, D-30), invitation avant d'entrer (D-29),
 Global Hub de 50 joueurs, avatars des joueurs distants (skin complet, cape, poses, poussée entre joueurs), leurs Ghost,
 chat du Hub. Suite possible : jalon 2 du cahier des charges (échange et combat avec un avatar par la roue, émotes).
+
+### 4.98 Phantasmon Network, jalon 2 : échanger et combattre avec un joueur d'un autre serveur (2026-10-07)
+
+Adrien lance le jalon 2 et écarte les émotes (TODO-32). Périmètre : échange et combat avec un avatar.
+
+- **Constat** : le backend n'a rien à changer — les invitations en direct ne vérifient que la connexion de la cible,
+  jamais le groupe serveur. Un test WebSocket le fixe (`playersOfTwoServersMetInTheHubCanInviteEachOtherToTradeAndBattle`).
+- **N6, roue sur un avatar** : la touche R de Cobblemon trouve bien l'avatar (`traceFirstEntityCollision` ignore
+  `isPickable`) mais demande ses options au serveur Minecraft, qui ne connaît pas cette entité et ne répond jamais.
+  `PartySendBindingMixin` repère maintenant d'abord un avatar visé (`HubAvatars.aimedAvatar` : 10 blocs, un bloc
+  devant l'arrête) et ouvre localement `InteractWheelGUI` avec les deux entrées Ghost
+  (`GhostWheelOptions.openOnAvatar`, titre = pseudo), en remettant l'état de la touche comme pour la sortie d'un Ghost.
+- **N7, avatar comme adversaire** : `HubAvatars.playerOrAvatar` (vrai joueur chargé, sinon son avatar) remplace
+  `level.getPlayerByUUID` dans `BattleVisuals` (placement des Pokémon), `BattleCinematic` (3 plans), le lobby (modèle 3D)
+  et l'intro ; la doublure de l'intro (`IntroTrainer`) prend le skin de l'avatar, la connexion n'ayant pas de
+  `PlayerInfo` pour un joueur d'un autre serveur.
+- Limite LIM-12 : quitter le Hub en pleine partie fait disparaître l'avatar chez l'autre ; la partie continue.
+
+Client compilé et déployé ; backend 200 tests. À valider en jeu (N8).
+
+### 4.99 Jalon 2 terminé ; particules des Anchors pendant la pause (2026-10-07)
+
+Jalon 2 validé en jeu par Adrien (échange et combat entre deux serveurs). Les modèles Méga et Kyurem restés au
+modèle de base chez l'invité venaient de son instance : pack de ressources CCC 2.2 présent mais non activé (LIM-13,
+les modèles dépendent des packs de chaque client).
+
+Bug signalé : en restant près d'un Anchor, jeu en pause (menu Échap, monde solo), les particules du contour
+s'accumulent et font ramer à la reprise. En pause, le moteur de particules ne vieillit plus les particules mais les
+ticks client continuent : `HubController` ajoutait ~100 particules toutes les 10 ticks qui ne disparaissaient pas.
+Le contour n'est plus dessiné tant que `Minecraft.isPaused()`. Client compilé et déployé.

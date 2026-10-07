@@ -125,7 +125,10 @@ Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serve
    serveur Minecraft.
 6. **Ghost** : un Ghost que vous sortez dans le Hub (ou déjà sorti en y entrant) suit votre avatar chez les autres
    joueurs, comme il vous suit chez vous.
-7. **Sortir** : sortez du carré, ou `/phantasmon hub leave`. Changer de serveur ou de dimension, ou se déconnecter,
+7. **Échanger et combattre** : visez l'avatar d'un joueur et appuyez sur **R** : la roue propose « Échange Ghost » et
+   « Combat Ghost », comme avec un joueur de votre serveur. Restez dans l'Anchor pendant la partie : en sortir vous
+   fait quitter le Hub et l'autre ne vous voit plus (la partie continue).
+8. **Sortir** : sortez du carré, ou `/phantasmon hub leave`. Changer de serveur ou de dimension, ou se déconnecter,
    fait aussi sortir du Hub.
 
 ## 8. En cas de problème

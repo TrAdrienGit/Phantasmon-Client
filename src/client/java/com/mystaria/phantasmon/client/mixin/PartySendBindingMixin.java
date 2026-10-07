@@ -7,17 +7,41 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.cobblemon.mod.common.client.keybind.keybinds.PartySendBinding;
 
+import com.cobblemon.mod.common.client.CobblemonClient;
+
+import net.minecraft.client.Minecraft;
+
 import com.mystaria.phantasmon.client.ghost.GhostPartyHud;
+import com.mystaria.phantasmon.client.hub.HubAvatarEntity;
+import com.mystaria.phantasmon.client.hub.HubAvatars;
+import com.mystaria.phantasmon.client.wheel.GhostWheelOptions;
 
 /**
  * Cobblemon's send key (R) sends out / recalls the selected Ghost while the Ghost overlay shows (TODO-23).
  * Aiming at a real entity or riding leaves it to Cobblemon (interaction wheel, challenge, dismount).
+ *
+ * <p>Aiming at a Global Hub avatar (a player of another server) opens the Ghost-only interaction wheel locally
+ * (Phantasmon Network, milestone 2): Cobblemon would ask the Minecraft server, which does not know that entity and
+ * would never answer.
  */
 @Mixin(value = PartySendBinding.class, remap = false)
 public abstract class PartySendBindingMixin {
 
 	@Inject(method = "onRelease", at = @At("HEAD"), cancellable = true)
 	private void phantasmon$sendGhost(CallbackInfo ci) {
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player != null && mc.screen == null && !mc.player.isSpectator() && mc.player.getVehicle() == null
+				&& CobblemonClient.INSTANCE.getBattle() == null) {
+			HubAvatarEntity avatar = HubAvatars.aimedAvatar(mc.player);
+			if (avatar != null) {
+				PartySendBinding binding = (PartySendBinding) (Object) this;
+				binding.setWasDown(false);
+				binding.setHeldDownSeconds(0f);
+				ci.cancel();
+				GhostWheelOptions.openOnAvatar(avatar.getGameProfile().getId(), avatar.getGameProfile().getName());
+				return;
+			}
+		}
 		GhostPartyHud hud = GhostPartyHud.instance();
 		if (hud == null || !hud.ownsSendKey()) {
 			return;

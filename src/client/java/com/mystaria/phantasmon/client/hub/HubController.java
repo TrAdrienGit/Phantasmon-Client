@@ -153,7 +153,11 @@ public final class HubController implements HubListener {
 			sendMove(player, joinedAnchor);
 		}
 		if (tickCount % OUTLINE_INTERVAL_TICKS == 0) {
-			drawOutlines(mc.level, player);
+			// Paused (singleplayer menu): particles no longer age, so new ones would pile up and all play at once on
+			// resume — the outline waits for the game to run again.
+			if (!mc.isPaused()) {
+				drawOutlines(mc.level, player);
+			}
 			avatars.tick(mc.level);
 		}
 	}
