@@ -101,6 +101,33 @@ Mod Menu → Phantasmon → Configurer ouvrent le menu des musiques, qui permet 
 Abandonner donne la victoire à l'adversaire ; une déconnexion annule le combat sans vainqueur. Les Pokémon
 retrouvent leur état normal après le combat.
 
-## 7. En cas de problème
+## 7. Le Global Hub (Phantasmon Network)
+
+Le Global Hub réunit des joueurs Phantasmon de **serveurs Minecraft différents**, sans rien installer sur les
+serveurs. On y entre par un **Anchor** : une zone de 21 × 21 × 21 blocs posée par un joueur. Tous les joueurs
+Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serveur ne la voient jamais.
+
+1. **Poser un Anchor** : placez-vous au centre d'une zone plate et dégagée, regardez dans la direction qui sera
+   « l'avant » du Hub, puis `/phantasmon hub anchor create <nom>`. Chacun peut en poser un seul ; pour le déplacer,
+   `/phantasmon hub anchor delete` puis recréez-le.
+2. **Le repérer** : un carré de particules violettes marque le sol de chaque Anchor de votre serveur et de votre
+   dimension, avec son nom au-dessus du centre.
+3. **Entrer** : en entrant dans le carré, le chat propose **[Oui]**, **[Non]** ou **[Toujours ici]**. Rien n'est
+   partagé tant que vous n'avez pas accepté. Le Hub accueille 50 joueurs au plus.
+4. **Dans le Hub** : vos déplacements dans l'Anchor sont partagés, relativement à son centre (jamais vos vraies
+   coordonnées ni l'adresse du serveur). Les arrivées et départs s'affichent dans le chat. Les joueurs des autres
+   serveurs apparaissent dans l'Anchor avec leur skin et leur pseudo suivi de `[Hub]` ; ils marchent, sautent et
+   s'accroupissent comme eux, avec leur cape et la couche supérieure de leur skin ; on se pousse en se rentrant
+   dedans, comme entre joueurs, mais on ne peut pas les frapper. Un joueur de
+   votre serveur entré par un autre Anchor apparaît aussi en avatar ; dans le même Anchor que vous, vous le voyez
+   simplement pour de vrai.
+5. **Parler** : `/hc <message>`. Les messages du Hub s'affichent préfixés `[Hub]` et ne passent jamais par le
+   serveur Minecraft.
+6. **Ghost** : un Ghost que vous sortez dans le Hub (ou déjà sorti en y entrant) suit votre avatar chez les autres
+   joueurs, comme il vous suit chez vous.
+7. **Sortir** : sortez du carré, ou `/phantasmon hub leave`. Changer de serveur ou de dimension, ou se déconnecter,
+   fait aussi sortir du Hub.
+
+## 8. En cas de problème
 
 Voir [`troubleshooting.md`](troubleshooting.md).

@@ -62,7 +62,17 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_BATTLE_EMPTY_TEAM", "phantasmon.battle.error.empty_team"),
 			Map.entry("ERROR_BATTLE_NOT_HOST", "phantasmon.battle.error.not_host"),
 			Map.entry("ERROR_BATTLE_NOT_GUEST", "phantasmon.battle.error.not_guest"),
-			Map.entry("ERROR_BATTLE_INVALID_RESULT", "phantasmon.battle.error.invalid_result"));
+			Map.entry("ERROR_BATTLE_INVALID_RESULT", "phantasmon.battle.error.invalid_result"),
+			Map.entry("ERROR_HUB_ANCHOR_QUOTA", "phantasmon.hub.error.anchor_quota"),
+			Map.entry("ERROR_HUB_ANCHOR_NAME_TAKEN", "phantasmon.hub.error.anchor_name_taken"),
+			Map.entry("ERROR_HUB_ANCHOR_NOT_FOUND", "phantasmon.hub.error.anchor_not_found"),
+			Map.entry("ERROR_HUB_ANCHOR_FORBIDDEN", "phantasmon.hub.error.anchor_forbidden"),
+			Map.entry("ERROR_HUB_ANCHOR_WRONG_SERVER", "phantasmon.hub.error.anchor_wrong_server"),
+			Map.entry("ERROR_HUB_FULL", "phantasmon.hub.error.full"),
+			Map.entry("ERROR_HUB_NOT_JOINED", "phantasmon.hub.error.not_joined"),
+			Map.entry("ERROR_HUB_OUT_OF_BOUNDS", "phantasmon.hub.error.out_of_bounds"),
+			Map.entry("ERROR_HUB_CHAT_TOO_LONG", "phantasmon.hub.error.chat_too_long"),
+			Map.entry("ERROR_HUB_CHAT_RATE_LIMITED", "phantasmon.hub.error.chat_rate_limited"));
 
 	private BackendErrorMessages() {
 	}

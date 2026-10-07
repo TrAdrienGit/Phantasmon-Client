@@ -2288,3 +2288,155 @@ suspens (`status.md`, `known-issues.md`, plan CAD 4).
   et avait été copiée telle quelle en `pack.png`. Les deux viennent maintenant de `src/assets/logo/Phantasm_full_logo.png`
   (rognée au carré, 256×256) : icône du mod (Mod Menu) et du pack « Phantasmon Music » (modèle et pack installé).
   Client recompilé et déployé.
+
+### 4.90 Phantasmon Network, étape N3 : Anchors et Hub côté client (2026-10-07)
+
+Après le cahier des charges Network (`specifications/network-cahier-des-charges.md`) et les étapes backend N1
+(Anchors, `V11`) et N2 (Global Hub en WebSocket), le client sait poser, voir et utiliser un Anchor. Nouveau paquet
+`hub` :
+
+- `HubCoordinates` (logique pure, 6 tests) : conversion locale ⇄ Hub par rotation exacte d'un quart de tour,
+  appartenance au cube (centré en `x` / `z`, posé à `origin.y`), bornage au carré accepté par le backend. Test clé :
+  deux Anchors orientés différemment donnent la même position Hub pour « deux blocs devant, un à gauche ».
+- `HubClient` + DTO : `GET/POST /hub/anchors`, `/mine`, `DELETE`.
+- `HubController` : liste des Anchors du serveur et de la dimension (rechargée toutes les 30 s, et à chaque
+  changement de serveur ou de dimension), détection d'entrée / sortie à chaque tick, invitation dans le chat
+  (D-29 : jamais d'entrée automatique sauf [Toujours ici], mémorisé dans `config/phantasmon-hub-autojoin.txt`),
+  `HubMove` toutes les 2 ticks seulement si l'état a changé (hauteur au-dessus du sol cherchée sous les pieds, dans
+  la hauteur du cube), chat `[Hub]`, arrivées et départs. Les membres distants et leur dernier état sont gardés
+  pour les avatars de N4. Après une coupure, retour dans le Hub sans nouvelle invitation si le joueur y était.
+  Un `HubJoin` refusé (Hub plein…) n'arrive que comme `Error` : l'attente est abandonnée au bout de 5 s.
+- Rendu : carré de particules violettes au sol + piliers de 3 blocs aux coins (toutes les 10 ticks, à 48 blocs),
+  nom flottant au-dessus du centre (`WorldRenderEvents.AFTER_ENTITIES`, même technique que le « ! » des intros).
+- `HubCommands` : `/phantasmon hub …` et le raccourci `/hc`. `GhostSession` route les messages `Hub*` vers le
+  contrôleur et expose `serverFingerprint()`. 10 codes `ERROR_HUB_*` traduits, 32 clés FR/EN.
+
+Client compilé (64 tests verts) et déployé. Pas encore testé en jeu.
+
+### 4.91 Phantasmon Network, étape N4 : avatars des joueurs distants (2026-10-07)
+
+N3 validée en jeu par Adrien. Les membres du Hub venus d'autres serveurs ont maintenant un corps :
+
+- `HubAvatarEntity` : sous-classe de `RemotePlayer` (modèle de joueur vanilla et animation de marche gratuits),
+  ajoutée au seul `ClientLevel` avec un identifiant négatif (à partir de -2 000 000, loin de ceux du serveur).
+  `noPhysics`, non ciblable (`isPickable`), non poussable, insensible aux dégâts. Pseudo suivi de `[Hub]` (jamais le
+  serveur d'origine). Un faux joueur n'a pas de `PlayerInfo` dans la connexion : `getSkin()` est surchargé.
+  `RemotePlayer.updatePlayerPose()` est vide en 1.21.1 : la pose (debout, accroupi, nage, élytres) est posée à la
+  main à chaque état reçu.
+- `HubAvatars` : un avatar par membre ayant déjà bougé, placé par `HubCoordinates.toLocal` dans l'Anchor par lequel
+  le joueur local est entré. Mouvement lissé par `lerpTo` / `lerpHeadTo` sur 3 ticks (comme les joueurs réseau
+  vanilla). Hauteur : premier bloc solide à ± 4 blocs du sol de l'Anchor local, plus le `y_offset` mesuré par le
+  client distant. Skin : profil Mojang (`MinecraftSessionService.fetchProfile`, avec les textures) puis
+  `SkinManager.getOrLoad`, hors du fil client, gardé en cache pour la session ; skin par défaut en attendant.
+- `HubController` crée, déplace et retire les avatars sur `HubJoined`, `HubPlayerEnter` / `Move` / `Leave`, et les
+  efface tous sur `HubLeft`, coupure ou départ du monde. Un `HubJoined` arrivé après les 5 s d'attente compte
+  quand même (Anchor où se trouve le joueur).
+
+API vérifiées par `javap` sur le jar Minecraft remappé (`RemotePlayer`, `SkinManager.getOrLoad`,
+`Entity.lerpTo` / `lerpHeadTo` / `setSharedFlag`, `ClientLevel.removeEntity`, authlib 6.0.54). Client compilé
+(64 tests verts) et déployé. Pas encore testé en jeu ; risque connu : les mods de la modpack qui parcourent
+`level.players()` verront ces faux joueurs.
+
+### 4.92 Anchors personnels (D-30) et avatars invisibles (2026-10-07)
+
+Retour d'Adrien sur N4 : les avatars n'apparaissent pas, et MystAria_ voit l'Anchor de TheMashen dans son monde.
+**Erreur de conception** : un Anchor n'est pas un lieu public du serveur, c'est la zone qu'un joueur place **pour lui
+seul** pour se connecter au Global Hub (D-30).
+
+- **Cause des avatars absents** (logs du backend et du client) : les deux comptes avaient la même empreinte
+  (`testsession`) et la même dimension ; le backend n'envoyait jamais l'avatar d'un joueur aux membres de même
+  empreinte et même dimension (« 0 joueur(s) d'autres serveurs »). Avec des Anchors personnels, cette règle n'a plus
+  de sens : deux joueurs d'un même serveur sont chacun dans leur Anchor, n'importe où.
+- Backend : `HubJoin` sans paramètre (toujours l'Anchor du joueur), liste par serveur retirée, nom non unique
+  (`V12`), chaque membre reçoit tous les autres.
+- Client : seul `GET /hub/anchors/mine` (dessiné seulement sur son serveur et sa dimension), `anchor delete here`
+  retiré, invitation « Vous êtes dans **votre** Anchor ». Avatars : masqués seulement si le vrai joueur est chargé à
+  moins de 2 blocs de l'emplacement de l'avatar (revérifié toutes les 10 ticks) ; UUID d'entité dérivé de celui du
+  joueur (`HubAvatarEntity.entityUuid`), car un `ClientLevel` refuse une seconde entité au même UUID que le vrai joueur.
+
+Backend : tests du Hub adaptés (anchors personnels, joueurs du même serveur reçus). Client compilé et déployé.
+
+### 4.93 D-30 corrigée : Anchors partagés au sein d'un serveur, jamais entre serveurs (2026-10-07)
+
+Précision d'Adrien juste après 4.92 : « deux serveurs ne se partagent pas leurs Anchors, mais un serveur partage ses
+Anchors entre ses joueurs » (J1 et J2 sur S1 : J2 voit et utilise l'Anchor de J1 ; J3 et J4 sur S2 ne le voient
+pas). Les Anchors « personnels » de 4.92 étaient un contresens. D-30 réécrite.
+
+- Backend : retour de `GET /hub/anchors` (par empreinte et dimension), de `HubJoin { anchor_uuid }` (tout Anchor du
+  serveur et de la dimension du joueur) et du nom unique par serveur. `V12` était déjà appliquée sur la base de dev
+  (redémarrage de 19:16) : conservée, et annulée par `V13`, qui numérote d'abord les noms en double puis recrée les
+  deux index. Tests réécrits sur le scénario J1 à J4 (un joueur entre par l'Anchor d'un autre du même serveur ; un
+  joueur d'un autre serveur est refusé même avec l'UUID).
+- Ce qui reste de 4.92, et qui était la vraie cause des avatars absents : le backend envoie chaque membre à tous les
+  autres (plus de filtrage par empreinte + dimension) ; le client masque un avatar seulement si le vrai joueur est
+  chargé à moins de 2 blocs de son emplacement (même Anchor) ; UUID d'entité dérivé.
+- Client : liste des Anchors du serveur, invitation « Vous êtes dans l'Anchor … », `anchor delete here` rétabli,
+  `ERROR_HUB_ANCHOR_NAME_TAKEN` de nouveau traduit. Compilé et déployé.
+
+### 4.94 Avatars : couche supérieure du skin, cape et collisions (2026-10-07)
+
+N4 validée en jeu par Adrien, avec deux manques : ni couche supérieure du skin ni cape sur les avatars, et pas de
+collision avec eux.
+
+- **Skin** : le rendu vanilla n'affiche chapeau, veste, manches, jambes et cape que si `Player.isModelPartShown` les
+  autorise, d'après la donnée synchronisée `DATA_PLAYER_MODE_CUSTOMISATION`, que le serveur envoie pour un vrai
+  joueur et qui restait à 0 pour un avatar. Le client envoie maintenant son propre masque (Options → Personnalisation
+  du skin, `Options.isModelPartEnabled`) dans `HubMove` (`skin_parts`, 0 à 127, validé par le backend) et l'avatar
+  l'applique ; tout est affiché par défaut. La cape vient des textures du profil Mojang déjà chargées par
+  `SkinManager.getOrLoad`.
+- **Collisions** : comme entre joueurs Minecraft — ils ne se bloquent pas, ils se poussent. Côté client,
+  `LivingEntity.pushEntities` pousse le joueur local contre toute entité `Player` poussable dans sa boîte (vérifié par
+  `javap`) ; l'avatar n'est donc plus `noPhysics` et redevient `isPushable`. Il n'est jamais déplacé par la poussée
+  (sa position vient du Hub) : c'est le joueur local qui l'est, et le joueur distant est poussé de la même façon par
+  l'avatar de ce joueur sur son propre client. L'avatar reste non ciblable (pas de coup).
+
+Backend : test WebSocket étendu (`skin_parts` relayé, 128 refusé). Client compilé et déployé.
+
+### 4.95 Phantasmon Network, étape N5 : les Ghost dans le Hub (2026-10-07)
+
+Skin, cape et collisions validés par Adrien. Dernière étape du jalon 1 : le Ghost sorti d'un membre le suit dans le Hub.
+
+- **Backend** : `websocket.GhostPayloads` (données de rendu d'un Ghost, extraites du handler) sert au groupe serveur
+  (`withPosition`) et au Hub (`withoutPosition` : aucune clé `position`, les vraies coordonnées ne quittent pas le
+  serveur). `HubService` envoie `HubGhostSpawn` aux autres membres quand un membre sort un Ghost
+  (`onGhostSentOut`, appelé par le handler) ou entre dans le Hub avec un Ghost déjà sorti, `HubGhostDespawn` sur tout
+  rappel (`onGhostRecalled`, appelé par `GhostRecall` : rappel, échange, début de combat), et met le Ghost de chaque
+  membre dans son entrée de `HubJoined` (`ghost`). Deux tests WebSocket de plus (199 au total).
+- **Client** : `HubAvatars` a sa propre instance de `GhostEntityManager`, indexée par l'UUID d'**entité** de l'avatar
+  (`HubAvatarEntity.entityUuid`) : `level.getPlayerByUUID` y trouve l'avatar comme un vrai propriétaire, donc suivi,
+  balade, sortie et rappel de Poké Ball fonctionnent sans une ligne de plus. Un Ghost du Hub n'existe que tant que
+  son avatar est affiché (avatar masqué = vrai joueur sur place, dont le vrai Ghost est déjà affiché par le groupe
+  serveur) ; il est recréé avec l'avatar. `HubController` route `HubGhostSpawn` / `HubGhostDespawn` et le champ
+  `ghost` de `HubJoined`, et fait tourner ces Ghost à chaque tick.
+
+Client compilé et déployé. À valider en jeu : c'est la validation du jalon 1.
+
+### 4.96 Ghost en double dans le Hub (2026-10-07)
+
+Retour d'Adrien sur N5 : la sortie d'un Ghost le fait apparaître en double, le rappel retire les deux, et quand le
+joueur quitte le Hub l'un des deux reste.
+
+- **Configuration du test** (journal du backend) : MystAria_ et TheMashen sur la même empreinte (`testsession`) et
+  entrés tous les deux par `TheMashenAnchor`. Chacun voit donc l'autre pour de vrai, avec son vrai Ghost (groupe
+  serveur) ; l'avatar et le Ghost du Hub devaient être masqués. Les symptômes sont exactement « vrai Ghost + Ghost du
+  Hub » : le rappel retire les deux, la sortie du Hub ne retire que celui du Hub.
+- **Cause** : `HubAvatars.isDouble` comparait la position du vrai joueur à l'emplacement *calculé* de l'avatar, à
+  moins de 2 blocs en 3D. La hauteur de l'avatar vient de `groundY`, qui prend le premier bloc solide en partant de
+  4 blocs au-dessus du sol de l'Anchor : une dalle, une clôture ou un muret dans l'Anchor surélève l'avatar, l'écart
+  dépasse 2 blocs, l'avatar et son Ghost restent affichés.
+- **Correction** : l'avatar (et donc son Ghost) est masqué dès que le vrai joueur est chargé et se tient dans le cube
+  de l'Anchor par lequel ce client est entré dans le Hub — même Anchor, même emplacement par construction, sans calcul
+  de hauteur. Logs `Hub avatar of … shown` / `hidden` ajoutés pour les prochains diagnostics.
+
+Client compilé et déployé.
+
+### 4.97 Jalon 1 de Phantasmon Network terminé (2026-10-07)
+
+N5 validée en jeu par Adrien avec deux empreintes différentes (deux mondes solo = deux serveurs). Le « doublon »
+de 4.96 venait de la configuration de test : les deux mondes partageaient l'empreinte forcée `testsession`, le
+groupe serveur du Core affichait donc le Ghost de l'autre à ses coordonnées relayées en plus du Ghost du Hub
+(précaution ajoutée à `testing-and-qa.md`).
+
+Jalon 1 « Hub social minimal » livré : Anchors partagés par serveur (D-28, D-30), invitation avant d'entrer (D-29),
+Global Hub de 50 joueurs, avatars des joueurs distants (skin complet, cape, poses, poussée entre joueurs), leurs Ghost,
+chat du Hub. Suite possible : jalon 2 du cahier des charges (échange et combat avec un avatar par la roue, émotes).

@@ -86,6 +86,7 @@ public final class GhostSession {
 
 	private LiveTradeListener liveTradeListener;
 	private com.mystaria.phantasmon.client.battle.LiveBattleListener liveBattleListener;
+	private com.mystaria.phantasmon.client.hub.HubListener hubListener;
 
 	public GhostSession(AuthSession authSession) {
 		this.webSocketClient = new PhantasmonWebSocketClient();
@@ -102,6 +103,11 @@ public final class GhostSession {
 	/** Live trade sessions (the graphical trade screen) also ride this one presence WebSocket — see {@link #send}. */
 	public void setLiveTradeListener(LiveTradeListener liveTradeListener) {
 		this.liveTradeListener = liveTradeListener;
+	}
+
+	/** The Global Hub (Phantasmon Network) also rides this one presence WebSocket. */
+	public void setHubListener(com.mystaria.phantasmon.client.hub.HubListener hubListener) {
+		this.hubListener = hubListener;
 	}
 
 	/** Live Ghost battles also ride this one presence WebSocket. */
@@ -429,6 +435,11 @@ public final class GhostSession {
 					if (battleListener != null) {
 						Minecraft.getInstance().execute(() -> battleListener.onLiveBattleMessage(type, data));
 					}
+				} else if (type.startsWith("Hub")) {
+					var listener = hubListener;
+					if (listener != null) {
+						Minecraft.getInstance().execute(() -> listener.onHubMessage(type, data));
+					}
 				} else if (type.startsWith("TradeInvite") || type.startsWith("TradeSession")) {
 					LiveTradeListener listener = liveTradeListener;
 					if (listener != null) {
@@ -448,6 +459,10 @@ public final class GhostSession {
 		var battleListener = liveBattleListener;
 		if (battleListener != null) {
 			Minecraft.getInstance().execute(battleListener::onConnectionLost);
+		}
+		var hub = hubListener;
+		if (hub != null) {
+			Minecraft.getInstance().execute(hub::onConnectionLost);
 		}
 	}
 
@@ -554,7 +569,8 @@ public final class GhostSession {
 		return null;
 	}
 
-	private static String serverFingerprint() {
+	/** The fingerprint this client sends in {@code JoinServerGroup} (also keys the Hub Anchors of this server). */
+	public static String serverFingerprint() {
 		if (fingerprintOverride != null) {
 			return fingerprintOverride;
 		}

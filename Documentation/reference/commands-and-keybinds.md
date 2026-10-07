@@ -81,6 +81,24 @@ Ces commandes ne servent qu'aux boutons du chat.
 | `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
 | `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
 
+### Global Hub (Phantasmon Network)
+
+Voir le [guide du joueur](../guides/user-guide.md#7-le-global-hub-phantasmon-network). Rien de tout cela n'est
+envoyé au serveur Minecraft.
+
+| Commande | Effet |
+|---|---|
+| `/phantasmon hub anchor create <nom>` | Crée votre Anchor (un seul ; les joueurs de ce serveur le voient et peuvent l'utiliser, D-30) : cube de 21 blocs centré sur vous, posé à vos pieds, orienté selon votre regard (arrondi au quart de tour). Nom : 3 à 32 lettres, chiffres, espaces, `-`, `_` |
+| `/phantasmon hub anchor info` | Votre Anchor : nom, dimension, position |
+| `/phantasmon hub anchor delete` | Supprime votre Anchor |
+| `/phantasmon hub anchor delete here` | Supprime l'Anchor où vous vous trouvez (son créateur ou un admin) |
+| `/phantasmon hub join` | Accepte l'invitation (bouton [Oui]) |
+| `/phantasmon hub decline` | Refuse (bouton [Non]) ; ressortir puis revenir dans l'Anchor invite de nouveau |
+| `/phantasmon hub always` | Accepte et ne demande plus pour cet Anchor (bouton [Toujours ici]) |
+| `/phantasmon hub autojoin on\|off` | Active ou retire l'entrée sans invitation pour l'Anchor où vous êtes (`config/phantasmon-hub-autojoin.txt`) |
+| `/phantasmon hub leave` | Quitte le Hub sans sortir de l'Anchor |
+| `/phantasmon hub chat <message>`, `/hc <message>` | Message dans le chat du Hub (256 caractères, un par seconde) |
+
 ### Administration (TODO-25)
 
 Réservées aux joueurs listés dans le fichier `admins.txt` du backend (un pseudo Minecraft par ligne, comme les ops

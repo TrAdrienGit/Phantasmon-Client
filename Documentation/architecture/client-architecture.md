@@ -39,6 +39,7 @@ Racine : `com.mystaria.phantasmon.client`.
 | `trade` | Échange en direct (état + contrôleur) et échange asynchrone (commandes) | `LiveTradeController`, `LiveTradeState`, `TradeCommandHandler`, `TradeClient` |
 | `battle` | Combat Ghost : moteur sur l'hôte, relais, visuels, animations d'attaque | `LiveBattleController`, `GhostBattles`, `BattleThread`, `GhostBattleActor`, `GhostBattlePokemonFactory`, `CobblemonPackets`, `BattleVisuals`, `GhostActionEffects`, `ActionEffectPlayer`, `ClientActionEffects` |
 | `wheel` | Entrées Phantasmon dans la roue d'interaction Cobblemon | `GhostWheelOptions` |
+| `hub` | Phantasmon Network : Anchors du serveur (REST, partagés par ses joueurs, D-30), détection d'entrée, invitation, `HubMove`, chat du Hub, rendu du cube, avatars des joueurs distants (entités client) ; conversion de coordonnées (logique pure) | `HubController`, `HubCommands`, `HubClient`, `HubCoordinates`, `HubAvatars`, `HubAvatarEntity` |
 | `mixin` | 9 Mixins (voir [`mixins.md`](mixins.md)) | |
 | `version` | Comparaison de versions (logique pure) | `VersionCompatibility` |
 

@@ -39,6 +39,8 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final LiveTradeController liveTrade = new LiveTradeController(ghostSession, authSession);
 	private final com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle =
 			new com.mystaria.phantasmon.client.battle.LiveBattleController(ghostSession, authSession);
+	private final com.mystaria.phantasmon.client.hub.HubController hub = new com.mystaria.phantasmon.client.hub.HubController(
+			new com.mystaria.phantasmon.client.hub.HubClient(httpClient), authSession, ghostSession);
 
 	@Override
 	public void onInitializeClient() {
@@ -50,6 +52,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		ghostSession.setTradeNotificationListener(tradeCommands);
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
+		ghostSession.setHubListener(hub);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			pingToggle.onJoin();
@@ -60,6 +63,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			pingToggle.onDisconnect();
 			refreshScheduler.stop();
 			ghostSession.stop();
+			hub.reset();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
@@ -71,6 +75,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			pokemonCommands.tick();
 			liveTrade.tick();
 			liveBattle.tick();
+			hub.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
 			com.mystaria.phantasmon.client.battle.BattleSpectacle.tick();
 			ghostPartyHud.tick();
@@ -79,6 +84,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(com.mystaria.phantasmon.client.battle.BattleCinematic::renderWorld);
+		WorldRenderEvents.AFTER_ENTITIES.register(hub::renderWorld);
 		HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
 			ghostPartyHud.render(graphics);
 			com.mystaria.phantasmon.client.battle.BattleCinematic.renderHud(graphics);
@@ -89,6 +95,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pokemonCommands, pingToggle);
+		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
 	}
 }

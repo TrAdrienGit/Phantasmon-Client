@@ -83,6 +83,56 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] Chrono activé : compte à rebours, action automatique à l'expiration.
 - [ ] Abandon : victoire de l'autre. Déconnexion : combat annulé.
 
+### Global Hub (Phantasmon Network, N3)
+
+Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs différentes) et deux comptes.
+
+- [ ] `/phantasmon hub anchor create Test` : message de confirmation, carré violet au sol, nom flottant au centre ;
+      un second `create` répond « vous avez déjà un Anchor ».
+- [ ] Partage (D-30) : un second joueur **du même serveur** voit le carré et le nom (rechargement toutes les 30 s au
+      plus) et peut entrer dans le Hub par cet Anchor ; un joueur d'un **autre** serveur (autre empreinte) ne le voit pas.
+- [ ] Entrer dans le carré : invitation [Oui] [Non] [Toujours ici] ; [Non] puis ressortir et revenir : nouvelle invitation.
+- [ ] [Oui] sur deux serveurs différents : chacun reçoit « … est arrivé dans le Hub » ; `/hc salut` arrive chez
+      l'autre ; deux messages en moins d'une seconde : le second est refusé.
+- [ ] Sortir du carré : « Vous avez quitté le Global Hub », l'autre voit le départ.
+- [ ] [Toujours ici] : sortir puis revenir fait rentrer sans invitation ; `/phantasmon hub autojoin off` l'annule.
+- [ ] `/phantasmon hub anchor delete` en étant dans le Hub : « l'Anchor … a été supprimé », sortie du Hub.
+- [ ] Redémarrer le backend en étant dans le Hub : après la reconnexion, retour dans le Hub sans nouvelle invitation.
+
+### Global Hub — avatars (Phantasmon Network, N4)
+
+- [ ] Deux comptes sur deux empreintes, chacun dans son Anchor et dans le Hub : chacun voit l'avatar de l'autre, à
+      la même place relative au centre de l'Anchor, avec son skin (skin par défaut une ou deux secondes au plus) et
+      « Pseudo [Hub] » au-dessus.
+- [ ] Marche, course, saut, accroupissement, rotation de la tête : fluides, sans téléportation.
+- [ ] Anchors orientés différemment (créés en regardant dans deux directions) : « devant » l'Anchor reste « devant ».
+- [ ] Relief différent d'un Anchor à l'autre : l'avatar marche sur le sol local, sans flotter ni s'enfoncer.
+- [ ] Couche supérieure du skin (chapeau, veste, manches, jambes) et cape visibles ; décocher une partie dans
+      Options → Personnalisation du skin la retire aussi sur l'avatar chez l'autre.
+- [ ] Collision comme entre deux joueurs : on se pousse l'un l'autre en se rentrant dedans (pas de mur) ; l'avatar ne se
+      frappe pas ; aucun avertissement du serveur Minecraft.
+- [ ] Sortie du Hub, déconnexion ou changement de dimension de l'un : son avatar disparaît chez l'autre.
+- [ ] Deux joueurs du même serveur dans le même Anchor : ils se voient pour de vrai, aucun avatar en double. Par
+      deux Anchors différents du serveur : chacun voit l'avatar de l'autre.
+- [ ] Modpack : pas d'erreur de catchindicator, DeltaClient ou ShoulderSurfing ; l'avatar n'apparaît pas dans la
+      liste des joueurs (Tab).
+
+### Global Hub — Ghost (Phantasmon Network, N5)
+
+> **Empreintes** : deux mondes solo distincts sont deux « serveurs » : leur donner **deux** empreintes différentes
+> (`/phantasmon admin debug fingerprint mondeA` / `mondeB`). Avec la même empreinte forcée, Phantasmon les croit sur
+> le même serveur alors que le vrai joueur n'est pas dans le monde de l'autre : le groupe serveur du Core y affiche
+> son Ghost à ses coordonnées relayées, en plus du Ghost du Hub (fausse impression de doublon, 2026-10-07). Le cas
+> « même serveur » se teste avec les deux comptes dans le **même** monde (ouverture au LAN).
+
+- [ ] Dans le Hub, sortir un Ghost (overlay Ghost, R) : chez l'autre joueur, le Ghost apparaît en sortant de sa
+      Poké Ball à côté de l'avatar, le suit, se balade quand l'avatar reste immobile.
+- [ ] Rappeler le Ghost : animation de rappel vers l'avatar chez l'autre.
+- [ ] Entrer dans le Hub avec un Ghost déjà sorti : il apparaît aussitôt avec l'avatar chez l'autre ; rejoindre le
+      Hub alors que l'autre a déjà un Ghost sorti : son Ghost est là aussi.
+- [ ] Quitter le Hub, se déconnecter, lancer un combat Ghost ou échanger le Ghost : il disparaît chez l'autre.
+- [ ] Deux joueurs du même serveur dans le même Anchor : un seul Ghost visible par joueur (le vrai), pas de doublon.
+
 ### Roue d'interaction
 
 - [ ] **R** sur un joueur : entrées Cobblemon intactes + « Échange Ghost » et « Combat Ghost ».
