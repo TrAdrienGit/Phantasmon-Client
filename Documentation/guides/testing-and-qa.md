@@ -83,6 +83,29 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] Chrono activé : compte à rebours, action automatique à l'expiration.
 - [ ] Abandon : victoire de l'autre. Déconnexion : combat annulé.
 
+### Spectateurs et combat solo (D-31, D-32)
+
+- [ ] Admin : `/phantasmon admin battle solo` : intro, combat contre « pseudo (miroir) », l'IA joue seule ; victoire
+      ou défaite annoncée ; rien dans l'historique.
+- [ ] Un second joueur vise l'admin en combat, **R** → « Regarder le combat Ghost » : écran de combat Cobblemon en mode
+      spectateur, Pokémon actuels affichés, puis chaque tour ; l'admin lit « X regarde le combat ».
+- [ ] Méga / Z / Téra pendant que l'on regarde : mêmes effets que chez les joueurs.
+- [ ] Bouton Retour : le spectateur quitte, l'écran se ferme, la scène disparaît ; il peut regarder de nouveau.
+- [ ] Fin du combat : « Combat terminé : X l'emporte » chez le spectateur, écran fermé.
+- [ ] Regarder un joueur qui n'est pas en combat : « Ce joueur n'est pas en combat Ghost ».
+- [ ] Combat entre deux joueurs, un troisième regarde ; aussi depuis un autre serveur via un avatar du Global Hub.
+
+### Terrain vu sans regarder (D-33)
+
+- [ ] Même serveur : J1 combat J2, J3 à côté sans regarder voit les Pokémon devant chacun, les sorties, rappels,
+      K.O., animations d'attaque, Méga / Z / Téra (apogée seulement), sans écran ni caméra ni musique.
+- [ ] Global Hub : J1 (S1) combat J3 (S2) ; J4 dans le Hub depuis S3 voit les Pokémon devant les avatars.
+- [ ] J2 sur S1 hors Hub voit les Pokémon de J1 et, à 7 blocs devant J1, ceux de J3.
+- [ ] Arriver en plein combat (entrer dans le Hub, changer de dimension et revenir) : Pokémon actuels affichés.
+- [ ] Le témoin se met à regarder : la scène de loin disparaît sans rappel, l'écran spectateur prend le relais ;
+      Retour : la scène de loin revient en une seconde environ.
+- [ ] Fin du combat, sortie du Hub, changement de serveur : rappel des Pokémon chez le témoin.
+
 ### Global Hub (Phantasmon Network, N3)
 
 Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs différentes) et deux comptes.

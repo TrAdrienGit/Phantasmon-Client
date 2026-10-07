@@ -63,6 +63,7 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_BATTLE_NOT_HOST", "phantasmon.battle.error.not_host"),
 			Map.entry("ERROR_BATTLE_NOT_GUEST", "phantasmon.battle.error.not_guest"),
 			Map.entry("ERROR_BATTLE_INVALID_RESULT", "phantasmon.battle.error.invalid_result"),
+			Map.entry("ERROR_BATTLE_SPECTATE_NOT_BATTLING", "phantasmon.battle.error.spectate_not_battling"),
 			Map.entry("ERROR_HUB_ANCHOR_QUOTA", "phantasmon.hub.error.anchor_quota"),
 			Map.entry("ERROR_HUB_ANCHOR_NAME_TAKEN", "phantasmon.hub.error.anchor_name_taken"),
 			Map.entry("ERROR_HUB_ANCHOR_NOT_FOUND", "phantasmon.hub.error.anchor_not_found"),

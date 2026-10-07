@@ -65,6 +65,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			ghostSession.stop();
 			hub.reset();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
+			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
@@ -78,6 +79,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			hub.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
 			com.mystaria.phantasmon.client.battle.BattleSpectacle.tick();
+			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.tick();
 			PhantasmonKeybinds.tick(pokemonCommands);
@@ -94,7 +96,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
-		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pokemonCommands, pingToggle);
+		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pokemonCommands, pingToggle, liveBattle);
 		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
 		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
 	}

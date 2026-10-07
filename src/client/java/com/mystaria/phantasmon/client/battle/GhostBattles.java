@@ -56,6 +56,8 @@ public final class GhostBattles {
 
 	/** Battles hosted here, and where their Mega Evolutions / Primal Reversions go (local scene + relay). */
 	private static final Map<UUID, Consumer<FormeChangeVisual>> FORME_ROUTES = new ConcurrentHashMap<>();
+	/** Cobblemon battle id → where the engine's spectator updates go (hosted battles with spectators). */
+	private static final Map<UUID, Consumer<NetworkPacket<?>>> SPECTATOR_ROUTES = new ConcurrentHashMap<>();
 
 	static {
 		// Cobblemon's engine only announces these; on a Cobblemon Delta server, Delta's server mod gives the Pokémon
@@ -203,6 +205,44 @@ public final class GhostBattles {
 		/** A Mega Evolution / Primal Reversion, for both clients' scene. Called on the battle thread. */
 		default void formeChange(FormeChangeVisual change) {
 		}
+
+		/** A public update the engine sends its spectators (see {@code PokemonBattleSpectatorMixin}). Battle thread. */
+		default void spectator(NetworkPacket<?> packet) {
+		}
+	}
+
+	/** Called by {@code PokemonBattleSpectatorMixin} for every spectator update of every battle on this client. */
+	public static void onSpectatorUpdate(PokemonBattle battle, NetworkPacket<?> packet) {
+		Consumer<NetworkPacket<?>> route = SPECTATOR_ROUTES.get(battle.getBattleId());
+		if (route != null) {
+			route.accept(packet);
+		}
+	}
+
+	/**
+	 * What a spectator arriving now must receive first, like Cobblemon's {@code SpectateBattleHandler}: the battle as
+	 * a spectator sees it ({@code BattleInitializePacket} with no ally side) and the chat log so far. Built on the
+	 * battle thread, so nothing of the stream slips in between; handed to {@code answer} there.
+	 */
+	public static void spectatorCatchUp(UUID cobblemonBattleId, Consumer<List<NetworkPacket<?>>> answer) {
+		catchUp(cobblemonBattleId, true, answer);
+	}
+
+	/** The same for a player who only sees the field from afar ({@code BattleFieldScenes}): no chat log. */
+	public static void fieldCatchUp(UUID cobblemonBattleId, Consumer<List<NetworkPacket<?>>> answer) {
+		catchUp(cobblemonBattleId, false, answer);
+	}
+
+	private static void catchUp(UUID cobblemonBattleId, boolean withChat, Consumer<List<NetworkPacket<?>>> answer) {
+		BattleThread.get().submit(() -> {
+			PokemonBattle battle = BattleRegistry.getBattle(cobblemonBattleId);
+			if (battle == null || battle.getEnded()) {
+				return;
+			}
+			var init = new com.cobblemon.mod.common.net.messages.client.battle.BattleInitializePacket(battle, null);
+			answer.accept(!withChat ? List.of(init) : List.of(init,
+					new com.cobblemon.mod.common.net.messages.client.battle.BattleMessagePacket(new java.util.ArrayList<>(battle.getChatLog()))));
+		});
 	}
 
 	private static final java.util.Set<UUID> STOPPED = ConcurrentHashMap.newKeySet();
@@ -216,6 +256,19 @@ public final class GhostBattles {
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
 			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, HostCallbacks callbacks) {
+		startHostedBattle(hostUuid, hostName, hostTeam, guestUuid, guestName, guestTeam, battleRules, adjustLevel, hostSink,
+				guestSink, false, callbacks);
+	}
+
+	/**
+	 * {@code guestIsAi}: the admin solo battle (Adrien 2026-10-07) — the guest side is a mirror of the host's team that
+	 * Cobblemon's random AI plays on this client, every time the engine asks it to choose; {@code guestSink} then only
+	 * sees its packets.
+	 */
+	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
+			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
+			java.util.function.Consumer<NetworkPacket<?>> hostSink,
+			java.util.function.Consumer<NetworkPacket<?>> guestSink, boolean guestIsAi, HostCallbacks callbacks) {
 		BattleThread.get().submit(() -> {
 			try {
 				BattleThread.get().ensureShowdown();
@@ -226,7 +279,21 @@ public final class GhostBattles {
 					return;
 				}
 				GhostBattleActor host = new GhostBattleActor(hostUuid, hostName, hostPokemon, hostSink);
-				GhostBattleActor guest = new GhostBattleActor(guestUuid, guestName, guestPokemon, guestSink);
+				GhostBattleActor[] guestRef = new GhostBattleActor[1];
+				java.util.function.Consumer<NetworkPacket<?>> sink = !guestIsAi ? guestSink : packet -> {
+					guestSink.accept(packet);
+					if (packet instanceof com.cobblemon.mod.common.net.messages.client.battle.BattleMakeChoicePacket) {
+						// Queued after the engine's current step, once the request and "must choose" are set.
+						BattleThread.get().submit(() -> {
+							GhostBattleActor actor = guestRef[0];
+							if (actor != null && actor.getBattle() != null && !actor.getBattle().getEnded()) {
+								autoChoose(actor.getBattle(), actor);
+							}
+						});
+					}
+				};
+				GhostBattleActor guest = new GhostBattleActor(guestUuid, guestName, guestPokemon, sink);
+				guestRef[0] = guest;
 				// The picked format (TODO-24): Cobblemon's singles plus the rules Showdown's engine applies itself
 				// (Sleep Clause Mod, Terastal Clause...), and the format's level for everyone (0 = their own).
 				BattleFormat singles = BattleFormat.Companion.getGEN_9_SINGLES();
@@ -244,10 +311,12 @@ public final class GhostBattles {
 				route(battle.getBattleId(), choice -> applyChoice(choice, hostUuid));
 				EFFECT_ROUTES.put(battle.getBattleId(), callbacks::effect);
 				FORME_ROUTES.put(battle.getBattleId(), callbacks::formeChange);
+				SPECTATOR_ROUTES.put(battle.getBattleId(), callbacks::spectator);
 				battle.getOnEndHandlers().add(ended -> {
 					unroute(ended.getBattleId());
 					EFFECT_ROUTES.remove(ended.getBattleId());
 					FORME_ROUTES.remove(ended.getBattleId());
+					SPECTATOR_ROUTES.remove(ended.getBattleId());
 					if (!STOPPED.remove(ended.getBattleId())) {
 						UUID winner = null;
 						for (BattleActor actor : ended.getWinners()) {
@@ -288,14 +357,22 @@ public final class GhostBattles {
 				return;
 			}
 			for (BattleActor actor : battle.getActors()) {
-				if (actor.getUuid().equals(playerUuid) && actor.getMustChoose() && actor.getRequest() != null) {
-					var ai = new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
-					actor.setActionResponses(actor.getRequest().iterate(actor.getActivePokemon(),
-							(active, moveset, forceSwitch) -> ai.choose(active, battle, actor.getSide(), moveset, forceSwitch)));
+				if (actor.getUuid().equals(playerUuid) && autoChoose(battle, actor)) {
 					LOG.info("Ghost battle timer: automatic choice played for {}", playerUuid);
 				}
 			}
 		});
+	}
+
+	/** Cobblemon's random AI picks for {@code actor}, if the engine is waiting on it. Battle thread. */
+	private static boolean autoChoose(PokemonBattle battle, BattleActor actor) {
+		if (!actor.getMustChoose() || actor.getRequest() == null) {
+			return false;
+		}
+		var ai = new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
+		actor.setActionResponses(actor.getRequest().iterate(actor.getActivePokemon(),
+				(active, moveset, forceSwitch) -> ai.choose(active, battle, actor.getSide(), moveset, forceSwitch)));
+		return true;
 	}
 
 	/** Whether {@code playerUuid} currently has to choose in this hosted battle (timer bookkeeping). */

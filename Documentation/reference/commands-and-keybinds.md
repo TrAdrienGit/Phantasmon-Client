@@ -79,6 +79,7 @@ Ces commandes ne servent qu'aux boutons du chat.
 |---|---|
 | `/phantasmon battle join [ghost\|cobblemon]` | Accepte (bouton [Accepter]) et ouvre le lobby ; `cobblemon` présélectionne votre équipe Cobblemon (modifiable dans le lobby) |
 | `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
+| (roue) « Regarder le combat Ghost » | **R** sur un joueur (ou un avatar du Hub) en combat Ghost : regarder ce combat, comme dans Cobblemon ; bouton Retour de l'écran de combat pour arrêter (D-31) |
 | `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
 
 ### Global Hub (Phantasmon Network)
@@ -109,6 +110,7 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 |---|---|
 | `/phantasmon admin pc <joueur>` | Ouvre le PC de ce joueur et permet tout comme si c'était le sien (déplacer, éditer, importer, exporter, supprimer) |
 | `/phantasmon admin stopbattle <joueur>` | Arrête le combat de ce joueur (match nul, aucun vainqueur) ou annule son lobby |
+| `/phantasmon admin battle solo` | Combat Ghost contre un miroir de votre équipe Ghost, joué par l'IA de Cobblemon (format Libre, sans lobby) ; regardable par les autres, non enregistré (D-32) |
 | `/phantasmon admin reboot` | Redémarre le backend, après un clic sur [Confirmer] (combats en cours : match nul ; les clients se reconnectent seuls) |
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
 | `/phantasmon admin debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` ; **à retirer** avant publication (TODO-2) |

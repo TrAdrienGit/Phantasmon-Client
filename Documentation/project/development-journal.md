@@ -2470,3 +2470,52 @@ Bug signalé : en restant près d'un Anchor, jeu en pause (menu Échap, monde so
 s'accumulent et font ramer à la reprise. En pause, le moteur de particules ne vieillit plus les particules mais les
 ticks client continuent : `HubController` ajoutait ~100 particules toutes les 10 ticks qui ne disparaissaient pas.
 Le contour n'est plus dessiné tant que `Minecraft.isPaused()`. Client compilé et déployé.
+
+### 4.100 Spectateurs d'un combat Ghost et combat solo admin (2026-10-07)
+
+Demande d'Adrien : pouvoir regarder un combat « comme dans Cobblemon », puis, en cours de route, une commande admin
+pour combattre contre soi-même.
+
+- **Spectateurs (D-31)**. Cobblemon n'envoie le combat aux spectateurs que depuis le serveur
+  (`SpectateBattleHandler` : `BattleInitializePacket(battle, null)` + chat, puis `sendSpectatorUpdate` à chaque mise à
+  jour publique). Le combat Ghost tourne sur l'hôte sans serveur : `PokemonBattleSpectatorMixin` capte
+  `sendSpectatorUpdate` et `GhostBattles` le route vers `LiveBattleController`, qui l'encode et l'envoie au backend
+  (`BattleSpectatorPacket`) seulement s'il y a des spectateurs ; pour chaque arrivant, rattrapage construit sur le fil
+  du moteur (`GhostBattles.spectatorCatchUp`), mis en attente si le moteur n'a pas encore démarré (intro). Les
+  animations d'attaque et Méga / Primo / Z / Téra suivent le même chemin. Le spectateur ignore tout paquet antérieur
+  au rattrapage, rejoue le reste dans l'interface de Cobblemon (mode spectateur grâce au camp vide), lance la musique
+  de combat ; le bouton Retour de Cobblemon termine son combat local : détecté au tick → `BattleSpectateLeave`.
+  Roue : entrée « Regarder le combat Ghost » (ouest, icône `spectate_battle` de Cobblemon), sur un joueur et sur un
+  avatar du Hub. Backend : liste de spectateurs par combat, regarder occupe le joueur, fin du combat ou déconnexion
+  prévenues ; 3 tests.
+- **Combat solo (D-32)** : `/phantasmon admin battle solo` → `BattleSoloStart` → `LiveBattle` dont hôte et invité
+  sont l'admin, adversaire « miroir » (uuid dérivé) avec la même équipe Ghost, format Libre, pas d'enregistrement.
+  Côté client, `GhostBattles.startHostedBattle(..., guestIsAi)` : le camp du miroir choisit par l'IA aléatoire de
+  Cobblemon dès que le moteur lui envoie une demande (`BattleMakeChoicePacket`), code commun avec le choix
+  automatique du chrono (`autoChoose`). 3 tests backend.
+
+Cibles et constructeurs Cobblemon vérifiés par `javap` (`sendSpectatorUpdate`, `getChatLog`,
+`BattleInitializePacket(PokemonBattle, BattleSide)`). Client compilé ; déployé sur l'instance locale et, la machine
+serveur étant injoignable en SSH, sur l'instance de repli « Cobblemon 2 ».
+
+### 4.101 Le terrain d'un combat visible sans le regarder (2026-10-07)
+
+Bug signalé par Adrien : dans le Hub, les Pokémon d'un joueur en combat n'apparaissaient que chez ceux qui
+regardaient le combat en spectateur. Les scènes de combat (`BattleVisuals`) n'existaient que chez les deux joueurs et
+les spectateurs, alors que dans Cobblemon tout joueur proche voit le terrain. Adrien a choisi : témoins = même serveur
++ Global Hub, scène complète (D-33).
+
+- **Backend** : `LiveBattleService` tient par combat la liste des témoins (groupe serveur de l'hôte ou de l'invité,
+  membres du Hub si l'un des deux y est ; ni joueurs ni spectateurs), réévaluée chaque seconde et avant chaque paquet
+  du flux. L'hôte apprend les arrivées (`BattleFieldViewerJoined`) et départs ; le flux spectateur est recopié aux
+  témoins (`BattleFieldPacket`) ; `BattleFieldEnded` (`OUT_OF_RANGE`, `SPECTATING`, fin du combat). 2 tests.
+- **Hôte** : envoie son flux spectateur dès qu'il a un spectateur ou un témoin ; rattrapage d'un témoin =
+  `BattleInitializePacket` sans camp, sans historique du chat (`GhostBattles.fieldCatchUp`).
+- **Témoin** : `BattleFieldScenes`, une scène par combat, indépendante de la sienne : Pokémon devant le dresseur ou son
+  avatar (`HubAvatars.playerOrAvatar`), à 7 blocs devant l'autre dresseur si l'un manque, sorties en attente si aucun
+  n'est chargé. Sortie et rappel factorisés dans `BattleVisuals.sendOutEntity` / `recallEntity` ;
+  `ActionEffectPlayer.Scene` laisse jouer les animations d'attaque contre ces entités sans toucher à la caméra ;
+  `BattleSpectacle.playInWorld` joue l'apogée des Méga / Z / Téra sans caméra, son positionnel, lueur Téra conservée
+  au retour du Pokémon. Devenir spectateur efface la scène de loin sans rappel.
+
+Client compilé et déployé ; backend 208 tests. À valider en jeu.

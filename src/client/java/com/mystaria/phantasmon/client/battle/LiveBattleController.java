@@ -98,6 +98,22 @@ public final class LiveBattleController implements LiveBattleListener {
 	private final Map<UUID, Long> enforcedDeadlines = new HashMap<>();
 	private long lastActionBarSecond = -1;
 
+	/** Admin solo battle: the opponent is a mirror of our own team, played by Cobblemon's AI on this client. */
+	private boolean solo;
+	/** Host: players watching our battle; their catch-up waits here until the engine's battle exists. */
+	private final java.util.Set<UUID> spectators = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	private final java.util.Set<UUID> pendingCatchUps = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	/** Host: players who see our field from afar (server group, Hub), and those whose catch-up waits for the engine. */
+	private final java.util.Set<UUID> fieldViewers = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	private final java.util.Set<UUID> pendingFieldCatchUps = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	/** Spectator: the battle we watch (backend uuid), its two players, and whether its catch-up has arrived. */
+	private UUID spectatingUuid;
+	private UUID spectatingHost;
+	private String spectatingHostName;
+	private String spectatingGuestName;
+	private UUID spectatingCobblemonId;
+	private boolean spectateInitialized;
+
 	public LiveBattleController(GhostSession ghostSession, AuthSession session) {
 		this.ghostSession = ghostSession;
 		this.session = session;
@@ -133,6 +149,30 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	public void acceptInvite() {
 		acceptInvite(TeamChoice.GHOST);
+	}
+
+	/** Wheel "Watch Ghost battle": watch the battle {@code targetUuid} plays in, like Cobblemon's spectate. */
+	public void spectatePlayer(UUID targetUuid) {
+		if (!requireReady()) {
+			return;
+		}
+		if (battleUuid != null || lobby != null || spectatingUuid != null) {
+			chat(Component.translatable("phantasmon.battle.error.already_battling").withStyle(ChatFormatting.RED));
+			return;
+		}
+		send("BattleSpectate", Map.of("target_uuid", targetUuid));
+	}
+
+	/** {@code /phantasmon admin battle solo}: a battle against a mirror of our own Ghost team (admins only). */
+	public void startSolo() {
+		if (!requireReady()) {
+			return;
+		}
+		if (battleUuid != null || lobby != null || spectatingUuid != null) {
+			chat(Component.translatable("phantasmon.battle.error.already_battling").withStyle(ChatFormatting.RED));
+			return;
+		}
+		send("BattleSoloStart", Map.of());
 	}
 
 	public void acceptInvite(TeamChoice team) {
@@ -281,6 +321,11 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	/** Called every client tick: countdown display and (host) timer enforcement. */
 	public void tick() {
+		if (spectatingUuid != null && spectateInitialized && CobblemonClient.INSTANCE.getBattle() == null) {
+			// Cobblemon's back button (spectator screen) ended its battle locally: tell the backend we stopped watching.
+			send("BattleSpectateLeave", Map.of("battle_uuid", spectatingUuid));
+			endSpectatingLocally();
+		}
 		if (lobbyScreenRequested) {
 			// Opened from the tick, outside of any command dispatch (same chat-close race as the trade screen).
 			lobbyScreenRequested = false;
@@ -343,6 +388,16 @@ public final class LiveBattleController implements LiveBattleListener {
 			case "BattleTimerEnabled" -> onTimerEnabled(data);
 			case "BattleEnded" -> onEnded(data);
 			case "BattleSessionError" -> onSessionError(string(data.get("error_code")));
+			case "BattleSpectatorJoined" -> onSpectatorJoined(data);
+			case "BattleSpectatorLeft" -> onSpectatorLeft(data);
+			case "BattleSpectateStarted" -> onSpectateStarted(data);
+			case "BattleSpectatorPacket" -> onSpectatorPacket(data);
+			case "BattleSpectateEnded" -> onSpectateEnded(data);
+			case "BattleFieldViewerJoined" -> onFieldViewerJoined(data);
+			case "BattleFieldViewerLeft" -> onFieldViewerLeft(data);
+			case "BattleFieldPacket" -> BattleFieldScenes.onPacket(uuid(data.get("battle_uuid")), string(data.get("id")),
+					string(data.get("payload")));
+			case "BattleFieldEnded" -> BattleFieldScenes.onEnded(uuid(data.get("battle_uuid")), string(data.get("reason")));
 			default -> {
 			}
 		}
@@ -361,6 +416,206 @@ public final class LiveBattleController implements LiveBattleListener {
 			endLocally();
 			chat(Component.translatable("phantasmon.battle.connection_lost").withStyle(ChatFormatting.RED));
 		}
+		if (spectatingUuid != null) {
+			endSpectatingLocally();
+		}
+		BattleFieldScenes.clear();
+	}
+
+	// ---- Field viewers (battle seen from afar, BattleFieldScenes) ----
+
+	/** Host: someone now sees our field; they get it as it stands, then the spectator stream. */
+	private void onFieldViewerJoined(Map<String, Object> data) {
+		UUID viewer = uuid(data.get("viewer_uuid"));
+		if (!host || battleUuid == null || viewer == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
+			return;
+		}
+		fieldViewers.add(viewer);
+		if (cobblemonBattleId == null) {
+			pendingFieldCatchUps.add(viewer); // the engine's battle doesn't exist yet (intro): sent once it does
+		} else {
+			sendFieldCatchUp(viewer);
+		}
+	}
+
+	private void onFieldViewerLeft(Map<String, Object> data) {
+		UUID viewer = uuid(data.get("viewer_uuid"));
+		if (viewer != null) {
+			fieldViewers.remove(viewer);
+			pendingFieldCatchUps.remove(viewer);
+		}
+	}
+
+	private void sendFieldCatchUp(UUID viewer) {
+		UUID currentBattle = battleUuid;
+		UUID engineBattle = cobblemonBattleId;
+		if (currentBattle == null || engineBattle == null) {
+			return;
+		}
+		GhostBattles.fieldCatchUp(engineBattle, packets -> {
+			for (NetworkPacket<?> packet : packets) {
+				sendToSpectators(currentBattle, packet, viewer);
+			}
+		});
+	}
+
+	/** Host: whether anyone watches or sees the field — the spectator stream is only sent then. */
+	private boolean hasAudience() {
+		return !spectators.isEmpty() || !fieldViewers.isEmpty();
+	}
+
+	// ---- Spectators ----
+
+	/** Both players: someone watches. Host: send them the battle so far, then stream to them. */
+	private void onSpectatorJoined(Map<String, Object> data) {
+		UUID spectator = uuid(data.get("spectator_uuid"));
+		if (battleUuid == null || spectator == null || !battleUuid.equals(uuid(data.get("battle_uuid")))) {
+			return;
+		}
+		chat(Component.translatable("phantasmon.battle.spectator.joined", string(data.get("spectator_name"))).withStyle(ChatFormatting.GRAY));
+		if (!host) {
+			return;
+		}
+		spectators.add(spectator);
+		if (cobblemonBattleId == null) {
+			pendingCatchUps.add(spectator); // the engine's battle doesn't exist yet (intro): sent once it does
+		} else {
+			sendCatchUp(spectator);
+		}
+	}
+
+	private void onSpectatorLeft(Map<String, Object> data) {
+		UUID spectator = uuid(data.get("spectator_uuid"));
+		if (spectator != null) {
+			spectators.remove(spectator);
+			pendingCatchUps.remove(spectator);
+		}
+	}
+
+	/** Host: the spectator's catch-up, addressed to them alone. */
+	private void sendCatchUp(UUID spectator) {
+		UUID currentBattle = battleUuid;
+		UUID engineBattle = cobblemonBattleId;
+		if (currentBattle == null || engineBattle == null) {
+			return;
+		}
+		GhostBattles.spectatorCatchUp(engineBattle, packets -> {
+			for (NetworkPacket<?> packet : packets) {
+				sendToSpectators(currentBattle, packet, spectator);
+			}
+		});
+	}
+
+	/** Host, battle thread: one update of the engine's spectator stream, for every spectator and field viewer (none: not sent). */
+	private void relayToSpectators(NetworkPacket<?> packet) {
+		UUID currentBattle = battleUuid;
+		if (currentBattle != null && hasAudience()) {
+			sendToSpectators(currentBattle, packet, null);
+		}
+	}
+
+	private void sendToSpectators(UUID currentBattle, NetworkPacket<?> packet, UUID onlySpectator) {
+		try {
+			CobblemonPackets.Encoded encoded = CobblemonPackets.encode(packet);
+			sendSpectatorPayload(currentBattle, encoded.id(), encoded.payload(), onlySpectator);
+		} catch (Exception ex) {
+			LOG.error("Cannot relay battle packet {} to the spectators", packet.getId(), ex);
+		}
+	}
+
+	private void sendSpectatorPayload(UUID currentBattle, String id, byte[] payload, UUID onlySpectator) {
+		Map<String, Object> message = new HashMap<>();
+		message.put("battle_uuid", currentBattle);
+		message.put("id", id);
+		message.put("payload", Base64.getEncoder().encodeToString(payload));
+		if (onlySpectator != null) {
+			message.put("spectator_uuid", onlySpectator);
+		}
+		send("BattleSpectatorPacket", message);
+	}
+
+	/** Spectator: the backend accepted; the host's catch-up and stream follow. */
+	private void onSpectateStarted(Map<String, Object> data) {
+		spectatingUuid = uuid(data.get("battle_uuid"));
+		spectatingHost = uuid(data.get("host_uuid"));
+		spectatingHostName = string(data.get("host_name"));
+		spectatingGuestName = string(data.get("guest_name"));
+		spectateInitialized = false;
+		spectatingCobblemonId = null;
+		chat(Component.translatable("phantasmon.battle.spectate.started", spectatingHostName, spectatingGuestName)
+				.withStyle(ChatFormatting.AQUA));
+	}
+
+	/**
+	 * Spectator: one packet of the host's spectator stream, played into Cobblemon's UI (which opens in spectator mode
+	 * from the catch-up's {@code BattleInitializePacket}). Anything before the catch-up is dropped — the catch-up
+	 * carries the whole battle as it stands. Same packet policy as a guest (SEC-2).
+	 */
+	private void onSpectatorPacket(Map<String, Object> data) {
+		if (spectatingUuid == null || !spectatingUuid.equals(uuid(data.get("battle_uuid")))) {
+			return;
+		}
+		String id = string(data.get("id"));
+		if (!RelayedPacketPolicy.guestAccepts(id)) {
+			LOG.warn("Dropped a non-battle packet relayed to a spectator: {}", id);
+			return;
+		}
+		try {
+			byte[] payload = Base64.getDecoder().decode(string(data.get("payload")));
+			if (FormeChangeVisual.PACKET_ID.equals(id)) {
+				if (spectateInitialized) {
+					BattleVisuals.transform(FormeChangeVisual.fromBytes(payload));
+				}
+				return;
+			}
+			if (ActionEffectEvent.PACKET_ID.equals(id)) {
+				if (spectateInitialized) {
+					ActionEffectPlayer.play(ActionEffectEvent.fromBytes(payload), null);
+				}
+				return;
+			}
+			NetworkPacket<?> packet = CobblemonPackets.decode(new CobblemonPackets.Encoded(id, payload));
+			if (packet instanceof BattleInitializePacket init) {
+				spectateInitialized = true;
+				spectatingCobblemonId = init.getBattleId();
+				com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
+			} else if (!spectateInitialized) {
+				return;
+			}
+			CobblemonPackets.dispatchLocally(packet);
+		} catch (Exception ex) {
+			LOG.error("Cannot play spectated battle packet {}", id, ex);
+		}
+	}
+
+	/** Spectator: the battle is over (or we left). */
+	private void onSpectateEnded(Map<String, Object> data) {
+		if (spectatingUuid == null || !spectatingUuid.equals(uuid(data.get("battle_uuid")))) {
+			return;
+		}
+		String reason = string(data.get("reason"));
+		UUID winner = uuid(data.get("winner_uuid"));
+		String winnerName = winner == null ? null : winner.equals(spectatingHost) ? spectatingHostName : spectatingGuestName;
+		endSpectatingLocally();
+		if ("LEFT".equals(reason)) {
+			return;
+		}
+		chat((winner == null ? Component.translatable("phantasmon.battle.spectate.ended.draw")
+				: Component.translatable("phantasmon.battle.spectate.ended.won", winnerName)).withStyle(ChatFormatting.GOLD));
+	}
+
+	private void endSpectatingLocally() {
+		UUID id = spectatingCobblemonId;
+		var clientBattle = CobblemonClient.INSTANCE.getBattle();
+		if (id != null && clientBattle != null && id.equals(clientBattle.getBattleId())) {
+			CobblemonPackets.dispatchLocally(new BattleEndPacket());
+		}
+		BattleVisuals.clear();
+		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+		spectatingUuid = null;
+		spectatingHost = null;
+		spectatingCobblemonId = null;
+		spectateInitialized = false;
 	}
 
 	private void onInviteReceived(Map<String, Object> data) {
@@ -432,6 +687,11 @@ public final class LiveBattleController implements LiveBattleListener {
 	private void onSessionStarted(Map<String, Object> data) {
 		battleUuid = uuid(data.get("battle_uuid"));
 		host = "HOST".equals(data.get("role"));
+		solo = Boolean.TRUE.equals(data.get("solo"));
+		spectators.clear();
+		pendingCatchUps.clear();
+		fieldViewers.clear();
+		pendingFieldCatchUps.clear();
 		opponentUuid = uuid(data.get("opponent_uuid"));
 		opponentName = string(data.get("opponent_name"));
 		pendingInviteUuid = null;
@@ -461,16 +721,31 @@ public final class LiveBattleController implements LiveBattleListener {
 		UUID currentBattle = battleUuid;
 		hostHeld.clear();
 		holdHostUntil = BattleCinematic.introEndsAt();
+		// Admin solo battle: the guest is a mirror played by Cobblemon's AI here, nothing is relayed to anyone.
+		java.util.function.Consumer<NetworkPacket<?>> guestSink = solo ? packet -> { } : this::relayToGuest;
 		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
 				battleRules(data.get("format")), adjustLevel(data.get("format")),
-				this::deliverToHostUi, this::relayToGuest, new GhostBattles.HostCallbacks() {
+				this::deliverToHostUi, guestSink, solo, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
 						Minecraft.getInstance().execute(() -> {
 							if (currentBattle.equals(battleUuid)) {
 								cobblemonBattleId = id;
+								for (UUID spectator : List.copyOf(pendingCatchUps)) {
+									pendingCatchUps.remove(spectator);
+									sendCatchUp(spectator);
+								}
+								for (UUID viewer : List.copyOf(pendingFieldCatchUps)) {
+									pendingFieldCatchUps.remove(viewer);
+									sendFieldCatchUp(viewer);
+								}
 							}
 						});
+					}
+
+					@Override
+					public void spectator(NetworkPacket<?> packet) {
+						relayToSpectators(packet);
 					}
 
 					@Override
@@ -483,15 +758,25 @@ public final class LiveBattleController implements LiveBattleListener {
 
 					@Override
 					public void effect(ActionEffectEvent event) {
-						relayEffectToGuest(currentBattle, event);
+						if (!solo) {
+							relayEffectToGuest(currentBattle, event);
+						}
+						if (hasAudience()) {
+							sendSpectatorPayload(currentBattle, ActionEffectEvent.PACKET_ID, event.toBytes(), null);
+						}
 					}
 
 					@Override
 					public void formeChange(FormeChangeVisual change) {
 						// Played here and on the guest's client, same relay as the move animations (keeps the order).
 						Minecraft.getInstance().execute(() -> BattleVisuals.transform(change));
-						send("BattlePacket", Map.of("battle_uuid", currentBattle, "id", FormeChangeVisual.PACKET_ID,
-								"payload", Base64.getEncoder().encodeToString(change.toBytes())));
+						if (!solo) {
+							send("BattlePacket", Map.of("battle_uuid", currentBattle, "id", FormeChangeVisual.PACKET_ID,
+									"payload", Base64.getEncoder().encodeToString(change.toBytes())));
+						}
+						if (hasAudience()) {
+							sendSpectatorPayload(currentBattle, FormeChangeVisual.PACKET_ID, change.toBytes(), null);
+						}
 					}
 
 					@Override
@@ -706,6 +991,11 @@ public final class LiveBattleController implements LiveBattleListener {
 		cobblemonBattleId = null;
 		opponentUuid = null;
 		timerEnabled = false;
+		solo = false;
+		spectators.clear();
+		pendingCatchUps.clear();
+		fieldViewers.clear();
+		pendingFieldCatchUps.clear();
 		enforcedDeadlines.clear();
 		clearLocalCountdown();
 	}

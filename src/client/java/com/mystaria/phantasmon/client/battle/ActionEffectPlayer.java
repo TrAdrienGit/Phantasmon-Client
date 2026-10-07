@@ -100,13 +100,41 @@ public final class ActionEffectPlayer {
 		return thread;
 	});
 
+	/** Where a playback finds its entities: the local battle's scene, or a battle seen from afar. */
+	public interface Scene {
+		PokemonEntity entityAt(String pnx);
+
+		/** Changes when the scene is cleared: a playback started before stops. */
+		int generation();
+	}
+
+	/** This client's own battle (player or spectator), the one the camera follows. */
+	private static final Scene LOCAL = new Scene() {
+		@Override
+		public PokemonEntity entityAt(String pnx) {
+			return BattleVisuals.entityAt(pnx);
+		}
+
+		@Override
+		public int generation() {
+			return BattleVisuals.generation();
+		}
+	};
+
 	private ActionEffectPlayer() {
 	}
 
 	/** On the client thread. {@code listener} may be null (guest). */
 	public static void play(ActionEffectEvent event, Listener listener) {
+		play(event, listener, LOCAL);
+	}
+
+	/** On the client thread, against {@code scene}'s entities; only the local scene moves the camera. */
+	public static void play(ActionEffectEvent event, Listener listener, Scene scene) {
 		Listener safeListener = listener == null ? NONE : listener;
-		BattleCameraDirector.onAction(event.users(), event.targets());
+		if (scene == LOCAL) {
+			BattleCameraDirector.onAction(event.users(), event.targets());
+		}
 		try {
 			ClientActionEffects.ensureLoaded();
 			ResourceLocation id = event.effectId() == null ? null : ResourceLocation.tryParse(event.effectId());
@@ -116,7 +144,7 @@ public final class ActionEffectPlayer {
 				safeListener.finished();
 				return;
 			}
-			new Playback(event, timeline, level, safeListener).start();
+			new Playback(event, timeline, level, safeListener, scene).start();
 		} catch (Exception ex) {
 			LOG.warn("Cannot play action effect {}", event.effectId(), ex);
 			safeListener.finished();
@@ -143,7 +171,8 @@ public final class ActionEffectPlayer {
 		private final ActionEffectTimeline timeline;
 		private final ClientLevel level;
 		private final Listener listener;
-		private final int generation = BattleVisuals.generation();
+		private final Scene scene;
+		private final int generation;
 		private final Set<String> holds = new LinkedHashSet<>();
 		private final List<Entity> users = new ArrayList<>();
 		private final List<Entity> targets = new ArrayList<>();
@@ -152,7 +181,9 @@ public final class ActionEffectPlayer {
 		private ActionEffectContext context;
 		private boolean finished;
 
-		Playback(ActionEffectEvent event, ActionEffectTimeline timeline, ClientLevel level, Listener listener) {
+		Playback(ActionEffectEvent event, ActionEffectTimeline timeline, ClientLevel level, Listener listener, Scene scene) {
+			this.scene = scene;
+			this.generation = scene.generation();
 			this.event = event;
 			this.timeline = timeline;
 			this.level = level;
@@ -193,7 +224,7 @@ public final class ActionEffectPlayer {
 				return;
 			}
 			for (String pnx : pnxs) {
-				PokemonEntity entity = BattleVisuals.entityAt(pnx);
+				PokemonEntity entity = scene.entityAt(pnx);
 				if (entity != null && !into.contains(entity)) {
 					into.add(entity);
 				}
@@ -235,7 +266,7 @@ public final class ActionEffectPlayer {
 			String uuid = params.getString(0);
 			if (pnxs != null) {
 				for (String pnx : pnxs) {
-					PokemonEntity entity = BattleVisuals.entityAt(pnx);
+					PokemonEntity entity = scene.entityAt(pnx);
 					if (entity != null && entity.getStringUUID().equals(uuid)) {
 						return new DoubleValue(true);
 					}
@@ -245,7 +276,7 @@ public final class ActionEffectPlayer {
 		}
 
 		private boolean stale() {
-			return generation != BattleVisuals.generation() || Minecraft.getInstance().level != level;
+			return generation != scene.generation() || Minecraft.getInstance().level != level;
 		}
 
 		private CompletableFuture<Void> chain(List<? extends ActionEffectKeyframe> keyframes) {

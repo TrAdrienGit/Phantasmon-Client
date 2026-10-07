@@ -33,6 +33,8 @@ import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
  *   <li>{@code pc <player>} — that player's PC, handled as if it were one's own;</li>
  *   <li>{@code stopbattle <player>} — ends the battle (draw) or cancels the lobby that player is in;</li>
  *   <li>{@code reboot} — restarts the backend, after a click on [Confirm];</li>
+ *   <li>{@code battle solo} — a live Ghost battle against a mirror of one's own team, played by Cobblemon's AI
+ *   (Adrien 2026-10-07): spectatable, never stored;</li>
  *   <li>{@code ping} and {@code debug fingerprint [value]} — moved here from the players' commands;</li>
  *   <li>{@code debug intro <name>} — plays one of the battle intros alone (TODO-26 previews);</li>
  *   <li>{@code debug spectacle <mega|primal|zmove|tera> [type]} — plays a battle set piece on the nearest Pokémon.</li>
@@ -43,7 +45,8 @@ public final class AdminCommands {
 	private AdminCommands() {
 	}
 
-	public static void register(AdminClient admin, AuthSession session, PokemonCommandHandler pokemonCommands, PingToggle pingToggle) {
+	public static void register(AdminClient admin, AuthSession session, PokemonCommandHandler pokemonCommands, PingToggle pingToggle,
+			com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle) {
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			LiteralArgumentBuilder<FabricClientCommandSource> node = ClientCommandManager.literal("admin")
 					.requires(source -> AdminSession.isAdmin())
@@ -79,6 +82,10 @@ public final class AdminCommands {
 										.exceptionally(ex -> fail(ex));
 								return Command.SINGLE_SUCCESS;
 							})))
+					.then(ClientCommandManager.literal("battle").then(ClientCommandManager.literal("solo").executes(context -> {
+						liveBattle.startSolo();
+						return Command.SINGLE_SUCCESS;
+					})))
 					.then(ClientCommandManager.literal("ping").executes(context -> {
 						boolean enabled = pingToggle.toggle();
 						context.getSource().sendFeedback(Component.translatable(enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));

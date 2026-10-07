@@ -371,5 +371,11 @@
   "phantasmon.hub.error.chat_too_long": "[Hub] Message trop long (256 caractères au plus).",
   "phantasmon.hub.error.chat_rate_limited": "[Hub] Doucement : un message par seconde au plus.",
   "phantasmon.hub.avatar.tag": " [Hub]",
-  "phantasmon.hub.error.anchor_name_taken": "[Hub] Un Anchor de ce serveur porte déjà ce nom."
+  "phantasmon.hub.error.anchor_name_taken": "[Hub] Un Anchor de ce serveur porte déjà ce nom.",
+  "phantasmon.wheel.spectate": "Regarder le combat Ghost",
+  "phantasmon.battle.spectate.started": "[Phantasmon] Vous regardez le combat Ghost de %s contre %s. Bouton Retour de l'écran de combat pour arrêter.",
+  "phantasmon.battle.spectate.ended.won": "[Phantasmon] Combat terminé : %s l'emporte.",
+  "phantasmon.battle.spectate.ended.draw": "[Phantasmon] Combat terminé sans vainqueur.",
+  "phantasmon.battle.spectator.joined": "[Phantasmon] %s regarde le combat.",
+  "phantasmon.battle.error.spectate_not_battling": "[Phantasmon] Ce joueur n'est pas en combat Ghost."
 }

@@ -19,7 +19,8 @@
 		"MusicManagerMixin",
 		"GameRendererSpectacleMixin",
 		"EntityGlowMixin",
-		"BattleGuiSpectacleMixin"
+		"BattleGuiSpectacleMixin",
+		"PokemonBattleSpectatorMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

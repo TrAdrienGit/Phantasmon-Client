@@ -175,7 +175,8 @@ public final class BattleSpectacle {
 			finish();
 		}
 		teraByPokemon.clear();
-		glowing.clear();
+		// Battles seen from afar keep their own Tera glows (BattleFieldScenes).
+		glowing.keySet().removeIf(id -> !BattleFieldScenes.owns(id));
 		glowUntil.clear();
 	}
 
@@ -399,27 +400,59 @@ public final class BattleSpectacle {
 		if (level == null || entity == null || entity.isRemoved()) {
 			return;
 		}
-		Vec3 c = center();
-		double r = radius();
+		climax(level, kind, entity, change, teraType, "kyogre".equals(species()), BattleCinematic::play);
+	}
+
+	/**
+	 * A gimmick in a battle seen from afar (field viewers, see {@link BattleFieldScenes}): no camera, no overlay, no
+	 * pause — only the climax around the Pokémon (flash, burst, model switch, Tera glow), heard from where it stands.
+	 */
+	public static void playInWorld(FormeChangeVisual visual, PokemonEntity target) {
+		ClientLevel level = Minecraft.getInstance().level;
+		if (level == null || target == null || target.isRemoved()) {
+			return;
+		}
+		Kind which = kindOf(visual.aspect());
+		Vec3 at = target.position();
+		climax(level, which, target, visual, which == Kind.TERA ? visual.teraType() : null, "kyogre".equals(visual.species()),
+				(sound, pitch, volume) -> level.playLocalSound(at.x, at.y, at.z, sound, net.minecraft.sounds.SoundSource.NEUTRAL,
+						volume, pitch, false));
+	}
+
+	/** Same Tera glow as after the set piece, for a Pokémon sent out again in a battle seen from afar. */
+	public static void glow(PokemonEntity target, String type) {
+		if (target != null && type != null) {
+			glowing.put(target.getId(), type);
+		}
+	}
+
+	private interface Sound {
+		void play(SoundEvent sound, float pitch, float volume);
+	}
+
+	private static void climax(ClientLevel level, Kind which, PokemonEntity target, FormeChangeVisual visual, String type,
+			boolean kyogre, Sound sound) {
+		Vec3 c = target.position().add(0, target.getBbHeight() / 2.0, 0);
+		double r = Math.max(0.5, Math.max(target.getBbHeight(), target.getBbWidth()) / 2.0);
 		level.addParticle(ParticleTypes.FLASH, c.x, c.y, c.z, 0, 0, 0);
-		switch (kind) {
+		switch (which) {
 			case MEGA, PRIMAL -> {
-				if (change != null) {
-					Set<String> aspects = new HashSet<>(entity.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
-					aspects.add(change.aspect());
-					entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
+				if (visual != null) {
+					Set<String> aspects = new HashSet<>(target.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
+					aspects.add(visual.aspect());
+					target.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
 				}
-				boolean primal = kind == Kind.PRIMAL;
+				boolean primal = which == Kind.PRIMAL;
 				burst(level, c, r, 70, ParticleTypes.END_ROD, 0.35);
 				burst(level, c, r, 40, ParticleTypes.FIREWORK, 0.45);
 				for (int i = 0; i < 40; i++) {
 					Vec3 v = randomUnit().scale(0.5);
-					int color = primal ? ("kyogre".equals(species()) ? 0x50A0FF : 0xFF5020) : rainbow(i / 40f);
+					int color = primal ? (kyogre ? 0x50A0FF : 0xFF5020) : rainbow(i / 40f);
 					level.addParticle(dust(color, 2.5f), c.x, c.y, c.z, v.x, v.y, v.z);
 				}
-				BattleCinematic.play(SoundEvents.GLASS_BREAK, 0.8f, 1f);
-				BattleCinematic.play(SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, 0.9f, 1f);
-				BattleCinematic.play(SoundEvents.TOTEM_USE, primal ? 0.7f : 1.2f, 0.6f);
+				sound.play(SoundEvents.GLASS_BREAK, 0.8f, 1f);
+				sound.play(SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, 0.9f, 1f);
+				sound.play(SoundEvents.TOTEM_USE, primal ? 0.7f : 1.2f, 0.6f);
 			}
 			case Z_MOVE -> {
 				burst(level, c, r, 80, ParticleTypes.END_ROD, 0.6);
@@ -427,7 +460,7 @@ public final class BattleSpectacle {
 					Vec3 v = randomUnit().scale(0.6);
 					level.addParticle(dust(i % 2 == 0 ? 0xFFC020 : 0xFFFFFF, 2.0f), c.x, c.y, c.z, v.x, v.y, v.z);
 				}
-				Vec3 feet = entity.position();
+				Vec3 feet = target.position();
 				for (int i = 0; i < 48; i++) {
 					double angle = i * Math.PI * 2 / 48;
 					double vx = Math.cos(angle) * 0.6;
@@ -435,26 +468,26 @@ public final class BattleSpectacle {
 					level.addParticle(ParticleTypes.CLOUD, feet.x, feet.y + 0.1, feet.z, vx, 0.01, vz);
 					level.addParticle(dust(0xFFD040, 2.0f), feet.x, feet.y + 0.2, feet.z, vx * 1.3, 0.02, vz * 1.3);
 				}
-				BattleCinematic.play(SoundEvents.WARDEN_SONIC_BOOM, 1.3f, 0.7f);
-				BattleCinematic.play(SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, 0.7f, 1f);
-				BattleCinematic.play(SoundEvents.LIGHTNING_BOLT_THUNDER, 1.6f, 0.4f);
+				sound.play(SoundEvents.WARDEN_SONIC_BOOM, 1.3f, 0.7f);
+				sound.play(SoundEvents.FIREWORK_ROCKET_LARGE_BLAST, 0.7f, 1f);
+				sound.play(SoundEvents.LIGHTNING_BOLT_THUNDER, 1.6f, 0.4f);
 			}
 			case TERA -> {
 				for (int i = 0; i < 60; i++) {
 					Vec3 v = randomUnit().scale(0.45);
-					level.addParticle(shard(teraType), c.x + v.x * r, c.y + v.y * r, c.z + v.z * r, v.x, v.y + 0.1, v.z);
+					level.addParticle(shard(type), c.x + v.x * r, c.y + v.y * r, c.z + v.z * r, v.x, v.y + 0.1, v.z);
 				}
 				for (int i = 0; i < 40; i++) {
 					Vec3 v = randomUnit().scale(0.4);
-					level.addParticle(dust(color(), 2.2f), c.x, c.y, c.z, v.x, v.y, v.z);
+					level.addParticle(dust(teraColor(type), 2.2f), c.x, c.y, c.z, v.x, v.y, v.z);
 				}
 				burst(level, c, r, 30, ParticleTypes.END_ROD, 0.3);
-				BattleCinematic.play(SoundEvents.GLASS_BREAK, 1.0f, 1f);
-				BattleCinematic.play(SoundEvents.AMETHYST_BLOCK_BREAK, 0.6f, 1f);
-				BattleCinematic.play(SoundEvents.BEACON_ACTIVATE, 1.6f, 0.8f);
-				glowing.put(entity.getId(), teraType);
-				if (change == null) {
-					glowUntil.put(entity.getId(), System.currentTimeMillis() + 12_000);
+				sound.play(SoundEvents.GLASS_BREAK, 1.0f, 1f);
+				sound.play(SoundEvents.AMETHYST_BLOCK_BREAK, 0.6f, 1f);
+				sound.play(SoundEvents.BEACON_ACTIVATE, 1.6f, 0.8f);
+				glowing.put(target.getId(), type);
+				if (visual == null) {
+					glowUntil.put(target.getId(), System.currentTimeMillis() + 12_000);
 				}
 			}
 		}

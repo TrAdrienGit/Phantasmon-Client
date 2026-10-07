@@ -22,8 +22,9 @@ import com.mystaria.phantasmon.client.battle.LiveBattleController;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
 
 /**
- * The two Phantasmon entries of Cobblemon's player-interaction wheel (R on a player): Ghost Trade and Ghost
- * Battle, each inviting the player the wheel is open on — the same invites as the G and B keybinds, which
+ * The Phantasmon entries of Cobblemon's player-interaction wheel (R on a player): Ghost Trade and Ghost Battle,
+ * each inviting the player the wheel is open on, and Watch Ghost battle (spectating the Ghost battle they play in,
+ * Adrien 2026-10-07) — the same invites as the G and B keybinds, which
  * use the crosshair instead. Cobblemon's own trade/battle entries are untouched: they act on real Cobblemon
  * Pokémon, ours on Ghost Pokémon.
  *
@@ -61,6 +62,8 @@ public final class GhostWheelOptions {
 					() -> liveTrade.invitePlayer(target)));
 			options.put(Orientation.NORTHWEST, option("battle", "phantasmon.wheel.battle", new Vector3f(1.0f, 0.31f, 0.47f),
 					() -> liveBattle.invitePlayer(target)));
+			options.put(Orientation.WEST, option("spectate_battle", "phantasmon.wheel.spectate", new Vector3f(0.55f, 0.95f, 0.55f),
+					() -> liveBattle.spectatePlayer(target)));
 		} catch (RuntimeException ex) {
 			LOG.warn("Could not add the Ghost options to Cobblemon's interaction wheel", ex);
 		}
@@ -76,6 +79,8 @@ public final class GhostWheelOptions {
 				() -> liveTrade.invitePlayer(playerUuid)));
 		options.put(Orientation.NORTHWEST, option("battle", "phantasmon.wheel.battle", new Vector3f(1.0f, 0.31f, 0.47f),
 				() -> liveBattle.invitePlayer(playerUuid)));
+		options.put(Orientation.WEST, option("spectate_battle", "phantasmon.wheel.spectate", new Vector3f(0.55f, 0.95f, 0.55f),
+				() -> liveBattle.spectatePlayer(playerUuid)));
 		Minecraft.getInstance().setScreen(new InteractWheelGUI(options, Component.literal(playerName)));
 	}
 

@@ -98,6 +98,10 @@ client) et déposez vos `.ogg` dans ses dossiers `lobby`, `intro`, `battle`, `vi
 `LISEZ-MOI.txt`). Elles sont tirées au hasard ; F3 + T recharge après un ajout. La touche **N**, le bouton **♪ Musiques** du lobby ou
 Mod Menu → Phantasmon → Configurer ouvrent le menu des musiques, qui permet de décocher les morceaux qu'on ne veut pas entendre et d'écouter chacun.
 
+**Regarder un combat** : visez un joueur en combat Ghost (ou son avatar dans le Global Hub), **R** → « Regarder le
+combat Ghost ». L'écran de combat de Cobblemon s'ouvre en mode spectateur et les Pokémon apparaissent devant les deux
+dresseurs ; le bouton Retour arrête. Les joueurs voient « X regarde le combat ».
+
 Abandonner donne la victoire à l'adversaire ; une déconnexion annule le combat sans vainqueur. Les Pokémon
 retrouvent leur état normal après le combat.
 

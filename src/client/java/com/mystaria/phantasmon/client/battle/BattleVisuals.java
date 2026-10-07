@@ -242,6 +242,23 @@ public final class BattleVisuals {
 			return;
 		}
 
+		PokemonEntity entity = sendOutEntity(level, dto, placement.position(), placement.yaw(), placement.trainer(), BattleVisuals::later);
+		entities.put(pnx, entity);
+		BattleSpectacle.onSentOut(entity, dto.getUuid());
+	}
+
+	/** Runs {@code task} on the client thread after {@code seconds}, unless the caller's scene was cleared meanwhile. */
+	interface Later {
+		void run(float seconds, Runnable task);
+	}
+
+	/**
+	 * Adds a client-only battle entity for {@code dto} at {@code at}, facing {@code yaw}, with Cobblemon's send-out
+	 * from {@code trainer} (ball throw, beam, then cry and shiny ring); no trainer: the beam alone. Also used by the
+	 * battles seen from afar ({@link BattleFieldScenes}).
+	 */
+	static PokemonEntity sendOutEntity(ClientLevel level, BattleInitializePacket.ActiveBattlePokemonDTO dto, Vec3 at, float yaw,
+			Player trainer, Later later) {
 		// Not PokemonProperties.create(): it initialises a default moveset through Cobblemon's moveset builders,
 		// a server datapack registry that is empty on a client connected to a remote/LAN server (crashed the
 		// guest's send-outs). apply() only sets the visual properties, like the Ghost entities do.
@@ -260,13 +277,12 @@ public final class BattleVisuals {
 		entity.getEntityData().set(PokemonEntity.Companion.getLABEL_LEVEL(), pokemon.getLevel());
 		entity.setNoAi(true);
 		entity.setInvulnerable(true);
-		entity.setPos(placement.position().x, placement.position().y, placement.position().z);
-		entity.setYRot(placement.yaw());
-		entity.setYBodyRot(placement.yaw());
-		entity.setYHeadRot(placement.yaw());
-		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), placement.yaw());
+		entity.setPos(at.x, at.y, at.z);
+		entity.setYRot(yaw);
+		entity.setYBodyRot(yaw);
+		entity.setYHeadRot(yaw);
+		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), yaw);
 
-		Player trainer = placement.trainer();
 		if (trainer != null) {
 			trainer.swing(InteractionHand.MAIN_HAND);
 			entity.setPhasingTargetId(trainer.getId());
@@ -275,12 +291,10 @@ public final class BattleVisuals {
 		entity.setBeamMode(BEAM_SEND_OUT);
 		level.addEntity(entity);
 		PhantasmonEntities.register(entity);
-		entities.put(pnx, entity);
-		BattleSpectacle.onSentOut(entity, dto.getUuid());
 
 		boolean shiny = dto.getAspects().contains("shiny");
-		later(THROW_DURATION, () -> entity.setPhasingTargetId(-1));
-		later(SEND_OUT_DURATION, () -> {
+		later.run(THROW_DURATION, () -> entity.setPhasingTargetId(-1));
+		later.run(SEND_OUT_DURATION, () -> {
 			if (entity.getBeamMode() == BEAM_RECALL || entity.isRemoved()) {
 				return; // a recall already took over, same rule as Cobblemon's send-out
 			}
@@ -293,6 +307,31 @@ public final class BattleVisuals {
 						List.of("shiny_particles", "middle"), null, List.of()));
 			}
 		});
+		return entity;
+	}
+
+	/** Starts Cobblemon's recall beam toward {@code trainer} (null: in place); the caller removes the entity after {@link #recallSeconds}. */
+	static void recallEntity(ClientLevel level, PokemonEntity entity, Player trainer) {
+		playSound(level, entity.position(), CobblemonSounds.POKE_BALL_RECALL);
+		entity.setPhasingTargetId(trainer != null ? trainer.getId() : -1);
+		entity.setBeamMode(BEAM_RECALL);
+		entity.noPhysics = true;
+		entity.setNoGravity(true);
+	}
+
+	/** How long a recall beam lasts, which is also the wait before the replacement comes out. */
+	static float recallSeconds() {
+		return SEND_OUT_DURATION;
+	}
+
+	/** Cobblemon's distance from trainer to Pokémon, along the line to the opponent (capped to a third of the gap). */
+	static double sendOutDistance(double gap) {
+		return Math.min(SEND_OUT_DISTANCE, gap / 3.0);
+	}
+
+	/** Shared timer for the battles seen from afar: {@code task} on the client thread after {@code seconds}. */
+	static void schedule(float seconds, Runnable task) {
+		TIMER.schedule(() -> Minecraft.getInstance().execute(task), (long) (seconds * 1000), TimeUnit.MILLISECONDS);
 	}
 
 	// ---- Mega Evolution / Primal Reversion / Z-Move / Terastallization ----
@@ -309,12 +348,7 @@ public final class BattleVisuals {
 		if (entity == null || level == null) {
 			return false;
 		}
-		Player trainer = trainerEntity(level, pnx.substring(0, 2));
-		playSound(level, entity.position(), CobblemonSounds.POKE_BALL_RECALL);
-		entity.setPhasingTargetId(trainer != null ? trainer.getId() : -1);
-		entity.setBeamMode(BEAM_RECALL);
-		entity.noPhysics = true;
-		entity.setNoGravity(true);
+		recallEntity(level, entity, trainerEntity(level, pnx.substring(0, 2)));
 		leaving.add(entity);
 		later(SEND_OUT_DURATION, () -> {
 			if (leaving.remove(entity)) {
@@ -357,7 +391,7 @@ public final class BattleVisuals {
 		if (trainer != null && opponent != null) {
 			Vec3 from = trainer.position();
 			Vec3 toOpponent = horizontal(opponent.position().subtract(from));
-			double distance = Math.min(SEND_OUT_DISTANCE, toOpponent.length() / 3.0);
+			double distance = sendOutDistance(toOpponent.length());
 			Vec3 direction = toOpponent.lengthSqr() < 1.0E-4 ? horizontal(trainer.getLookAngle()) : toOpponent.normalize();
 			return new Placement(from.add(direction.scale(distance)), yawOf(direction), trainer);
 		}
@@ -376,12 +410,12 @@ public final class BattleVisuals {
 		return uuid == null ? null : com.mystaria.phantasmon.client.hub.HubAvatars.playerOrAvatar(level, uuid);
 	}
 
-	private static Vec3 horizontal(Vec3 vector) {
+	static Vec3 horizontal(Vec3 vector) {
 		return new Vec3(vector.x, 0, vector.z);
 	}
 
 	/** Minecraft yaw facing {@code direction}. */
-	private static float yawOf(Vec3 direction) {
+	static float yawOf(Vec3 direction) {
 		return (float) (Math.toDegrees(Math.atan2(-direction.x, direction.z)));
 	}
 }
