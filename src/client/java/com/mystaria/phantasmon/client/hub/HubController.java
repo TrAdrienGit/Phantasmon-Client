@@ -73,6 +73,8 @@ public final class HubController implements HubListener {
 	private static final double DRAW_DISTANCE = 48;
 	private static final int OUTLINE_COLOR = 0x9B6CFF;
 	/** Same rule as the backend: 3 to 32 letters, digits, spaces, - or _, no space at either end. */
+	/** Edge of an anchor's cube, as the backend's {@code phantasmon.hub.anchor-size} (checked before posing, D-34). */
+	private static final int ANCHOR_SIZE = 21;
 	private static final Pattern ANCHOR_NAME = Pattern.compile("[\\p{L}\\p{N}_-][\\p{L}\\p{N} _-]{1,30}[\\p{L}\\p{N}_-]");
 	private static final Path AUTO_JOIN_FILE = FabricLoader.getInstance().getConfigDir().resolve("phantasmon-hub-autojoin.txt");
 
@@ -86,6 +88,8 @@ public final class HubController implements HubListener {
 	private final Set<UUID> autoJoin = new LinkedHashSet<>();
 	private final Map<UUID, Member> members = new LinkedHashMap<>();
 	private final HubAvatars avatars = new HubAvatars();
+	/** The Global Hub's build around each anchor (D-34). */
+	private final HubBuilds builds;
 
 	private volatile List<HubAnchorDto> anchors = List.of();
 	/** {@code fingerprint|dimension} the anchor list belongs to. */
@@ -109,6 +113,7 @@ public final class HubController implements HubListener {
 		this.hubClient = hubClient;
 		this.session = session;
 		this.ghostSession = ghostSession;
+		this.builds = new HubBuilds(hubClient, session);
 		loadAutoJoin();
 	}
 
@@ -116,6 +121,8 @@ public final class HubController implements HubListener {
 
 	/** Every client tick. */
 	public void tick() {
+		// The builds stay up even while the backend is unreachable: they only depend on the last anchor list.
+		builds.tick();
 		Minecraft mc = Minecraft.getInstance();
 		LocalPlayer player = mc.player;
 		if (player == null || !session.isAuthenticated() || !ghostSession.isConnected()) {
@@ -127,6 +134,7 @@ public final class HubController implements HubListener {
 			// New server or dimension: the backend takes the player out of the Hub itself (SERVER_CHANGED).
 			anchorsKey = key;
 			anchors = List.of();
+			builds.setAnchors(anchors);
 			currentAnchor = null;
 			pendingInvite = null;
 			refreshAnchors();
@@ -369,6 +377,7 @@ public final class HubController implements HubListener {
 		rejoinAnchorUuid = null;
 		anchors = List.of();
 		anchorsKey = null;
+		builds.reset();
 	}
 
 	private Member putMember(Map<?, ?> data) {
@@ -474,6 +483,13 @@ public final class HubController implements HubListener {
 			chat(Component.translatable("phantasmon.hub.anchor.invalid_name").withStyle(ChatFormatting.RED));
 			return;
 		}
+		// D-34: the Global Hub's build fills the whole cube, which must be empty (air) where the anchor is posed.
+		int inTheWay = HubBuilds.blocksInTheWay((ClientLevel) player.level(),
+				HubBuildLayout.of(player.getX(), player.getY(), player.getZ(), 0, ANCHOR_SIZE));
+		if (inTheWay > 0) {
+			chat(Component.translatable("phantasmon.hub.anchor.not_empty", ANCHOR_SIZE, inTheWay).withStyle(ChatFormatting.RED));
+			return;
+		}
 		HubAnchorCreateRequestDto request = new HubAnchorCreateRequestDto(UUID.randomUUID(), name,
 				GhostSession.serverFingerprint(), dimension(player),
 				new HubAnchorDto.Origin(player.getX(), player.getY(), player.getZ()), player.getYRot());
@@ -544,6 +560,8 @@ public final class HubController implements HubListener {
 				.thenAccept(list -> onClientThread(() -> {
 					if (key != null && key.equals(anchorsKey)) {
 						anchors = List.of(list);
+						builds.setAnchors(anchors);
+						builds.refreshSchematic();
 					}
 				}))
 				.exceptionally(ex -> {

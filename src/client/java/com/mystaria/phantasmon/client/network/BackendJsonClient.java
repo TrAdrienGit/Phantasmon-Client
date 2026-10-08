@@ -63,6 +63,19 @@ public final class BackendJsonClient {
 		return send(authorize(builder, bearerToken), responseType);
 	}
 
+	/** {@code GET} of a binary body (e.g. the Hub schematic), with a longer timeout than JSON calls. */
+	public CompletableFuture<byte[]> getBytes(URI uri, String bearerToken) {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(60))
+				.header("Accept", "application/octet-stream").GET();
+		return httpClient.sendAsync(authorize(builder, bearerToken).build(), HttpResponse.BodyHandlers.ofByteArray())
+				.thenApply(response -> {
+					if (response.statusCode() >= 200 && response.statusCode() < 300) {
+						return response.body();
+					}
+					throw new BackendApiException(response.statusCode(), "ERROR_UNKNOWN", null);
+				});
+	}
+
 	/** {@code DELETE} expecting {@code 204 No Content} — no response body to parse. */
 	public CompletableFuture<Void> delete(URI uri, String bearerToken) {
 		HttpRequest.Builder builder = baseBuilder(uri).DELETE();

@@ -356,6 +356,7 @@
   "phantasmon.hub.not_in_hub": "[Hub] Vous n'êtes pas dans le Global Hub.",
   "phantasmon.hub.autojoin.on": "[Hub] Anchor « %s » : vous rejoindrez le Hub sans invitation (/phantasmon hub autojoin off pour annuler).",
   "phantasmon.hub.autojoin.off": "[Hub] Anchor « %s » : vous serez de nouveau invité avant de rejoindre le Hub.",
+  "phantasmon.hub.anchor.not_empty": "[Hub] Impossible de poser un Anchor ici : le cube de %1$s blocs de côté, à partir de vos pieds, doit être entièrement vide (air) pour accueillir la construction du Hub. %2$s bloc(s) gênent.",
   "phantasmon.hub.anchor.invalid_name": "[Hub] Nom d'Anchor invalide : 3 à 32 lettres, chiffres, espaces, - ou _.",
   "phantasmon.hub.anchor.created": "[Hub] Anchor « %s » créé ici : un cube de %s blocs centré sur vous. Les joueurs Phantasmon de ce serveur le verront et pourront l'utiliser.",
   "phantasmon.hub.anchor.info": "[Hub] Votre Anchor : « %s » (%s), en %s %s %s.",

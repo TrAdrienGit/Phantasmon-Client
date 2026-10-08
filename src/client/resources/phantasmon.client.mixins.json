@@ -20,7 +20,9 @@
 		"GameRendererSpectacleMixin",
 		"EntityGlowMixin",
 		"BattleGuiSpectacleMixin",
-		"PokemonBattleSpectatorMixin"
+		"PokemonBattleSpectatorMixin",
+		"ClientLevelHubBuildMixin",
+		"MultiPlayerGameModeHubBuildMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -2519,3 +2519,28 @@ les spectateurs, alors que dans Cobblemon tout joueur proche voit le terrain. Ad
   au retour du Pokémon. Devenir spectateur efface la scène de loin sans rappel.
 
 Client compilé et déployé ; backend 208 tests. À valider en jeu.
+
+### 4.102 Construction du Global Hub : schematic en blocs client (2026-10-08)
+
+Demande d'Adrien : poser un Anchor y bâtit, chez chaque client, la construction du Hub tirée d'un schematic du
+backend, en faux blocs que le serveur Minecraft ne connaît pas (D-34, jalon « Hub bâti », étapes H0 à H4).
+
+- **Backend** : `HubSchematicService` (lecteur NBT minimal `NbtReader`) refuse de démarrer sans exactement un
+  `.schem` / `.litematic` de 21 × 21 × 21 dans `hub_schematics/hub_global/` ; `GET /hub/schematic` et
+  `/hub/schematic/file`. Arène par défaut et fixtures de test générées par `scripts/generate_hub_schematics.py`.
+- **Lecture** : `HubSchematic` lit Sponge v1 à v3 (palette + varints) et Litematica (toutes les régions, états
+  compactés sur des `long`, taille négative) avec `net.minecraft.nbt` seulement, testé ; `HubBuildLayout` place et
+  tourne la construction (centre du bas sous les pieds, +Z = avant de l'Anchor), testé.
+- **Pose** : `HubBuilds` télécharge le fichier (cache par SHA-256 dans `config/phantasmon-hub-schematics/`),
+  convertit les noms en blocs du client (inconnus → air) et pose les blocs non-air par `setBlock` côté client : le
+  moteur du jeu s'occupe du rendu, de la lumière, des shaders et des collisions. Un chunk renvoyé par le serveur
+  (événement de chargement de Fabric) est rebâti au tick suivant ; une mise à jour de bloc du serveur sur un faux bloc
+  est mise de côté (`ClientLevelHubBuildMixin`) et rendue à la suppression de l'Anchor. Le joueur qui pose l'Anchor
+  est remonté sur le sol qui apparaît sous ses pieds.
+- **Interactions** (`MultiPlayerGameModeHubBuildMixin`) : faux blocs incassables, clic droit jamais envoyé au
+  serveur ; portes, trappes et portillons ouverts localement avec leur son ; données des blocs à contenu (panneaux…)
+  chargées au mieux.
+- **Pose d'un Anchor** : refusée si le cube 21 × 21 × 21 à partir des pieds n'est pas entièrement vide.
+- Limite LIM-14 (le serveur voit le joueur flotter), acceptée par Adrien.
+
+Client compilé et déployé ; backend testé. À valider en jeu.

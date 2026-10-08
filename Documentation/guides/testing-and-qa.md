@@ -106,6 +106,20 @@ Minecraft doit être extraite dans une classe testable et couverte.
       Retour : la scène de loin revient en une seconde environ.
 - [ ] Fin du combat, sortie du Hub, changement de serveur : rappel des Pokémon chez le témoin.
 
+### Construction du Hub (D-34)
+
+- [ ] Backend lancé avec l'arène par défaut, puis avec la vraie construction (`.schem` et `.litematic`) ; deux fichiers
+      ou une mauvaise taille : le backend refuse de démarrer avec un message clair.
+- [ ] `/phantasmon hub anchor create` sur un terrain encombré : refus, nombre de blocs gênants ; sur un terrain dégagé :
+      la construction apparaît, le joueur se retrouve sur le sol.
+- [ ] Orientation : poser face au nord, à l'est, au sud, à l'ouest — l'entrée suit le regard.
+- [ ] Rendu identique à de vrais blocs, avec et sans Iris (ombres, lumière des lanternes).
+- [ ] Collisions : marcher sur le sol, se cogner aux murs ; un second joueur Phantasmon du serveur voit la salle.
+- [ ] Incassable (survie et créatif) ; rien ne se pose contre un faux bloc ; la porte s'ouvre et se ferme.
+- [ ] S'éloigner au-delà de la distance de rendu puis revenir : la salle est toujours là.
+- [ ] `/phantasmon hub anchor delete` : la salle disparaît, le terrain d'origine revient.
+- [ ] Serveur avec `allow-flight=false` : noter si le joueur est expulsé en restant sur le faux sol (LIM-14).
+
 ### Global Hub (Phantasmon Network, N3)
 
 Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs différentes) et deux comptes.

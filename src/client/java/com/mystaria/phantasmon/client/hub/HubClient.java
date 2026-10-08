@@ -35,6 +35,16 @@ public final class HubClient {
 		return httpClient.delete(BackendConfig.BASE_URL.resolve("/hub/anchors/" + anchorUuid), bearerToken);
 	}
 
+	/** The Global Hub's build (D-34): name, format, SHA-256, size. */
+	public CompletableFuture<HubSchematicDto> schematic(String bearerToken) {
+		return httpClient.get(BackendConfig.BASE_URL.resolve("/hub/schematic"), bearerToken, HubSchematicDto.class);
+	}
+
+	/** The build's file itself. */
+	public CompletableFuture<byte[]> schematicFile(String bearerToken) {
+		return httpClient.getBytes(BackendConfig.BASE_URL.resolve("/hub/schematic/file"), bearerToken);
+	}
+
 	private static String encode(String value) {
 		return URLEncoder.encode(value, StandardCharsets.UTF_8);
 	}

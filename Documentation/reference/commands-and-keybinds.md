@@ -90,7 +90,7 @@ envoyé au serveur Minecraft. Échange et combat avec un joueur d'un autre serve
 
 | Commande | Effet |
 |---|---|
-| `/phantasmon hub anchor create <nom>` | Crée votre Anchor (un seul ; les joueurs de ce serveur le voient et peuvent l'utiliser, D-30) : cube de 21 blocs centré sur vous, posé à vos pieds, orienté selon votre regard (arrondi au quart de tour). Nom : 3 à 32 lettres, chiffres, espaces, `-`, `_` |
+| `/phantasmon hub anchor create <nom>` | Crée votre Anchor (un seul ; les joueurs de ce serveur le voient et peuvent l'utiliser, D-30) : cube de 21 blocs centré sur vous, posé à vos pieds, orienté selon votre regard (arrondi au quart de tour). Le cube (21 blocs de côté, de vos pieds vers le haut) doit être **entièrement vide** : la construction du Hub s'y bâtit (D-34). Nom : 3 à 32 lettres, chiffres, espaces, `-`, `_` |
 | `/phantasmon hub anchor info` | Votre Anchor : nom, dimension, position |
 | `/phantasmon hub anchor delete` | Supprime votre Anchor |
 | `/phantasmon hub anchor delete here` | Supprime l'Anchor où vous vous trouvez (son créateur ou un admin) |

@@ -71,6 +71,9 @@ public class PhantasmonClient implements ClientModInitializer {
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
 			authSession.clear();
 		});
+		// Hub builds (D-34): a chunk the server (re)sends has lost its client-only blocks — built again.
+		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents.CHUNK_LOAD.register((level, chunk) ->
+				com.mystaria.phantasmon.client.hub.HubBuilds.onChunkLoad(level, chunk.getPos()));
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ghostSession.onClientTick();
 			pokemonCommands.tick();
