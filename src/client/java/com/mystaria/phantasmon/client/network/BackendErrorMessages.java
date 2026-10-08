@@ -73,7 +73,14 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_HUB_NOT_JOINED", "phantasmon.hub.error.not_joined"),
 			Map.entry("ERROR_HUB_OUT_OF_BOUNDS", "phantasmon.hub.error.out_of_bounds"),
 			Map.entry("ERROR_HUB_CHAT_TOO_LONG", "phantasmon.hub.error.chat_too_long"),
-			Map.entry("ERROR_HUB_CHAT_RATE_LIMITED", "phantasmon.hub.error.chat_rate_limited"));
+			Map.entry("ERROR_HUB_CHAT_RATE_LIMITED", "phantasmon.hub.error.chat_rate_limited"),
+			Map.entry("ERROR_HUB_ANCHOR_OVERLAP", "phantasmon.hub.error.anchor_overlap"),
+			Map.entry("ERROR_HUB_NOT_FOUND", "phantasmon.hub.error.not_found"),
+			Map.entry("ERROR_HUB_NAME_TAKEN", "phantasmon.hub.error.name_taken"),
+			Map.entry("ERROR_HUB_INVALID_NAME", "phantasmon.hub.error.invalid_name"),
+			Map.entry("ERROR_HUB_INVALID_SIZE", "phantasmon.hub.error.invalid_size"),
+			Map.entry("ERROR_HUB_SCHEMATIC_INVALID", "phantasmon.hub.error.schematic_invalid"),
+			Map.entry("ERROR_HUB_SCHEMATIC_NONE", "phantasmon.hub.error.schematic_none"));
 
 	private BackendErrorMessages() {
 	}

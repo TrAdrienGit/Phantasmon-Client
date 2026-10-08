@@ -4,20 +4,30 @@ package com.mystaria.phantasmon.client.hub;
  * Local ⇄ Hub coordinates for one Hub Anchor (Phantasmon Network, network-cahier-des-charges.md §5.4). Pure logic, no
  * Minecraft import, so it stays unit-testable.
  *
- * <p>The anchor's cube is {@code size} blocks wide, centred on the origin in {@code x} / {@code z} and rising from
- * {@code originY}. In the Hub, the anchor's centre is (0, 0) and the direction the anchor faces is the Hub's yaw 0
- * (Minecraft's yaw: 0 = +Z, 90 = -X), so every anchor maps the same shared square whatever way it was built.
+ * <p>The anchor's box is its hub's size (D-35): {@code sizeX} wide across the anchor, {@code sizeZ} long along its
+ * front, {@code sizeY} high, centred on the origin horizontally and rising from {@code originY}. In the Hub, the
+ * anchor's centre is (0, 0) and the direction the anchor faces is the Hub's yaw 0 (Minecraft's yaw: 0 = +Z, 90 = -X),
+ * so every anchor maps the same shared space whatever way it was built.
  */
-public record HubCoordinates(double originX, double originY, double originZ, int yaw, int size) {
+public record HubCoordinates(double originX, double originY, double originZ, int yaw, int sizeX, int sizeY, int sizeZ) {
 
-	public double halfSize() {
-		return size / 2.0;
+	public double halfX() {
+		return sizeX / 2.0;
 	}
 
-	/** Whether a local position is inside the anchor's cube. */
+	public double halfZ() {
+		return sizeZ / 2.0;
+	}
+
+	/** Half the box's longest side: how far from the origin it reaches at most, horizontally. */
+	public double radius() {
+		return Math.max(halfX(), halfZ());
+	}
+
+	/** Whether a local position is inside the anchor's box. */
 	public boolean contains(double x, double y, double z) {
-		return Math.abs(x - originX) <= halfSize() && Math.abs(z - originZ) <= halfSize()
-				&& y >= originY && y < originY + size;
+		double[] hub = toHub(x, z);
+		return Math.abs(hub[0]) <= halfX() && Math.abs(hub[1]) <= halfZ() && y >= originY && y < originY + sizeY;
 	}
 
 	/** Local {@code (x, z)} → Hub {@code {hx, hz}}. */
@@ -39,9 +49,14 @@ public record HubCoordinates(double originX, double originY, double originZ, int
 		return hubYaw + yaw;
 	}
 
-	/** Keeps a Hub coordinate inside the square the backend accepts. */
-	public double clampToSquare(double hubCoordinate) {
-		return Math.max(-halfSize(), Math.min(halfSize(), hubCoordinate));
+	/** Keeps a Hub {@code x} inside the box the backend accepts. */
+	public double clampX(double hubX) {
+		return Math.max(-halfX(), Math.min(halfX(), hubX));
+	}
+
+	/** Keeps a Hub {@code z} inside the box the backend accepts. */
+	public double clampZ(double hubZ) {
+		return Math.max(-halfZ(), Math.min(halfZ(), hubZ));
 	}
 
 	/** Rotation by a quarter-turn multiple, exact (no floating-point drift from sin/cos). */

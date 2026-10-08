@@ -47,13 +47,13 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import com.mystaria.phantasmon.client.auth.AuthSession;
 
 /**
- * The Global Hub's build (D-34): around every Global Hub anchor of the current server and dimension, the backend's
- * schematic ({@code GET /hub/schematic}) is built as <b>client-only</b> blocks — real blocks of this client's world
- * (same rendering, lighting, shaders, collisions), unknown to the Minecraft server.
+ * The hubs' builds (D-34, D-35): around every anchor of the current server and dimension, its hub's schematic
+ * ({@code GET /hubs}, {@code /hubs/<name>/schematic/file}) is built as <b>client-only</b> blocks — real blocks of this
+ * client's world (same rendering, lighting, shaders, collisions), unknown to the Minecraft server.
  *
  * <ul>
  * <li>The file is downloaded once and cached by its SHA-256 in {@code config/phantasmon-hub-schematics/}.</li>
- * <li>Only the schematic's non-air blocks are placed: the cube was checked empty when the anchor was posed, and air
+ * <li>Only the schematic's non-air blocks are placed: the box was checked empty when the anchor was posed, and air
  * never hides a real block (the server would still collide with it).</li>
  * <li>The server knows nothing of them, so whatever it sends for those positions (a block update, the chunk again
  * when it comes back in view) is kept aside ({@code ClientLevelMixin}) and the build is put back; the real state
@@ -95,16 +95,20 @@ public final class HubBuilds {
 	private final HubClient hubClient;
 	private final AuthSession session;
 
-	private String sha256;
-	private int schematicSize;
-	private List<Resolved> resolved;
-	private boolean fetching;
-	private long nextFetchAt;
+	/** A hub's build ready to place: its SHA-256 and its blocks as this client knows them. */
+	private record Installed(String sha256, List<Resolved> blocks) {
+	}
+
+	/** Hub name (lower case) → its build; a hub without one is absent. */
+	private final Map<String, Installed> installed = new HashMap<>();
+	/** Hub name → SHA-256 being downloaded. */
+	private final Map<String, String> downloading = new HashMap<>();
+	private final Map<String, Long> retryAt = new HashMap<>();
 
 	private ClientLevel level;
 	private List<HubAnchorDto> anchors = List.of();
-	/** Anchor → its layout, to notice an anchor that moved (deleted and posed again under the same uuid never happens, but cheap). */
-	private final Map<UUID, HubBuildLayout> layouts = new HashMap<>();
+	/** Anchor → its layout and its build's SHA-256: either changing rebuilds it. */
+	private final Map<UUID, String> placedAs = new HashMap<>();
 	private final Map<UUID, List<Long>> byAnchor = new HashMap<>();
 	/** {@code BlockPos.asLong} → client-only block. */
 	private final Map<Long, Placed> fake = new HashMap<>();
@@ -121,38 +125,62 @@ public final class HubBuilds {
 		instance = this;
 	}
 
-	// ---------------------------------------------------------------- schematic
+	// ---------------------------------------------------------------- schematics
 
-	/** Makes sure the backend's current schematic is here (asks the backend; downloads only when it changed). */
-	public void refreshSchematic() {
-		if (fetching || !session.isAuthenticated() || System.currentTimeMillis() < nextFetchAt) {
-			return;
+	/**
+	 * The hubs as the backend lists them (D-35): each hub's build is downloaded when its SHA-256 changed (or read from
+	 * the cache), dropped when the hub has none any more or is gone.
+	 */
+	public void setHubs(List<HubDto> hubs) {
+		Map<String, HubDto> withBuild = new HashMap<>();
+		for (HubDto hub : hubs) {
+			if (hub.schematic() != null) {
+				withBuild.put(key(hub.name()), hub);
+			}
 		}
-		fetching = true;
-		String token = session.accessToken();
-		hubClient.schematic(token)
-				.thenCompose(dto -> dto.sha256().equals(sha256) ? CompletableFuture.<Downloaded>completedFuture(null) : load(dto, token))
-				.whenComplete((schematic, error) -> Minecraft.getInstance().execute(() -> {
-					fetching = false;
-					if (error != null) {
-						nextFetchAt = System.currentTimeMillis() + RETRY_MILLIS;
-						LOG.warn("Could not load the Global Hub schematic", error);
-					} else if (schematic != null) {
-						install(schematic);
-					}
-				}));
+		boolean dropped = installed.keySet().removeIf(name -> {
+			HubDto hub = withBuild.get(name);
+			return hub == null || !hub.schematic().sha256().equals(installed.get(name).sha256());
+		});
+		for (HubDto hub : withBuild.values()) {
+			String name = key(hub.name());
+			Installed current = installed.get(name);
+			if (current == null && !hub.schematic().sha256().equals(downloading.get(name))
+					&& System.currentTimeMillis() >= retryAt.getOrDefault(name, 0L) && session.isAuthenticated()) {
+				download(hub);
+			}
+		}
+		if (dropped) {
+			sync();
+		}
 	}
 
-	private record Downloaded(HubSchematicDto dto, HubSchematic schematic) {
+	private void download(HubDto hub) {
+		String name = key(hub.name());
+		HubDto.Schematic schematic = hub.schematic();
+		downloading.put(name, schematic.sha256());
+		load(hub.name(), schematic, session.accessToken()).whenComplete((read, error) -> Minecraft.getInstance().execute(() -> {
+			if (!schematic.sha256().equals(downloading.get(name))) {
+				return; // superseded meanwhile
+			}
+			downloading.remove(name);
+			if (error != null) {
+				retryAt.put(name, System.currentTimeMillis() + RETRY_MILLIS);
+				LOG.warn("Could not load the build of hub {}", hub.name(), error);
+				return;
+			}
+			retryAt.remove(name);
+			install(name, schematic, read);
+		}));
 	}
 
-	private CompletableFuture<Downloaded> load(HubSchematicDto dto, String token) {
+	private CompletableFuture<HubSchematic> load(String hub, HubDto.Schematic dto, String token) {
 		Path cached = CACHE_DIR.resolve(dto.sha256() + (dto.litematic() ? ".litematic" : ".schem"));
 		CompletableFuture<byte[]> bytes;
 		try {
 			bytes = Files.isRegularFile(cached) && dto.sha256().equals(sha256(Files.readAllBytes(cached)))
 					? CompletableFuture.completedFuture(Files.readAllBytes(cached))
-					: hubClient.schematicFile(token).thenApply(file -> {
+					: hubClient.schematicFile(token, hub).thenApply(file -> {
 						if (!dto.sha256().equals(sha256(file))) {
 							throw new IllegalStateException("Hub schematic download does not match its SHA-256");
 						}
@@ -169,7 +197,7 @@ public final class HubBuilds {
 		}
 		return bytes.thenApply(file -> {
 			try {
-				return new Downloaded(dto, HubSchematic.read(file, dto.litematic()));
+				return HubSchematic.read(file, dto.litematic());
 			} catch (IOException ex) {
 				throw new IllegalStateException("Unreadable Hub schematic " + dto.name(), ex);
 			}
@@ -177,11 +205,11 @@ public final class HubBuilds {
 	}
 
 	/** Client thread: block names → this client's blocks (unknown ones become air and are left out). */
-	private void install(Downloaded downloaded) {
+	private void install(String hub, HubDto.Schematic dto, HubSchematic schematic) {
 		var blocks = BuiltInRegistries.BLOCK.asLookup();
 		List<Resolved> list = new ArrayList<>();
 		int unknown = 0;
-		for (HubSchematic.Block block : downloaded.schematic().blocks()) {
+		for (HubSchematic.Block block : schematic.blocks()) {
 			BlockState state;
 			try {
 				state = NbtUtils.readBlockState(blocks, block.state());
@@ -195,14 +223,15 @@ public final class HubBuilds {
 			list.add(new Resolved(block.x(), block.y(), block.z(), state, block.blockEntity()));
 		}
 		if (unknown > 0) {
-			LOG.warn("Hub schematic {}: {} block(s) unknown to this client, left out", downloaded.dto().name(), unknown);
+			LOG.warn("Hub {} build {}: {} block(s) unknown to this client, left out", hub, dto.name(), unknown);
 		}
-		LOG.info("Hub schematic {} loaded: {} blocks", downloaded.dto().name(), list.size());
-		removeAll();
-		sha256 = downloaded.dto().sha256();
-		schematicSize = downloaded.schematic().sizeX();
-		resolved = List.copyOf(list);
+		LOG.info("Hub {} build {} loaded: {} blocks", hub, dto.name(), list.size());
+		installed.put(hub, new Installed(dto.sha256(), List.copyOf(list)));
 		sync();
+	}
+
+	private static String key(String hub) {
+		return hub == null ? "" : hub.toLowerCase(java.util.Locale.ROOT);
 	}
 
 	// ---------------------------------------------------------------- anchors
@@ -229,33 +258,33 @@ public final class HubBuilds {
 		if (level == null) {
 			return;
 		}
-		Map<UUID, HubBuildLayout> wanted = new HashMap<>();
-		if (resolved != null) {
-			for (HubAnchorDto anchor : anchors) {
-				if (anchor.size() != schematicSize) {
-					LOG.warn("Hub anchor {} is {} blocks wide, the schematic {}: not built", anchor.name(), anchor.size(), schematicSize);
-					continue;
-				}
-				wanted.put(anchor.uuid(), HubBuildLayout.of(anchor.origin().x(), anchor.origin().y(), anchor.origin().z(),
-						anchor.yaw(), anchor.size()));
+		Map<UUID, HubAnchorDto> wanted = new HashMap<>();
+		Map<UUID, String> wantedAs = new HashMap<>();
+		for (HubAnchorDto anchor : anchors) {
+			Installed build = installed.get(key(anchor.hub()));
+			if (build != null) {
+				wanted.put(anchor.uuid(), anchor);
+				wantedAs.put(anchor.uuid(), anchor.layout() + "|" + build.sha256());
 			}
 		}
 		for (UUID anchor : List.copyOf(byAnchor.keySet())) {
-			if (!layouts.get(anchor).equals(wanted.get(anchor))) {
+			if (!placedAs.get(anchor).equals(wantedAs.get(anchor))) {
 				remove(anchor);
 			}
 		}
-		for (Map.Entry<UUID, HubBuildLayout> entry : wanted.entrySet()) {
+		for (Map.Entry<UUID, HubAnchorDto> entry : wanted.entrySet()) {
 			if (!byAnchor.containsKey(entry.getKey())) {
-				place(entry.getKey(), entry.getValue());
+				HubAnchorDto anchor = entry.getValue();
+				place(anchor.uuid(), anchor.layout(), installed.get(key(anchor.hub())).blocks());
+				placedAs.put(anchor.uuid(), wantedAs.get(anchor.uuid()));
 			}
 		}
 	}
 
-	private void place(UUID anchor, HubBuildLayout layout) {
+	private void place(UUID anchor, HubBuildLayout layout, List<Resolved> blocks) {
 		Rotation rotation = ROTATIONS[layout.quarterTurns()];
 		List<Long> positions = new ArrayList<>();
-		for (Resolved block : resolved) {
+		for (Resolved block : blocks) {
 			int[] world = layout.toWorld(block.x(), block.y(), block.z());
 			long key = BlockPos.asLong(world[0], world[1], world[2]);
 			if (fake.containsKey(key)) {
@@ -268,12 +297,11 @@ public final class HubBuilds {
 			dirtyChunks.add(chunk);
 		}
 		byAnchor.put(anchor, positions);
-		layouts.put(anchor, layout);
 	}
 
 	/** The anchor is gone: what the server says stands there comes back. */
 	private void remove(UUID anchor) {
-		layouts.remove(anchor);
+		placedAs.remove(anchor);
 		List<Long> positions = byAnchor.remove(anchor);
 		if (positions == null) {
 			return;
@@ -292,12 +320,8 @@ public final class HubBuilds {
 		}
 	}
 
-	private void removeAll() {
-		List.copyOf(byAnchor.keySet()).forEach(this::remove);
-	}
-
 	private void forgetWorld() {
-		layouts.clear();
+		placedAs.clear();
 		byAnchor.clear();
 		fake.clear();
 		server.clear();

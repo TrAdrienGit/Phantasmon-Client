@@ -22,7 +22,8 @@
 		"BattleGuiSpectacleMixin",
 		"PokemonBattleSpectatorMixin",
 		"ClientLevelHubBuildMixin",
-		"MultiPlayerGameModeHubBuildMixin"
+		"MultiPlayerGameModeHubBuildMixin",
+		"ClientPacketListenerCommandsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

@@ -18,19 +18,28 @@ public final class AdminSession {
 	}
 
 	public static void refresh(AdminClient client, AuthSession session) {
-		admin = false;
+		set(false);
 		if (!session.isAuthenticated()) {
 			return;
 		}
 		client.me(session.accessToken())
-				.thenAccept(me -> admin = me != null && me.admin())
+				.thenAccept(me -> set(me != null && me.admin()))
 				.exceptionally(ex -> {
-					admin = false;
+					set(false);
 					return null;
 				});
 	}
 
 	public static void clear() {
-		admin = false;
+		set(false);
+	}
+
+	/** The admin commands appear or disappear in the chat's completion as soon as the answer changes. */
+	private static void set(boolean value) {
+		boolean changed = admin != value;
+		admin = value;
+		if (changed) {
+			CommandTreeRefresher.refresh();
+		}
 	}
 }

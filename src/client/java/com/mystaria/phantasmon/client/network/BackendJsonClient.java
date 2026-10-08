@@ -76,6 +76,11 @@ public final class BackendJsonClient {
 				});
 	}
 
+	/** {@code DELETE} answered with a JSON body. */
+	public <T> CompletableFuture<T> delete(URI uri, String bearerToken, Class<T> responseType) {
+		return send(authorize(baseBuilder(uri).DELETE(), bearerToken), responseType);
+	}
+
 	/** {@code DELETE} expecting {@code 204 No Content} — no response body to parse. */
 	public CompletableFuture<Void> delete(URI uri, String bearerToken) {
 		HttpRequest.Builder builder = baseBuilder(uri).DELETE();

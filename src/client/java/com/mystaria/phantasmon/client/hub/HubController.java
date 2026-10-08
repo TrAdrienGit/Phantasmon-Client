@@ -73,8 +73,8 @@ public final class HubController implements HubListener {
 	private static final double DRAW_DISTANCE = 48;
 	private static final int OUTLINE_COLOR = 0x9B6CFF;
 	/** Same rule as the backend: 3 to 32 letters, digits, spaces, - or _, no space at either end. */
-	/** Edge of an anchor's cube, as the backend's {@code phantasmon.hub.anchor-size} (checked before posing, D-34). */
-	private static final int ANCHOR_SIZE = 21;
+	/** The hubs list is asked again when suggestions are older than this. */
+	private static final long HUBS_STALE_MILLIS = 10_000;
 	private static final Pattern ANCHOR_NAME = Pattern.compile("[\\p{L}\\p{N}_-][\\p{L}\\p{N} _-]{1,30}[\\p{L}\\p{N}_-]");
 	private static final Path AUTO_JOIN_FILE = FabricLoader.getInstance().getConfigDir().resolve("phantasmon-hub-autojoin.txt");
 
@@ -92,6 +92,9 @@ public final class HubController implements HubListener {
 	private final HubBuilds builds;
 
 	private volatile List<HubAnchorDto> anchors = List.of();
+	/** Every hub (D-35), for the commands' suggestions, the anchor's size before posing it, and the builds. */
+	private volatile List<HubDto> hubs = List.of();
+	private volatile long hubsFetchedAt;
 	/** {@code fingerprint|dimension} the anchor list belongs to. */
 	private String anchorsKey;
 	private int ticksSinceRefresh;
@@ -181,7 +184,7 @@ public final class HubController implements HubListener {
 			return;
 		}
 		pendingInvite = anchor;
-		chat(Component.translatable("phantasmon.hub.invite", anchor.name()).withStyle(ChatFormatting.LIGHT_PURPLE)
+		chat(Component.translatable("phantasmon.hub.invite", anchor.name(), anchor.hub()).withStyle(ChatFormatting.LIGHT_PURPLE)
 				.append(" ").append(chatButton("phantasmon.hub.invite.yes", "/phantasmon hub join", ChatFormatting.GREEN))
 				.append(" ").append(chatButton("phantasmon.hub.invite.no", "/phantasmon hub decline", ChatFormatting.RED))
 				.append(" ").append(chatButton("phantasmon.hub.invite.always", "/phantasmon hub always", ChatFormatting.AQUA)));
@@ -211,9 +214,9 @@ public final class HubController implements HubListener {
 		HubCoordinates coordinates = anchor.coordinates();
 		double[] hub = coordinates.toHub(player.getX(), player.getZ());
 		Map<String, Object> state = new HashMap<>();
-		state.put("x", round(coordinates.clampToSquare(hub[0])));
-		state.put("z", round(coordinates.clampToSquare(hub[1])));
-		state.put("y_offset", round(Mth.clamp(heightAboveGround(player, coordinates), 0, coordinates.size())));
+		state.put("x", round(coordinates.clampX(hub[0])));
+		state.put("z", round(coordinates.clampZ(hub[1])));
+		state.put("y_offset", round(Mth.clamp(heightAboveGround(player, coordinates), 0, coordinates.sizeY())));
 		state.put("yaw", round(Mth.wrapDegrees(coordinates.toHubYaw(player.getYRot()))));
 		state.put("head_yaw", round(Mth.wrapDegrees(coordinates.toHubYaw(player.getYHeadRot()))));
 		state.put("pitch", round(player.getXRot()));
@@ -232,7 +235,7 @@ public final class HubController implements HubListener {
 		}
 		ClientLevel level = (ClientLevel) player.level();
 		BlockPos feet = player.blockPosition();
-		for (int dy = 0; dy <= coordinates.size(); dy++) {
+		for (int dy = 0; dy <= coordinates.sizeY(); dy++) {
 			BlockPos pos = feet.below(dy);
 			VoxelShape shape = level.getBlockState(pos).getCollisionShape(level, pos);
 			if (!shape.isEmpty()) {
@@ -347,6 +350,11 @@ public final class HubController implements HubListener {
 				if (playerUuid != null) {
 					avatars.setGhost(playerUuid, null);
 				}
+			}
+			case "HubCatalogChanged" -> {
+				// An admin created, deleted or reloaded a hub: suggestions, anchors and builds follow.
+				refreshHubs();
+				refreshAnchors();
 			}
 			case "HubChatMessage" -> chat(Component.translatable("phantasmon.hub.chat.prefix").withStyle(ChatFormatting.LIGHT_PURPLE)
 					.append(Component.literal(" <" + data.get("username") + "> ").withStyle(ChatFormatting.WHITE))
@@ -472,61 +480,199 @@ public final class HubController implements HubListener {
 		ghostSession.send("HubChat", Map.of("message", message));
 	}
 
-	/** {@code /phantasmon hub anchor create <name>}: a cube centred on the player, facing where they look. */
-	public void createAnchor(String rawName) {
+	/**
+	 * {@code /phantasmon hub anchor create <hub> [name]} (D-35): an anchor of that hub, its box centred on the player,
+	 * facing where they look. The box must be empty (D-34); the backend refuses a second anchor in the same hub and one
+	 * overlapping another anchor. Without a name: {@code <hub>-<player>}.
+	 */
+	public void createAnchor(String hubName, String rawName) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null || !requireAuthenticated()) {
 			return;
 		}
-		String name = rawName.strip();
+		String name = rawName == null || rawName.isBlank() ? defaultAnchorName(hubName, player.getGameProfile().getName())
+				: rawName.strip();
 		if (!ANCHOR_NAME.matcher(name).matches()) {
 			chat(Component.translatable("phantasmon.hub.anchor.invalid_name").withStyle(ChatFormatting.RED));
 			return;
 		}
-		// D-34: the Global Hub's build fills the whole cube, which must be empty (air) where the anchor is posed.
-		int inTheWay = HubBuilds.blocksInTheWay((ClientLevel) player.level(),
-				HubBuildLayout.of(player.getX(), player.getY(), player.getZ(), 0, ANCHOR_SIZE));
-		if (inTheWay > 0) {
-			chat(Component.translatable("phantasmon.hub.anchor.not_empty", ANCHOR_SIZE, inTheWay).withStyle(ChatFormatting.RED));
-			return;
-		}
-		HubAnchorCreateRequestDto request = new HubAnchorCreateRequestDto(UUID.randomUUID(), name,
-				GhostSession.serverFingerprint(), dimension(player),
-				new HubAnchorDto.Origin(player.getX(), player.getY(), player.getZ()), player.getYRot());
-		hubClient.create(session.accessToken(), request)
-				.thenAccept(anchor -> onClientThread(() -> {
-					chat(Component.translatable("phantasmon.hub.anchor.created", anchor.name(), anchor.size())
-							.withStyle(ChatFormatting.LIGHT_PURPLE));
-					refreshAnchors();
-				}))
-				.exceptionally(this::reportFailure);
+		withHub(hubName, hub -> {
+			LocalPlayer posing = Minecraft.getInstance().player;
+			if (posing == null) {
+				return;
+			}
+			HubAnchorDto.Size size = hub.size();
+			// D-34: the hub's build fills its whole box, which must be empty (air) where the anchor is posed.
+			int inTheWay = HubBuilds.blocksInTheWay((ClientLevel) posing.level(), HubBuildLayout.of(posing.getX(), posing.getY(),
+					posing.getZ(), Math.round(posing.getYRot() / 90f) * 90, size.x(), size.y(), size.z()));
+			if (inTheWay > 0) {
+				chat(Component.translatable("phantasmon.hub.anchor.not_empty", hub.name(), size.x(), size.y(), size.z(), inTheWay)
+						.withStyle(ChatFormatting.RED));
+				return;
+			}
+			HubAnchorCreateRequestDto request = new HubAnchorCreateRequestDto(UUID.randomUUID(), hub.name(), name,
+					GhostSession.serverFingerprint(), dimension(posing),
+					new HubAnchorDto.Origin(posing.getX(), posing.getY(), posing.getZ()), posing.getYRot());
+			hubClient.create(session.accessToken(), request)
+					.thenAccept(anchor -> onClientThread(() -> {
+						chat(Component.translatable("phantasmon.hub.anchor.created", anchor.name(), anchor.hub(),
+								anchor.size().x(), anchor.size().y(), anchor.size().z()).withStyle(ChatFormatting.LIGHT_PURPLE));
+						refreshAnchors();
+					}))
+					.exceptionally(this::reportFailure);
+		});
 	}
 
-	/** {@code /phantasmon hub anchor info}: the player's own anchor. */
+	/** {@code <hub>-<player>}, within the 32 characters an anchor name may have. */
+	static String defaultAnchorName(String hub, String player) {
+		String suffix = "-" + player;
+		String prefix = hub.length() + suffix.length() > 32 ? hub.substring(0, Math.max(1, 32 - suffix.length())) : hub;
+		String name = prefix + suffix;
+		return name.length() > 32 ? name.substring(0, 32) : name;
+	}
+
+	/** {@code /phantasmon hub anchor info}: the player's anchors, one per hub at most. */
 	public void showMyAnchor() {
 		if (!requireAuthenticated()) {
 			return;
 		}
 		hubClient.mine(session.accessToken())
-				.thenAccept(anchor -> onClientThread(() -> chat(Component.translatable("phantasmon.hub.anchor.info",
-						anchor.name(), anchor.dimension(), Math.round(anchor.origin().x()), Math.round(anchor.origin().y()),
-						Math.round(anchor.origin().z())))))
+				.thenAccept(mine -> onClientThread(() -> {
+					if (mine.length == 0) {
+						chat(Component.translatable("phantasmon.hub.anchor.none"));
+					}
+					for (HubAnchorDto anchor : mine) {
+						chat(Component.translatable("phantasmon.hub.anchor.info", anchor.name(), anchor.hub(), anchor.dimension(),
+								Math.round(anchor.origin().x()), Math.round(anchor.origin().y()), Math.round(anchor.origin().z())));
+					}
+				}))
 				.exceptionally(this::reportFailure);
 	}
 
-	/** {@code /phantasmon hub anchor delete}: the player's own anchor. */
-	public void deleteMyAnchor() {
+	/** {@code /phantasmon hub anchor delete <hub>}: the player's own anchor of that hub. */
+	public void deleteMyAnchor(String hubName) {
 		if (!requireAuthenticated()) {
 			return;
 		}
 		hubClient.mine(session.accessToken())
-				.thenCompose(anchor -> hubClient.delete(session.accessToken(), anchor.uuid()).thenApply(ignored -> anchor))
+				.thenCompose(mine -> {
+					for (HubAnchorDto anchor : mine) {
+						if (anchor.hub().equalsIgnoreCase(hubName.strip())) {
+							return hubClient.delete(session.accessToken(), anchor.uuid()).thenApply(ignored -> anchor);
+						}
+					}
+					return java.util.concurrent.CompletableFuture.<HubAnchorDto>completedFuture(null);
+				})
 				.thenAccept(anchor -> onClientThread(() -> {
+					if (anchor == null) {
+						chat(Component.translatable("phantasmon.hub.anchor.none_in_hub", hubName).withStyle(ChatFormatting.RED));
+						return;
+					}
 					setAutoJoin(anchor, false);
 					chat(Component.translatable("phantasmon.hub.anchor.deleted", anchor.name()).withStyle(ChatFormatting.LIGHT_PURPLE));
 					refreshAnchors();
 				}))
 				.exceptionally(this::reportFailure);
+	}
+
+	// ---------------------------------------------------------------- hubs (D-35)
+
+	/** {@code /phantasmon hub list}: every hub, its size and whether it has a build. */
+	public void listHubs() {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		fetchHubs().thenAccept(list -> onClientThread(() -> {
+			if (list.isEmpty()) {
+				chat(Component.translatable("phantasmon.hub.list.none"));
+			}
+			for (HubDto hub : list) {
+				chat(Component.translatable(hub.schematic() == null ? "phantasmon.hub.list.entry_empty" : "phantasmon.hub.list.entry",
+						hub.name(), hub.size().x(), hub.size().y(), hub.size().z()));
+			}
+		})).exceptionally(this::reportFailure);
+	}
+
+	/** Admin: {@code /phantasmon admin hub create <name> <length> <width> <height>}. */
+	public void adminCreateHub(String name, int length, int width, int height) {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		hubClient.createHub(session.accessToken(), name, length, width, height)
+				.thenAccept(hub -> onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.created", hub.name(),
+						length, width, height, "hub_" + hub.name()).withStyle(ChatFormatting.GOLD))))
+				.exceptionally(this::reportAdminFailure);
+	}
+
+	/** Admin: {@code /phantasmon admin hub delete <name>}. */
+	public void adminDeleteHub(String name) {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		hubClient.deleteHub(session.accessToken(), name)
+				.thenAccept(deleted -> onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.deleted",
+						deleted.hub(), deleted.anchorsDeleted(), String.valueOf(deleted.archivedAs())).withStyle(ChatFormatting.GOLD))))
+				.exceptionally(this::reportAdminFailure);
+	}
+
+	/** Admin: {@code /phantasmon admin hub reload <name>}. */
+	public void adminReloadHub(String name) {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		hubClient.reloadHub(session.accessToken(), name)
+				.thenAccept(hub -> onClientThread(() -> chat((hub.schematic() == null
+						? Component.translatable("phantasmon.admin.hub.reloaded_empty", hub.name())
+						: Component.translatable("phantasmon.admin.hub.reloaded", hub.name(), hub.schematic().name()))
+						.withStyle(ChatFormatting.GOLD))))
+				.exceptionally(this::reportAdminFailure);
+	}
+
+	/** Suggestions for a hub name argument, from the hubs list — asked again when stale, so new hubs show up. */
+	public java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestHubs(
+			com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
+		if (System.currentTimeMillis() - hubsFetchedAt < HUBS_STALE_MILLIS || !session.isAuthenticated()) {
+			return net.minecraft.commands.SharedSuggestionProvider.suggest(hubs.stream().map(HubDto::name), builder);
+		}
+		return fetchHubs()
+				.exceptionally(ex -> hubs)
+				.thenApplyAsync(list -> net.minecraft.commands.SharedSuggestionProvider.suggest(list.stream().map(HubDto::name),
+						builder).join(), Minecraft.getInstance());
+	}
+
+	private void refreshHubs() {
+		if (session.isAuthenticated()) {
+			fetchHubs().exceptionally(ex -> {
+				LOG.warn("Could not load the hubs", ex);
+				return null;
+			});
+		}
+	}
+
+	/** {@code GET /hubs}; the list is kept and handed to the builds (on the client thread). */
+	private java.util.concurrent.CompletableFuture<List<HubDto>> fetchHubs() {
+		return hubClient.hubs(session.accessToken()).thenApply(array -> {
+			List<HubDto> list = List.of(array);
+			hubs = list;
+			hubsFetchedAt = System.currentTimeMillis();
+			onClientThread(() -> builds.setHubs(list));
+			return list;
+		});
+	}
+
+	/** Runs {@code action} on the client thread with the named hub, fetched first if needed; tells the player if unknown. */
+	private void withHub(String hubName, java.util.function.Consumer<HubDto> action) {
+		String wanted = hubName == null ? "" : hubName.strip();
+		java.util.concurrent.CompletableFuture<List<HubDto>> list = hubs.stream().anyMatch(hub -> hub.name().equalsIgnoreCase(wanted))
+				? java.util.concurrent.CompletableFuture.completedFuture(hubs) : fetchHubs();
+		list.thenAccept(all -> onClientThread(() -> {
+			HubDto hub = all.stream().filter(candidate -> candidate.name().equalsIgnoreCase(wanted)).findFirst().orElse(null);
+			if (hub == null) {
+				chat(Component.translatable("phantasmon.hub.unknown", wanted).withStyle(ChatFormatting.RED));
+				return;
+			}
+			action.accept(hub);
+		})).exceptionally(this::reportFailure);
 	}
 
 	/** {@code /phantasmon hub anchor delete here}: the anchor the player stands in (its creator or an admin). */
@@ -561,7 +707,7 @@ public final class HubController implements HubListener {
 					if (key != null && key.equals(anchorsKey)) {
 						anchors = List.of(list);
 						builds.setAnchors(anchors);
-						builds.refreshSchematic();
+						refreshHubs();
 					}
 				}))
 				.exceptionally(ex -> {
@@ -579,7 +725,7 @@ public final class HubController implements HubListener {
 		return null;
 	}
 
-	/** The ground square of each nearby anchor's cube, in purple dust, plus a short pillar at each corner. */
+	/** The ground rectangle of each nearby anchor's box, in purple dust, plus a short pillar at each corner. */
 	private void drawOutlines(ClientLevel level, LocalPlayer player) {
 		if (level == null) {
 			return;
@@ -588,24 +734,30 @@ public final class HubController implements HubListener {
 				((OUTLINE_COLOR >> 16) & 0xFF) / 255f, ((OUTLINE_COLOR >> 8) & 0xFF) / 255f, (OUTLINE_COLOR & 0xFF) / 255f), 1.2f);
 		for (HubAnchorDto anchor : anchors) {
 			HubCoordinates c = anchor.coordinates();
-			if (player.position().distanceTo(new Vec3(c.originX(), c.originY(), c.originZ())) > DRAW_DISTANCE + c.halfSize()) {
+			if (player.position().distanceTo(new Vec3(c.originX(), c.originY(), c.originZ())) > DRAW_DISTANCE + c.radius()) {
 				continue;
 			}
-			double half = c.halfSize();
 			double y = c.originY() + 0.1;
-			for (double t = -half; t <= half; t += 1.0) {
-				level.addParticle(dust, c.originX() + t, y, c.originZ() - half, 0, 0, 0);
-				level.addParticle(dust, c.originX() + t, y, c.originZ() + half, 0, 0, 0);
-				level.addParticle(dust, c.originX() - half, y, c.originZ() + t, 0, 0, 0);
-				level.addParticle(dust, c.originX() + half, y, c.originZ() + t, 0, 0, 0);
+			// The box's edges in Hub coordinates (x across the anchor, z along its front), turned into the world.
+			for (double t = -c.halfX(); t <= c.halfX(); t += 1.0) {
+				dust(level, dust, c.toLocal(t, -c.halfZ()), y);
+				dust(level, dust, c.toLocal(t, c.halfZ()), y);
+			}
+			for (double t = -c.halfZ(); t <= c.halfZ(); t += 1.0) {
+				dust(level, dust, c.toLocal(-c.halfX(), t), y);
+				dust(level, dust, c.toLocal(c.halfX(), t), y);
 			}
 			for (double dy = 0.5; dy <= 3; dy += 0.5) {
-				level.addParticle(dust, c.originX() - half, y + dy, c.originZ() - half, 0, 0, 0);
-				level.addParticle(dust, c.originX() + half, y + dy, c.originZ() - half, 0, 0, 0);
-				level.addParticle(dust, c.originX() - half, y + dy, c.originZ() + half, 0, 0, 0);
-				level.addParticle(dust, c.originX() + half, y + dy, c.originZ() + half, 0, 0, 0);
+				dust(level, dust, c.toLocal(-c.halfX(), -c.halfZ()), y + dy);
+				dust(level, dust, c.toLocal(c.halfX(), -c.halfZ()), y + dy);
+				dust(level, dust, c.toLocal(-c.halfX(), c.halfZ()), y + dy);
+				dust(level, dust, c.toLocal(c.halfX(), c.halfZ()), y + dy);
 			}
 		}
+	}
+
+	private static void dust(ClientLevel level, DustParticleOptions dust, double[] xz, double y) {
+		level.addParticle(dust, xz[0], y, xz[1], 0, 0, 0);
 	}
 
 	/** Each nearby anchor's name floating above its centre ({@code WorldRenderEvents.AFTER_ENTITIES}). */
@@ -628,7 +780,7 @@ public final class HubController implements HubListener {
 			pose.mulPose(camera.rotation());
 			pose.scale(0.035f, -0.035f, 0.035f);
 			Matrix4f matrix = pose.last().pose();
-			String title = Component.translatable("phantasmon.hub.anchor.floating", anchor.name()).getString();
+			String title = Component.translatable("phantasmon.hub.anchor.floating", anchor.name(), anchor.hub()).getString();
 			font.drawInBatch(title, -font.width(title) / 2f, 0, 0xFFC9A8FF, false, matrix, buffers,
 					Font.DisplayMode.NORMAL, 0x60000000, 0xF000F0);
 		}
@@ -684,6 +836,18 @@ public final class HubController implements HubListener {
 				: "phantasmon.error.network";
 		onClientThread(() -> chat(Component.translatable(translationKey).withStyle(ChatFormatting.RED)));
 		return null;
+	}
+
+	/** Like {@link #reportFailure}, with the backend's reason when a schematic folder was refused. */
+	private Void reportAdminFailure(Throwable throwable) {
+		Throwable cause = throwable instanceof CompletionException ? throwable.getCause() : throwable;
+		if (cause instanceof BackendApiException api && "ERROR_HUB_SCHEMATIC_INVALID".equals(api.errorCode())
+				&& api.details() != null && api.details().get("reason") != null) {
+			onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.schematic_invalid", api.details().get("reason"))
+					.withStyle(ChatFormatting.RED)));
+			return null;
+		}
+		return reportFailure(throwable);
 	}
 
 	private static boolean sameAnchor(HubAnchorDto a, HubAnchorDto b) {

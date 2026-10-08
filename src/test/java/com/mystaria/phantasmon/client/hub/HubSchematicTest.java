@@ -68,16 +68,20 @@ class HubSchematicTest {
 
 	@Test
 	void theBuildIsCentredOnTheAnchorsBlockAndTurnsWithIt() {
-		HubBuildLayout south = HubBuildLayout.of(100.7, 64.0, -20.2, 0, 21);
+		HubBuildLayout south = HubBuildLayout.of(100.7, 64.0, -20.2, 0, 21, 21, 21);
 		assertArrayEquals(new int[] { 100, 64, -21 }, south.toWorld(10, 0, 10));
 		assertArrayEquals(new int[] { 90, 64, -31 }, south.min());
 		assertArrayEquals(new int[] { 110, 84, -11 }, south.max());
 		// The schematic's +Z (one block "ahead") follows the anchor's yaw: south, west, north, east.
 		assertArrayEquals(new int[] { 100, 65, -20 }, south.toWorld(10, 1, 11));
-		assertArrayEquals(new int[] { 99, 65, -21 }, HubBuildLayout.of(100.7, 64.0, -20.2, 90, 21).toWorld(10, 1, 11));
-		assertArrayEquals(new int[] { 100, 65, -22 }, HubBuildLayout.of(100.7, 64.0, -20.2, 180, 21).toWorld(10, 1, 11));
-		assertArrayEquals(new int[] { 101, 65, -21 }, HubBuildLayout.of(100.7, 64.0, -20.2, -90, 21).toWorld(10, 1, 11));
+		assertArrayEquals(new int[] { 99, 65, -21 }, HubBuildLayout.of(100.7, 64.0, -20.2, 90, 21, 21, 21).toWorld(10, 1, 11));
+		assertArrayEquals(new int[] { 100, 65, -22 }, HubBuildLayout.of(100.7, 64.0, -20.2, 180, 21, 21, 21).toWorld(10, 1, 11));
+		assertArrayEquals(new int[] { 101, 65, -21 }, HubBuildLayout.of(100.7, 64.0, -20.2, -90, 21, 21, 21).toWorld(10, 1, 11));
+		// D-35: 3 wide, 15 long; facing west the length runs along x.
+		HubBuildLayout corridor = HubBuildLayout.of(0.5, 64.0, 0.5, 90, 3, 3, 15);
+		assertArrayEquals(new int[] { -7, 64, -1 }, corridor.min());
+		assertArrayEquals(new int[] { 7, 66, 1 }, corridor.max());
 		// A player standing on a slab: the build starts on the next block.
-		assertEquals(65, HubBuildLayout.of(0, 64.5, 0, 0, 21).baseY());
+		assertEquals(65, HubBuildLayout.of(0, 64.5, 0, 0, 21, 21, 21).baseY());
 	}
 }

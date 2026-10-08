@@ -2544,3 +2544,32 @@ backend, en faux blocs que le serveur Minecraft ne connaît pas (D-34, jalon « 
 - Limite LIM-14 (le serveur voit le joueur flotter), acceptée par Adrien.
 
 Client compilé et déployé ; backend testé. À valider en jeu.
+
+### 4.103 Plusieurs hubs créés par les admins (2026-10-08)
+
+Construction du Hub (4.102) validée en jeu par Adrien. Il note un TODO sur le sol du schematic (affichage entre le sol
+du serveur et celui du hub, TODO-33) et demande plusieurs hubs (D-35).
+
+- **Backend** : table `hubs` (V14 ; l'ancien Global Hub devient `global`, Anchors rattachés), `HubCatalogService`
+  (création avec dossier `hub_<nom>/`, suppression avec Anchors et archivage du dossier, rechargement du schematic avec
+  les contrôles du démarrage ; hub sans schematic accepté), `HubCatalogController` (`GET /hubs`,
+  `/hubs/{name}/schematic/file`, `/admin/hubs…`), `HubCatalogChanged` diffusé à tous. Anchors : un par joueur et par
+  hub, refus des chevauchements (`HubBox`, mêmes calculs que le client). `HubService` : membres, visibilité, chat et
+  limite de 50 par hub ; tailles par hub pour `HubMove`. Combats vus de loin : membres du même hub seulement.
+  `phantasmon.hub.anchor-size` supprimée. 218 tests.
+- **Client** : `HubCoordinates` et `HubBuildLayout` à trois dimensions (zone non cubique tournée avec l'Anchor),
+  `HubBuilds` une construction par hub (cache par SHA-256), contour rectangulaire, nom du hub sur l'étiquette et dans
+  l'invitation. Commandes : `hub anchor create <hub> [nom]` (hubs suggérés d'après `GET /hubs`, relu après 10 s ou à
+  chaque `HubCatalogChanged`), `delete <hub>`, `info` (liste), `hub list` ; admin `hub create|delete|reload`. 70 tests.
+
+Client compilé et déployé ; à valider en jeu.
+
+### 4.104 Commandes admin absentes après une connexion en cours de partie (2026-10-08)
+
+Bug signalé par Adrien : connecté au backend en pleine partie (`/phantasmon login`), MystAria_ (admin) ne voyait pas
+`/phantasmon admin`. Fabric copie les commandes client dans l'arbre de complétion du chat **une seule fois**, à la
+réception de l'arbre de commandes du serveur, en ne gardant que celles dont le `requires` est vrai à ce moment ; le
+statut admin, demandé au backend après la connexion, arrivait trop tard. Fabric API 0.116 (1.21.1) n'a pas encore
+`ClientCommands.refreshCommandCompletions()` : `ClientPacketListenerCommandsMixin` garde le dernier arbre reçu et
+`CommandTreeRefresher` le rejoue (`handleCommands`) dès que `AdminSession` change d'avis — les commandes admin
+apparaissent aussitôt, et disparaissent si le statut retombe. Client compilé et déployé.

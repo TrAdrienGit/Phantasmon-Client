@@ -111,12 +111,14 @@ Le Global Hub réunit des joueurs Phantasmon de **serveurs Minecraft différents
 serveurs. On y entre par un **Anchor** : une zone de 21 × 21 × 21 blocs posée par un joueur. Tous les joueurs
 Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serveur ne la voient jamais.
 
-1. **Poser un Anchor** : placez-vous au centre d'une zone plate et dégagée, regardez dans la direction qui sera
-   « l'avant » du Hub, puis `/phantasmon hub anchor create <nom>`. Le cube de 21 blocs de côté, de vos pieds vers le
-   haut, doit être entièrement vide (air) : la **construction du Hub** (salle, arène…) s'y bâtit aussitôt pour tous
-   les joueurs Phantasmon du serveur. Ses blocs n'existent que pour Phantasmon : on ne peut ni les casser ni poser de
-   bloc dessus ; les portes s'ouvrent. Chacun peut poser un seul Anchor ; pour le déplacer,
-   `/phantasmon hub anchor delete` puis recréez-le (la construction disparaît avec l'Anchor).
+1. **Poser un Anchor** : il existe plusieurs hubs, créés par les admins (`/phantasmon hub list` : nom et taille).
+   Placez-vous au centre d'une zone plate et dégagée, regardez dans la direction qui sera « l'avant » du hub, puis
+   `/phantasmon hub anchor create <hub>` (la complétion propose les hubs). La zone du hub, de vos pieds vers le haut,
+   doit être entièrement vide (air) et ne pas toucher un autre Anchor : la **construction du hub** (salle, arène…)
+   s'y bâtit aussitôt pour tous les joueurs Phantasmon du serveur. Ses blocs n'existent que pour Phantasmon : on ne
+   peut ni les casser ni poser de bloc dessus ; les portes s'ouvrent. Chacun peut poser un Anchor par hub ; pour le
+   déplacer, `/phantasmon hub anchor delete <hub>` puis recréez-le (la construction disparaît avec l'Anchor). Chaque
+   hub est un espace à part : on n'y voit que les joueurs entrés par un Anchor du même hub.
 2. **Le repérer** : un carré de particules violettes marque le sol de chaque Anchor de votre serveur et de votre
    dimension, avec son nom au-dessus du centre.
 3. **Entrer** : en entrant dans le carré, le chat propose **[Oui]**, **[Non]** ou **[Toujours ici]**. Rien n'est

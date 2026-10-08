@@ -69,6 +69,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
 			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
+			com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
 			authSession.clear();
 		});
 		// Hub builds (D-34): a chunk the server (re)sends has lost its client-only blocks — built again.

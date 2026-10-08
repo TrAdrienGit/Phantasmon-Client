@@ -90,9 +90,13 @@ envoyé au serveur Minecraft. Échange et combat avec un joueur d'un autre serve
 
 | Commande | Effet |
 |---|---|
-| `/phantasmon hub anchor create <nom>` | Crée votre Anchor (un seul ; les joueurs de ce serveur le voient et peuvent l'utiliser, D-30) : cube de 21 blocs centré sur vous, posé à vos pieds, orienté selon votre regard (arrondi au quart de tour). Le cube (21 blocs de côté, de vos pieds vers le haut) doit être **entièrement vide** : la construction du Hub s'y bâtit (D-34). Nom : 3 à 32 lettres, chiffres, espaces, `-`, `_` |
-| `/phantasmon hub anchor info` | Votre Anchor : nom, dimension, position |
-| `/phantasmon hub anchor delete` | Supprime votre Anchor |
+| `/phantasmon admin hub create <nom> <longueur> <largeur> <hauteur>` | **Admin** (D-35) : crée un hub (nom : minuscules, chiffres, `_` ; chaque dimension de 3 à 64 ; longueur = vers l'avant de l'Anchor) et son dossier `hub_schematics/hub_<nom>/` sur le backend |
+| `/phantasmon admin hub reload <nom>` | **Admin** : relit le dossier du hub après y avoir déposé ou remplacé le schematic ; refus détaillé si plusieurs fichiers ou mauvaise taille |
+| `/phantasmon admin hub delete <nom>` | **Admin** : supprime le hub et ses Anchors ; son dossier est archivé (`hub_<nom>.deleted-<date>`) |
+| `/phantasmon hub list` | Les hubs (D-35) : nom, taille (largeur × hauteur × longueur), avec ou sans construction |
+| `/phantasmon hub anchor create <hub> [nom]` | Crée votre Anchor de ce hub (un par hub ; noms de hubs proposés par la complétion, à jour sans relancer le jeu) : zone de la taille du hub centrée sur vous, posée à vos pieds, orientée selon votre regard (arrondi au quart de tour). La zone doit être **entièrement vide** (la construction du hub s'y bâtit, D-34) et ne pas chevaucher un autre Anchor. Nom facultatif (par défaut `<hub>-<pseudo>`) : 3 à 32 lettres, chiffres, espaces, `-`, `_` |
+| `/phantasmon hub anchor info` | Vos Anchors, un par hub au plus |
+| `/phantasmon hub anchor delete <hub>` | Supprime votre Anchor de ce hub (sa construction disparaît) |
 | `/phantasmon hub anchor delete here` | Supprime l'Anchor où vous vous trouvez (son créateur ou un admin) |
 | `/phantasmon hub join` | Accepte l'invitation (bouton [Oui]) |
 | `/phantasmon hub decline` | Refuse (bouton [Non]) ; ressortir puis revenir dans l'Anchor invite de nouveau |

@@ -12,7 +12,7 @@ class HubCoordinatesTest {
 	private static final double EPSILON = 1e-9;
 
 	private static HubCoordinates anchor(int yaw) {
-		return new HubCoordinates(100.5, 64.0, -20.5, yaw, 21);
+		return new HubCoordinates(100.5, 64.0, -20.5, yaw, 21, 21, 21);
 	}
 
 	@Test
@@ -49,8 +49,8 @@ class HubCoordinatesTest {
 
 	@Test
 	void twoAnchorsFacingDifferentWaysShareTheSameHubSpot() {
-		HubCoordinates south = new HubCoordinates(0.5, 70, 0.5, 0, 21);
-		HubCoordinates west = new HubCoordinates(500.5, 12, -300.5, 90, 21);
+		HubCoordinates south = new HubCoordinates(0.5, 70, 0.5, 0, 21, 21, 21);
+		HubCoordinates west = new HubCoordinates(500.5, 12, -300.5, 90, 21, 21, 21);
 		// Two blocks ahead and one to the anchor's left, on both servers.
 		double[] a = south.toHub(0.5 + 1, 0.5 + 2);
 		double[] b = west.toHub(500.5 - 2, -300.5 + 1);
@@ -70,10 +70,22 @@ class HubCoordinatesTest {
 	}
 
 	@Test
-	void hubPositionsAreClampedToTheSquareTheBackendAccepts() {
-		HubCoordinates anchor = anchor(0);
-		assertEquals(10.5, anchor.clampToSquare(12.0));
-		assertEquals(-10.5, anchor.clampToSquare(-11.0));
-		assertEquals(3.0, anchor.clampToSquare(3.0));
+	void hubPositionsAreClampedToTheBoxTheBackendAccepts() {
+		HubCoordinates anchor = new HubCoordinates(0, 64, 0, 0, 5, 4, 9);
+		assertEquals(2.5, anchor.clampX(12.0));
+		assertEquals(-2.5, anchor.clampX(-11.0));
+		assertEquals(3.0, anchor.clampZ(3.0));
+		assertEquals(-4.5, anchor.clampZ(-6.0));
+	}
+
+	@Test
+	void aLongHubTurnsWithItsAnchor() {
+		// D-35: 5 wide, 9 long, 4 high; facing west (yaw 90) its length runs along -X / +X.
+		HubCoordinates west = new HubCoordinates(0.5, 64, 0.5, 90, 5, 4, 9);
+		assertTrue(west.contains(0.5 - 4.4, 64, 0.5));
+		assertFalse(west.contains(0.5, 64, 0.5 - 4.4));
+		assertTrue(west.contains(0.5, 67.9, 0.5 + 2.4));
+		assertFalse(west.contains(0.5, 68.0, 0.5));
+		assertEquals(4.5, west.radius());
 	}
 }

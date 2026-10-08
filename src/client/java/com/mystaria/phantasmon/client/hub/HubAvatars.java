@@ -133,7 +133,7 @@ public final class HubAvatars {
 		}
 		known.put(playerUuid, new Known(username, state, anchor));
 		double[] local = anchor.toLocal(number(state.get("x")), number(state.get("z")));
-		double y = groundY(level, anchor, local[0], local[1]) + Mth.clamp(number(state.get("y_offset")), 0, anchor.size());
+		double y = groundY(level, anchor, local[0], local[1]) + Mth.clamp(number(state.get("y_offset")), 0, anchor.sizeY());
 		if (isDouble(level, playerUuid, anchor)) {
 			if (avatars.containsKey(playerUuid)) {
 				LOG.info("Hub avatar of {} hidden: the real player stands in this anchor", username);

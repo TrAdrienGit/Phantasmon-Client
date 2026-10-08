@@ -120,6 +120,18 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] `/phantasmon hub anchor delete` : la salle disparaît, le terrain d'origine revient.
 - [ ] Serveur avec `allow-flight=false` : noter si le joueur est expulsé en restant sur le faux sol (LIM-14).
 
+### Plusieurs hubs (D-35)
+
+- [ ] Admin : `/phantasmon admin hub create arene 41 31 12` : message, dossier `hub_schematics/hub_arene/` créé ; un
+      joueur voit « arene » dans la complétion de `/phantasmon hub anchor create` sans relancer le jeu.
+- [ ] Hub sans construction : l'Anchor se pose, le contour (rectangle) suit l'orientation, on peut entrer dans le hub.
+- [ ] Déposer un schematic de 31 × 12 × 41 puis `/phantasmon admin hub reload arene` : la construction apparaît chez
+      tous ; un fichier de mauvaise taille : refus avec la raison, l'ancienne construction reste.
+- [ ] Un Anchor par hub : un second dans `arene` refusé, un dans `global` accepté ; deux Anchors qui se touchent :
+      refus « chevaucherait ».
+- [ ] Espaces séparés : J1 dans `global`, J2 dans `arene` ne se voient pas, `/hc` ne passe pas de l'un à l'autre.
+- [ ] `/phantasmon admin hub delete arene` : constructions disparues, membres sortis, dossier renommé `.deleted-…`.
+
 ### Global Hub (Phantasmon Network, N3)
 
 Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs différentes) et deux comptes.
