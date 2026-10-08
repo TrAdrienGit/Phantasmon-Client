@@ -60,3 +60,9 @@ replay_pid*
 *.swp
 *.swo
 scripts/deploy-to-prod-server.sh
+
+# Schematics (D-34) are never committed; the test fixtures stay versioned, the tests need them.
+*.schem
+*.litematic
+!/src/test/resources/**/*.schem
+!/src/test/resources/**/*.litematic
