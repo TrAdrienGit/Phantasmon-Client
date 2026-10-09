@@ -120,6 +120,19 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] `/phantasmon hub anchor delete` : la salle disparaît, le terrain d'origine revient.
 - [ ] Serveur avec `allow-flight=false` : noter si le joueur est expulsé en restant sur le faux sol (LIM-14).
 
+### Vocal du hub (D-36)
+
+- [ ] Sans Simple Voice Chat : le jeu démarre, le hub marche, aucun message de vocal.
+- [ ] Avec Simple Voice Chat, deux joueurs de deux serveurs (ou deux mondes solo) dans le même hub : « Vocal actif »
+      à l'entrée ; l'un parle (touche ou activation vocale), l'autre l'entend depuis l'avatar, plus fort de près.
+- [ ] Chuchotement de Simple Voice Chat : entendu de moins loin. Micro coupé : rien n'est envoyé ; sourdine : on
+      n'entend plus le hub.
+- [ ] Catégorie « Hub Phantasmon » dans le menu de volume de Simple Voice Chat : elle règle les voix du hub.
+- [ ] Serveur sans Simple Voice Chat : message « Vocal du hub indisponible », hub utilisable, les autres n'entendent
+      rien de ce joueur.
+- [ ] Deux hubs différents : on ne s'entend pas d'un hub à l'autre. Deux joueurs du même serveur dans le même Anchor :
+      pas de voix en double.
+
 ### Plusieurs hubs (D-35)
 
 - [ ] Admin : `/phantasmon admin hub create arene 41 31 12` : message, dossier `hub_schematics/hub_arene/` créé ; un

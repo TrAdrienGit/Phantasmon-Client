@@ -80,5 +80,6 @@ couleur dans le script (valeurs reprises du CSS de la maquette).
 | Dépendance | Où | Attention |
 |---|---|---|
 | Cobblemon | `cobblemon_version` dans `gradle.properties` | Utiliser l'**identifiant de version Modrinth** du build **Fabric** (les builds Fabric et NeoForge partagent le numéro `1.8.1`). Revalider tous les Mixins : [`architecture/mixins.md`](../architecture/mixins.md). |
+| Simple Voice Chat (facultatif, D-36) | `voicechat_api_version` dans `gradle.properties` (Maven `maven.maxhenkel.de`) | API de plugin seulement, en `compileOnly` (jamais embarquée). Rester sur la plus ancienne API compatible avec le modpack (2.5.0 pour la ligne 1.21.1) ; n'utiliser que des méthodes présentes dans cette version. Seul `compat.voicechat.PhantasmonVoicechatPlugin` l'importe. |
 | Minecraft / Fabric API / Loader | `gradle.properties`, `fabric.mod.json` | Plancher de Loader volontairement bas (0.18.1) pour la compatibilité avec les modpacks |
 | Kotlin stdlib (`compileOnly`) | `build.gradle` | Aligner sur la version embarquée par Cobblemon |

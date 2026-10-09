@@ -297,8 +297,10 @@ public final class HubController implements HubListener {
 					}
 				}
 				chat(Component.translatable("phantasmon.hub.joined", members.size()).withStyle(ChatFormatting.LIGHT_PURPLE));
+				com.mystaria.phantasmon.client.voice.HubVoice.onJoined();
 			}
 			case "HubLeft" -> {
+				com.mystaria.phantasmon.client.voice.HubVoice.onLeft();
 				joinedAnchor = null;
 				joining = null;
 				members.clear();
@@ -332,6 +334,7 @@ public final class HubController implements HubListener {
 			case "HubPlayerLeave" -> {
 				UUID playerUuid = uuid(data.get("player_uuid"));
 				Member member = playerUuid == null ? null : members.remove(playerUuid);
+				com.mystaria.phantasmon.client.voice.HubVoice.onMemberLeft(playerUuid);
 				if (playerUuid != null) {
 					avatars.remove(playerUuid);
 				}
@@ -367,6 +370,7 @@ public final class HubController implements HubListener {
 
 	@Override
 	public void onConnectionLost() {
+		com.mystaria.phantasmon.client.voice.HubVoice.onLeft();
 		if (joinedAnchor != null) {
 			rejoinAnchorUuid = joinedAnchor.uuid();
 		}

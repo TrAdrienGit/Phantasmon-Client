@@ -15,6 +15,11 @@ repositories {
 		url = "https://api.modrinth.com/maven"
 		content { includeGroup "maven.modrinth" }
 	}
+	maven {
+		name = "Henkelmax"
+		url = "https://maven.maxhenkel.de/repository/public"
+		content { includeGroup "de.maxhenkel.voicechat" }
+	}
 }
 
 loom {
@@ -48,6 +53,10 @@ dependencies {
 	// (it's a Cobblemon dependency), but javac still needs the class files on the compile
 	// classpath to resolve that interface hierarchy — compileOnly avoids bundling a second copy.
 	compileOnly "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
+
+	// Simple Voice Chat: optional (D-36) — only its plugin API is compiled against, never bundled. The oldest 2.5 API, so
+	// any 2.5.x of the modpack (1.21.1) runs it; without the mod, its entrypoint is never loaded and the hub has no voice.
+	compileOnly "de.maxhenkel.voicechat:voicechat-api:${project.voicechat_api_version}"
 
 	// Mod Menu: optional — only its API is compiled against, for the "Configure" button (music screen).
 	modCompileOnly "maven.modrinth:modmenu:11.0.3"

@@ -23,6 +23,9 @@
 		],
 		"modmenu": [
 			"com.mystaria.phantasmon.client.compat.PhantasmonModMenu"
+		],
+		"voicechat": [
+			"com.mystaria.phantasmon.client.compat.voicechat.PhantasmonVoicechatPlugin"
 		]
 	},
 	"mixins": [
@@ -38,5 +41,8 @@
 		"java": ">=21",
 		"fabric-api": "*",
 		"cobblemon": ">=1.8.1"
+	},
+	"suggests": {
+		"voicechat": "*"
 	}
 }

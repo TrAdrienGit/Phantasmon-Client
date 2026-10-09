@@ -2573,3 +2573,23 @@ statut admin, demandé au backend après la connexion, arrivait trop tard. Fabri
 `ClientCommands.refreshCommandCompletions()` : `ClientPacketListenerCommandsMixin` garde le dernier arbre reçu et
 `CommandTreeRefresher` le rejoue (`handleCommands`) dès que `AdminSession` change d'avis — les commandes admin
 apparaissent aussitôt, et disparaissent si le statut retombe. Client compilé et déployé.
+
+### 4.105 Vocal dans les hubs avec Simple Voice Chat (2026-10-09)
+
+Demande d'Adrien : les joueurs d'un hub s'entendent comme sur un même serveur avec Simple Voice Chat, par le backend,
+le mod restant facultatif (D-36).
+
+- **Constat** dans le code de Simple Voice Chat (dépôt de référence, et le jar 2.5.35 du modpack) : le micro ne
+  démarre et les voix ne se jouent qu'une fois connecté au serveur vocal du serveur Minecraft. Adrien accepte la
+  limite (LIM-15) et choisit la voix en 3D depuis l'avatar.
+- **Backend** : `HubVoiceState` (JSON) et trames binaires `HubVoice` relayées aux membres du même hub qui ont la voix
+  (`HubService.relayVoice`, `SessionRegistry.sendBinary`), budget de 60 trames/s à part du limiteur général
+  (`handleBinaryMessage`). 2 tests WebSocket ; 220 tests.
+- **Client** : `voicechat-api` 2.5.0 en `compileOnly`, point d'entrée `voicechat` →
+  `compat.voicechat.PhantasmonVoicechatPlugin` (seule classe qui touche l'API) : `ClientSoundEvent` encodé en Opus et
+  envoyé ; décodeur + canal d'entité par orateur sur son avatar, catégorie de volume « Hub Phantasmon ».
+  `voice.HubVoice` (sans classe Simple Voice Chat) gère l'état, les trames, les messages. `"suggests"` dans
+  `fabric.mod.json`. Au passage : les envois WebSocket du client sont sérialisés (le `WebSocket` de Java refuse un
+  envoi pendant le précédent ; plusieurs threads envoyaient déjà).
+
+Client compilé et déployé ; à valider en jeu (avec et sans Simple Voice Chat).

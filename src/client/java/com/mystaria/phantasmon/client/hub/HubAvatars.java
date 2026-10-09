@@ -92,6 +92,13 @@ public final class HubAvatars {
 	 * null. Milestone 2: a battle or trade partner met in the Hub plays on another server — battle placement, camera,
 	 * lobby and intro stand them on their avatar.
 	 */
+	/** The avatar shown for this player right now (not hidden by the real player standing here), or null. */
+	public static HubAvatarEntity shownAvatar(UUID playerUuid) {
+		HubAvatars current = instance;
+		HubAvatarEntity avatar = current == null || playerUuid == null ? null : current.avatars.get(playerUuid);
+		return avatar == null || avatar.isRemoved() ? null : avatar;
+	}
+
 	public static Player playerOrAvatar(ClientLevel level, UUID playerUuid) {
 		if (level == null || playerUuid == null) {
 			return null;

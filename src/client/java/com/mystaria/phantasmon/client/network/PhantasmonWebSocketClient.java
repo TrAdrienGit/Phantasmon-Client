@@ -35,8 +35,23 @@ public final class PhantasmonWebSocketClient {
 	public interface Listener {
 		void onMessage(String type, Map<String, Object> data);
 
+		/** A binary message (hub voice, D-36). Called on the WebSocket's thread. */
+		default void onBinary(java.nio.ByteBuffer data) {
+		}
+
 		void onClose();
 	}
+
+	/**
+	 * {@link WebSocket} refuses a send while the previous one is not done ({@code IllegalStateException} in the returned
+	 * future) and Phantasmon sends from several threads (client, battle engine, voice): every send waits for the
+	 * previous one. Voice frames are dropped instead of queued once {@value #MAX_PENDING_VOICE} are waiting, so a slow
+	 * link adds no delay to the voice.
+	 */
+	private final Object sendLock = new Object();
+	private CompletableFuture<?> lastSend = CompletableFuture.completedFuture(null);
+	private final java.util.concurrent.atomic.AtomicInteger pendingVoice = new java.util.concurrent.atomic.AtomicInteger();
+	private static final int MAX_PENDING_VOICE = 10;
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 
@@ -55,7 +70,31 @@ public final class PhantasmonWebSocketClient {
 			LOG.warn("Dropped WebSocket message '{}' — not connected yet (or connection failed)", type);
 			return;
 		}
-		ws.sendText(GSON.toJson(new Envelope(type, data)), true);
+		String text = GSON.toJson(new Envelope(type, data));
+		synchronized (sendLock) {
+			lastSend = lastSend.handle((ignored, error) -> null)
+					.thenCompose(ignored -> ws.sendText(text, true))
+					.whenComplete((ignored, error) -> {
+						if (error != null) {
+							LOG.warn("WebSocket message '{}' could not be sent", type, error);
+						}
+					});
+		}
+	}
+
+	/** A binary message (hub voice, D-36); returns false when dropped (not connected, or too many waiting). */
+	public boolean sendBinary(byte[] payload) {
+		WebSocket ws = webSocket;
+		if (ws == null || pendingVoice.get() >= MAX_PENDING_VOICE) {
+			return false;
+		}
+		pendingVoice.incrementAndGet();
+		synchronized (sendLock) {
+			lastSend = lastSend.handle((ignored, error) -> null)
+					.thenCompose(ignored -> ws.sendBinary(java.nio.ByteBuffer.wrap(payload), true))
+					.whenComplete((ignored, error) -> pendingVoice.decrementAndGet());
+		}
+		return true;
 	}
 
 	/** The socket was closed by the other side: stop using it (later sends are dropped, not written to a dead socket). */
@@ -93,6 +132,26 @@ public final class PhantasmonWebSocketClient {
 				String message = buffer.toString();
 				buffer.setLength(0);
 				dispatch(message);
+			}
+			webSocket.request(1);
+			return null;
+		}
+
+		private java.io.ByteArrayOutputStream binaryBuffer = new java.io.ByteArrayOutputStream();
+
+		@Override
+		public CompletionStage<?> onBinary(WebSocket webSocket, java.nio.ByteBuffer data, boolean last) {
+			byte[] chunk = new byte[data.remaining()];
+			data.get(chunk);
+			binaryBuffer.writeBytes(chunk);
+			if (last) {
+				byte[] message = binaryBuffer.toByteArray();
+				binaryBuffer = new java.io.ByteArrayOutputStream();
+				try {
+					listener.onBinary(java.nio.ByteBuffer.wrap(message));
+				} catch (RuntimeException ex) {
+					LOG.warn("Binary WebSocket message failed", ex);
+				}
 			}
 			webSocket.request(1);
 			return null;

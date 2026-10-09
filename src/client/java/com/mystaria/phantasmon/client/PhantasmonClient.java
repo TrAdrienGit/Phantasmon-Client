@@ -53,6 +53,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
 		ghostSession.setHubListener(hub);
+		com.mystaria.phantasmon.client.voice.HubVoice.bind(ghostSession);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
 			pingToggle.onJoin();
@@ -81,6 +82,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveTrade.tick();
 			liveBattle.tick();
 			hub.tick();
+			com.mystaria.phantasmon.client.voice.HubVoice.tick();
 			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
 			com.mystaria.phantasmon.client.battle.BattleSpectacle.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();

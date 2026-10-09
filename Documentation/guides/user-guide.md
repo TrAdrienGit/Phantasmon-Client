@@ -119,6 +119,11 @@ Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serve
    peut ni les casser ni poser de bloc dessus ; les portes s'ouvrent. Chacun peut poser un Anchor par hub ; pour le
    déplacer, `/phantasmon hub anchor delete <hub>` puis recréez-le (la construction disparaît avec l'Anchor). Chaque
    hub est un espace à part : on n'y voit que les joueurs entrés par un Anchor du même hub.
+   **Vocal** : avec le mod Simple Voice Chat (facultatif), on entend les joueurs du hub depuis leur avatar et ils vous
+   entendent, avec vos réglages habituels de Simple Voice Chat (touche pour parler, activation vocale, muet). Il faut
+   que Simple Voice Chat soit aussi installé sur votre serveur (ou votre monde solo) ; sinon un message l'indique en
+   entrant et vous êtes dans le hub sans vocal. Le volume des voix du hub se règle dans le menu de Simple Voice Chat
+   (catégorie « Hub Phantasmon »).
 2. **Le repérer** : un carré de particules violettes marque le sol de chaque Anchor de votre serveur et de votre
    dimension, avec son nom au-dessus du centre.
 3. **Entrer** : en entrant dans le carré, le chat propose **[Oui]**, **[Non]** ou **[Toujours ici]**. Rien n'est

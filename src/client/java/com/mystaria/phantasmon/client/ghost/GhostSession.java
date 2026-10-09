@@ -133,6 +133,11 @@ public final class GhostSession {
 		return connected;
 	}
 
+	/** A binary message (hub voice, D-36); false if not connected or dropped. */
+	public boolean sendBinary(byte[] payload) {
+		return connected && webSocketClient.sendBinary(payload);
+	}
+
 	/**
 	 * Called once authenticated: opens the presence WebSocket and keeps it open — a connection lost while running
 	 * (backend restart, network drop) is re-opened automatically with a growing delay (2 s → 30 s), as long as the
@@ -173,6 +178,13 @@ public final class GhostSession {
 		int generation = ++connectionGeneration;
 		LOG.info("Connecting Ghost presence WebSocket to {}", BackendConfig.BASE_URL);
 		webSocketClient.connect(BackendConfig.BASE_URL, authSession.accessToken(), new PhantasmonWebSocketClient.Listener() {
+			@Override
+			public void onBinary(java.nio.ByteBuffer data) {
+				if (generation == connectionGeneration) {
+					com.mystaria.phantasmon.client.voice.HubVoice.onFrame(data);
+				}
+			}
+
 			@Override
 			public void onMessage(String type, Map<String, Object> data) {
 				if (generation == connectionGeneration) {
