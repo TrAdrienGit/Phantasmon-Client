@@ -89,6 +89,8 @@ public class PhantasmonClient implements ClientModInitializer {
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(hub::renderWorld);
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(context ->
+				com.mystaria.phantasmon.client.hub.HubDebugBorders.render(context, hub::anchorsHere));
 		HudRenderCallback.EVENT.register((graphics, tickCounter) -> ghostPartyHud.render(graphics));
 
 		com.mystaria.phantasmon.client.battle.SpectacleBridge.register(liveBattle);

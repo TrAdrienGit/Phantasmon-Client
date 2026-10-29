@@ -63,11 +63,10 @@ public final class HubAvatarEntity extends RemotePlayer {
 		return UUID.nameUUIDFromBytes(("phantasmon-hub-avatar:" + playerUuid).getBytes(StandardCharsets.UTF_8));
 	}
 
-	/** Pseudo + a discreet « [Hub] »: never the server they come from (network-cahier-des-charges.md §5.5). */
+	/** The pseudo only (Adrien 2026-10-29: no « [Hub] » tag); never the server they come from (§5.5). */
 	@Override
 	public Component getDisplayName() {
-		return Component.literal(getGameProfile().getName())
-				.append(Component.translatable("phantasmon.hub.avatar.tag").withStyle(ChatFormatting.LIGHT_PURPLE));
+		return Component.literal(getGameProfile().getName());
 	}
 
 	@Override

@@ -305,6 +305,8 @@ public final class HubController implements HubListener {
 			}
 			case "HubLeft" -> {
 				com.mystaria.phantasmon.client.voice.HubVoice.onLeft();
+				HubAnchorDto left = joinedAnchor != null ? joinedAnchor : joining;
+				String hubName = left == null ? "" : left.hub();
 				joinedAnchor = null;
 				joining = null;
 				members.clear();
@@ -314,7 +316,7 @@ public final class HubController implements HubListener {
 					case "SERVER_CHANGED" -> "server_changed";
 					case "ANCHOR_DELETED" -> "anchor_deleted";
 					default -> "left";
-				}).withStyle(ChatFormatting.LIGHT_PURPLE));
+				}, hubName).withStyle(ChatFormatting.LIGHT_PURPLE));
 				if ("ANCHOR_DELETED".equals(reason)) {
 					refreshAnchors();
 				}
@@ -673,6 +675,13 @@ public final class HubController implements HubListener {
 		}
 		boolean copy = Minecraft.getInstance().hasSingleplayerServer();
 		createAnchor(hubName, copy ? null : hubName + "-source", copy ? HubAnchorDto.ROLE_COPY : HubAnchorDto.ROLE_SOURCE);
+	}
+
+	/** Admin: {@code /phantasmon admin hub debug <name>}: shows or hides that hub's limits, on this client. */
+	public void adminToggleDebug(String name) {
+		boolean shown = HubDebugBorders.toggle(name.strip());
+		chat(Component.translatable(shown ? "phantasmon.admin.hub.debug_on" : "phantasmon.admin.hub.debug_off", name.strip())
+				.withStyle(ChatFormatting.GOLD));
 	}
 
 	/** Admin: {@code /phantasmon admin hub delete <name>}. */

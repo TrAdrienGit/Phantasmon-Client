@@ -86,6 +86,10 @@ public final class HubCommands {
 					.then(ClientCommandManager.literal("reload").then(hubArgument(hub).executes(context -> {
 						hub.adminReloadHub(StringArgumentType.getString(context, "hub"));
 						return Command.SINGLE_SUCCESS;
+					})))
+					.then(ClientCommandManager.literal("debug").then(hubArgument(hub).executes(context -> {
+						hub.adminToggleDebug(StringArgumentType.getString(context, "hub"));
+						return Command.SINGLE_SUCCESS;
 					})));
 
 			var hubNode = ClientCommandManager.literal("hub")
