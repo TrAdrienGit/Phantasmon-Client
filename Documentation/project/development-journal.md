@@ -2629,3 +2629,8 @@ paquets de ses combats Ghost (`CobblemonPackets.dispatching`, `SpectacleHooks.se
 filmé deux fois.
 
 Test d'Adrien : intros, caméra, combats sauvages intacts OK ; seule la musique manquait en classique. Cause : le serveur envoie sa musique de combat (`BattleMusicPacket`) et Cobblemon bloque tout autre son « Musique » tant qu'elle joue. Correctif : dans un combat mis en scène, la musique de Cobblemon cède la place quand le pack de ressources fournit la nôtre (`ClassicBattleMusicHandlerMixin`) ; sans pack, celle de Cobblemon reste.
+
+**Phase S3 de Spectacle (même jour)** : réglages par type de combat (`config/cobblemon_spectacle.json`, écran Mod Menu),
+volume propre des musiques, menu des musiques de Spectacle (touche N, qui passe de Phantasmon à Spectacle ; Phantasmon y
+branche son propre écran par `SpectacleHooks.setMusicScreen`), et un petit lecteur dans l'écran de combat à la place
+du bouton « musique suivante » : titre qui ouvre la liste des morceaux, volume − / barre / +, morceau suivant.

@@ -243,7 +243,6 @@
   "phantasmon.battle.lobby.issue.SAME_TYPE": "Monotype: every Pokémon must be %s type",
   "phantasmon.battle.error.team_not_allowed": "[Phantasmon] Your team doesn't follow the battle format (Pokémon circled in red).",
   "phantasmon.battle.error.unknown_format": "[Phantasmon] Unknown battle format.",
-  "key.phantasmon.music_menu": "Music selection",
   "phantasmon.battle.buttons.timer": "Turn timer",
   "phantasmon.battle.buttons.timer_waiting": "⏱ Opponent's turn",
   "phantasmon.battle.buttons.timer_on": "Timer on",

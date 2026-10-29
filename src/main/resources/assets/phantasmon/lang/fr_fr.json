@@ -243,7 +243,6 @@
   "phantasmon.battle.lobby.issue.SAME_TYPE": "Monotype : tous les Pokémon doivent être de type %s",
   "phantasmon.battle.error.team_not_allowed": "[Phantasmon] Votre équipe ne respecte pas le format du combat (Pokémon entourés en rouge).",
   "phantasmon.battle.error.unknown_format": "[Phantasmon] Format de combat inconnu.",
-  "key.phantasmon.music_menu": "Menu des musiques",
   "phantasmon.battle.buttons.timer": "Activer le chrono",
   "phantasmon.battle.buttons.timer_waiting": "⏱ Tour adverse",
   "phantasmon.battle.buttons.timer_on": "Chrono activé",

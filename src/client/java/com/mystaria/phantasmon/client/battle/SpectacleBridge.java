@@ -19,6 +19,8 @@ public final class SpectacleBridge {
 	public static void register(LiveBattleController controller) {
 		SpectacleHooks.setPlayerResolver(HubAvatars::playerOrAvatar);
 		SpectacleHooks.setGlowKeeper(BattleFieldScenes::owns);
+		// Spectacle's music key (N) and settings open Phantasmon's music screen, in Phantasmon's look.
+		SpectacleHooks.setMusicScreen(com.mystaria.phantasmon.client.gui.PhantasmonMusicScreen::new);
 		// Ghost battles are staged by BattleVisuals: Spectacle's own staging of Cobblemon battles leaves them alone.
 		SpectacleHooks.setForeignPacketCheck(CobblemonPackets::dispatching);
 		// Once on, the timer button becomes the countdown (Adrien 2026-10-05).

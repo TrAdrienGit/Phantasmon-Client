@@ -11,7 +11,7 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
-| `key.phantasmon.music_menu` | **N** | Ouvre le menu des musiques (cocher les morceaux du pack « Phantasmon Music » à jouer, les écouter) |
+| `key.cobblemon_spectacle.music_menu` (touche de Cobblemon Spectacle depuis D-37) | **N** | Ouvre le menu des musiques de Phantasmon (cocher les morceaux du pack à jouer, les écouter) |
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
