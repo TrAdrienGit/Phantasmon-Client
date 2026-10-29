@@ -70,6 +70,8 @@ public final class HubController implements HubListener {
 	private static final int OUTLINE_INTERVAL_TICKS = 10;
 	/** A refused {@code HubJoin} (full, wrong server) only gets an {@code Error}: stop waiting after 5 s. */
 	private static final int JOIN_TIMEOUT_TICKS = 100;
+	/** The player left the hub by command while inside its box: no automatic join until they step out. */
+	private boolean leftByHand;
 	private static final double DRAW_DISTANCE = 48;
 	private static final int OUTLINE_COLOR = 0x9B6CFF;
 	/** Same rule as the backend: 3 to 32 letters, digits, spaces, - or _, no space at either end. */
@@ -160,6 +162,10 @@ public final class HubController implements HubListener {
 		if (joining != null && tickCount - joiningSinceTick > JOIN_TIMEOUT_TICKS) {
 			joining = null;
 		}
+		if (currentAnchor != null && joinedAnchor == null && joining == null && !leftByHand
+				&& tickCount % JOIN_TIMEOUT_TICKS == 0) {
+			join(currentAnchor); // inside but not in the hub (the join failed or the connection came back): again
+		}
 		if (joinedAnchor != null && tickCount % MOVE_INTERVAL_TICKS == 0) {
 			sendMove(player, joinedAnchor);
 		}
@@ -173,25 +179,21 @@ public final class HubController implements HubListener {
 		}
 	}
 
+	/**
+	 * Entering an anchor's box always joins its hub (Adrien 2026-10-29: no more invitation), also when the player
+	 * appears inside it (joining the server, respawn); a join that failed is tried again while the player is inside.
+	 */
 	private void onEnterAnchor(HubAnchorDto anchor) {
-		boolean rejoin = anchor.uuid().equals(rejoinAnchorUuid);
 		rejoinAnchorUuid = null;
 		if (joinedAnchor != null || joining != null) {
 			return;
 		}
-		if (rejoin || autoJoin.contains(anchor.uuid())) {
-			join(anchor);
-			return;
-		}
-		pendingInvite = anchor;
-		chat(Component.translatable("phantasmon.hub.invite", anchor.name(), anchor.hub()).withStyle(ChatFormatting.LIGHT_PURPLE)
-				.append(" ").append(chatButton("phantasmon.hub.invite.yes", "/phantasmon hub join", ChatFormatting.GREEN))
-				.append(" ").append(chatButton("phantasmon.hub.invite.no", "/phantasmon hub decline", ChatFormatting.RED))
-				.append(" ").append(chatButton("phantasmon.hub.invite.always", "/phantasmon hub always", ChatFormatting.AQUA)));
+		join(anchor);
 	}
 
 	private void onExitAnchor(HubAnchorDto anchor) {
 		pendingInvite = null;
+		leftByHand = false;
 		if (sameAnchor(anchor, joinedAnchor) || sameAnchor(anchor, joining)) {
 			joining = null;
 			ghostSession.send("HubLeave", Map.of());
@@ -487,6 +489,7 @@ public final class HubController implements HubListener {
 			chat(Component.translatable("phantasmon.hub.not_in_hub"));
 			return;
 		}
+		leftByHand = true; // /phantasmon hub leave: not joined again until out of the box
 		joining = null;
 		ghostSession.send("HubLeave", Map.of());
 	}

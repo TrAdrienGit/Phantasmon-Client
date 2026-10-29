@@ -66,6 +66,9 @@ public final class HubAvatars {
 	/** Skins by player, kept for the session so a player stepping in and out is not fetched again. */
 	private static final Map<UUID, PlayerSkin> SKINS = new ConcurrentHashMap<>();
 	private static final Set<UUID> SKINS_LOADING = ConcurrentHashMap.newKeySet();
+	/** A skin Mojang did not give (busy, rate limit): asked again from this time on (millis). */
+	private static final Map<UUID, Long> SKIN_RETRY_AT = new ConcurrentHashMap<>();
+	private static final long SKIN_RETRY_MILLIS = 15_000;
 
 	/** How far R reaches an avatar, like Cobblemon's own reach on a player. */
 	private static final double AIM_REACH = 10.0;
@@ -184,6 +187,10 @@ public final class HubAvatars {
 		}
 		for (Map.Entry<UUID, Known> entry : Map.copyOf(known).entrySet()) {
 			HubAvatarEntity avatar = avatars.get(entry.getKey());
+			if (!SKINS.containsKey(entry.getKey())
+					&& System.currentTimeMillis() >= SKIN_RETRY_AT.getOrDefault(entry.getKey(), 0L)) {
+				loadSkin(entry.getKey()); // not got yet: asked again
+			}
 			if (avatar != null && !avatar.isRemoved()) {
 				if (isDouble(level, entry.getKey(), entry.getValue().anchor())) {
 					LOG.info("Hub avatar of {} hidden: the real player stands in this anchor", entry.getValue().username());
@@ -292,8 +299,12 @@ public final class HubAvatars {
 					SKINS_LOADING.remove(playerUuid);
 					if (skin != null) {
 						SKINS.put(playerUuid, skin);
-					} else if (error != null) {
-						LOG.warn("Could not load the skin of Hub player {}", playerUuid, error);
+						SKIN_RETRY_AT.remove(playerUuid);
+					} else {
+						// No profile (Mojang busy or rate limiting) or an error: asked again a little later.
+						SKIN_RETRY_AT.put(playerUuid, System.currentTimeMillis() + SKIN_RETRY_MILLIS);
+						LOG.warn("Could not load the skin of Hub player {}, retrying in {} s", playerUuid,
+								SKIN_RETRY_MILLIS / 1000, error);
 					}
 				});
 	}
