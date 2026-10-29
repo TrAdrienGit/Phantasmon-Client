@@ -13,7 +13,7 @@ import net.minecraft.util.valueproviders.ConstantFloat;
 
 /**
  * Interface sound effects (TODO-21, Adrien 2026-10-06), shipped in the mod itself (Adrien: not through a resource
- * pack, unlike {@link PhantasmonMusic}): {@code assets/phantasmon/sounds/sfx/<name>.ogg} of the mod's resources, no
+ * pack, unlike the battle music, now Cobblemon Spectacle's): {@code assets/phantasmon/sounds/sfx/<name>.ogg} of the mod's resources, no
  * JSON — the file itself is the sound (a resource pack could still replace it, as for any asset). Played on the Master
  * volume, like Minecraft's own button clicks. Client thread only.
  */

@@ -2593,3 +2593,39 @@ le mod restant facultatif (D-36).
   envoi pendant le précédent ; plusieurs threads envoyaient déjà).
 
 Client compilé et déployé ; à valider en jeu (avec et sans Simple Voice Chat).
+
+### 4.106 Backend déployé sur Ubuntu, clients basculés (2026-10-19)
+
+Le backend quitte la machine de dev pour le serveur Ubuntu `server-linux` (service systemd, PostgreSQL 18, base de
+dev migrée), publié en HTTPS par Tailscale Funnel : `https://server-linux.tail192969.ts.net` (guide backend
+`guides/deploying-ubuntu.md`, script `scripts/deploy-ubuntu.sh`). Sauvegarde quotidienne de la base (timer systemd,
+14 jours + hebdomadaires 92 jours). Côté client : `BackendUrlFile.DEFAULT_URL` pointe sur cette adresse, et le
+`config/phantasmon.json` des instances de test a été mis à jour. Client compilé et déployé.
+
+### 4.107 Découpage : Cobblemon Spectacle (2026-10-29, D-37)
+
+Adrien veut découper Phantasmon en mods. Premier découpage : la mise en scène des combats devient le mod client
+**Cobblemon Spectacle** (`../Cobblemon-Spectacle`), qui ne dépend que de Cobblemon. Y partent la cinématique de
+lancement et ses 5 intros, la caméra de combat, les spectacles Méga / Primo / Z / Téra, les boutons de l'écran de
+combat et 4 mixins. Phantasmon lui fournit sa scène (`BattleStage`), ses avatars de hub, ses halos et ses boutons
+(`SpectacleBridge`), et démarre lui-même la musique de l'intro. Deux jars séparés, Spectacle obligatoire ; Phantasmon
+se compile contre le Maven local. Les aperçus passent à `/spectacle preview`. Combat Phantasmon à valider en jeu
+(identique à avant) avant la phase S2 (combats Cobblemon classiques).
+
+Le même jour, deux compléments d'Adrien. **Musiques** : elles passent dans Spectacle (`BattleMusic`, réglages,
+mixin de la musique de Minecraft, bouton « musique suivante », modèle de pack « Cobblemon Spectacle Music ») ;
+Spectacle joue l'intro puis le combat, Phantasmon pilote toujours lobby, victoire, défaite et garde son écran N.
+**Déploiement** : plus de machine distante ; le script installe les deux jars dans chaque instance CurseForge locale
+qui contient déjà l'un des deux mods (instances « … - MystAria_ » et « … - TheMashen »). Le backend reste sur le
+serveur Ubuntu.
+
+**Phase S2 de Spectacle (même jour)** : les combats Cobblemon classiques sont mis en scène, sans mod serveur. Spectacle
+écoute, après Cobblemon, ses gestionnaires de paquets de combat (début, choix, entrée, K.O., messages, fin) et retrouve
+les Pokémon du serveur par l'identifiant que le paquet d'apparition donne à l'entité client. PvP : intro tirée au
+hasard (le combat démarre derrière, l'écran de combat revient à la fin) puis musique ; dresseur PNJ : caméra et
+musique ; sauvage : rien. Attaques filmées depuis les messages `cobblemon.battle.used_move(_on)`, Méga / Z / Téra
+depuis `cobblemon.battle.mega|zpower|terastallize` (sans pause : le serveur n'attend pas). Phantasmon marque les
+paquets de ses combats Ghost (`CobblemonPackets.dispatching`, `SpectacleHooks.setForeignPacketCheck`) pour ne pas être
+filmé deux fois.
+
+Test d'Adrien : intros, caméra, combats sauvages intacts OK ; seule la musique manquait en classique. Cause : le serveur envoie sa musique de combat (`BattleMusicPacket`) et Cobblemon bloque tout autre son « Musique » tant qu'elle joue. Correctif : dans un combat mis en scène, la musique de Cobblemon cède la place quand le pack de ressources fournit la nôtre (`ClassicBattleMusicHandlerMixin`) ; sans pack, celle de Cobblemon reste.

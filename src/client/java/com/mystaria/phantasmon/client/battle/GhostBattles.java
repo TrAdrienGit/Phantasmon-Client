@@ -27,6 +27,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import net.minecraft.client.Minecraft;
 
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
+import com.mystaria.spectacle.battle.BattleSpectacle;
 
 /**
  * Registry of the Ghost battles this client hosts (Phase 9), and the bridge

@@ -14,6 +14,7 @@
 | Fabric API | 0.116.17+1.21.1 | `gradle.properties` |
 | Cobblemon | 1.8.1 Fabric, résolu par l'**identifiant de version Modrinth** `gBW3vLC7` | `gradle.properties` |
 | Kotlin stdlib | 2.0.21 en `compileOnly` (nécessaire pour compiler contre l'API Kotlin de Cobblemon) | `build.gradle` |
+| Cobblemon Spectacle | 0.1.x, **obligatoire**, jar séparé (D-37) : caméra de combat, intros, Méga / Z / Téra, musiques de combat. Compilé depuis le Maven local (`../Cobblemon-Spectacle`, `publishToMavenLocal`) | `gradle.properties`, `fabric.mod.json` |
 | Langage | Java 21 (bytecode) ; Gradle / Loom 1.18 exige un **JDK 25** pour s'exécuter | `build.gradle` |
 | Environnement | `"environment": "client"` : le mod ne se charge jamais sur un serveur | `fabric.mod.json` |
 | Tests | JUnit 5 (logique pure uniquement) | `build.gradle` |
@@ -37,10 +38,10 @@ Racine : `com.mystaria.phantasmon.client`.
 | `ghost` | Session WebSocket de présence, entités Ghost locales | `GhostSession`, `GhostEntityManager` |
 | `gui` | Écrans PC, éditeur, échange et leur socle commun | `PhantasmonCanvasScreen`, `PhantasmonPcScreen`, `PhantasmonPcEditScreen`, `PhantasmonTradeScreen`, `PokemonGuiRendering` |
 | `trade` | Échange en direct (état + contrôleur) et échange asynchrone (commandes) | `LiveTradeController`, `LiveTradeState`, `TradeCommandHandler`, `TradeClient` |
-| `battle` | Combat Ghost : moteur sur l'hôte, relais, visuels, animations d'attaque | `LiveBattleController`, `GhostBattles`, `BattleThread`, `GhostBattleActor`, `GhostBattlePokemonFactory`, `CobblemonPackets`, `BattleVisuals`, `GhostActionEffects`, `ActionEffectPlayer`, `ClientActionEffects` |
+| `battle` | Combat Ghost : moteur sur l'hôte, relais, visuels, animations d'attaque ; branchement sur Cobblemon Spectacle, qui filme le combat (D-37 : `BattleVisuals` lui fournit sa scène, `SpectacleBridge` ses avatars, halos et boutons) | `LiveBattleController`, `GhostBattles`, `BattleThread`, `GhostBattleActor`, `GhostBattlePokemonFactory`, `CobblemonPackets`, `BattleVisuals`, `GhostActionEffects`, `ActionEffectPlayer`, `ClientActionEffects`, `SpectacleBridge` |
 | `wheel` | Entrées Phantasmon dans la roue d'interaction Cobblemon | `GhostWheelOptions` |
 | `hub` | Phantasmon Network : Anchors du serveur (REST, partagés par ses joueurs, D-30), détection d'entrée, invitation, `HubMove`, chat du Hub, rendu du cube, avatars des joueurs distants (entités client) ; conversion de coordonnées (logique pure) | `HubController`, `HubCommands`, `HubClient`, `HubCoordinates`, `HubAvatars`, `HubAvatarEntity` |
-| `mixin` | 9 Mixins (voir [`mixins.md`](mixins.md)) | |
+| `mixin` | 16 Mixins (voir [`mixins.md`](mixins.md)) | |
 | `version` | Comparaison de versions (logique pure) | `VersionCompatibility` |
 
 Convention : la logique métier vit dans des classes « handler » ou « controller », séparées du câblage Brigadier
@@ -71,7 +72,7 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 ## 5. Réseau
 
 - **URL du backend** : `BackendConfig.BASE_URL`, lue au lancement dans `config/phantasmon.json` (`"backend_url"`) par
-  `BackendUrlFile` (défaut `http://100.116.43.32:8080`, IP Tailscale de la machine de dev ; voir
+  `BackendUrlFile` (défaut `https://server-linux.tail192969.ts.net`, le backend du serveur Ubuntu ; voir
   [`reference/configuration.md`](../reference/configuration.md)).
 - **REST** : `BackendJsonClient` (Gson, `LOWER_CASE_WITH_UNDERSCORES`) : les DTO restent en camelCase. En-tête
   `Authorization: Bearer` ajouté pour les routes protégées. Une erreur structurée devient `BackendApiException`

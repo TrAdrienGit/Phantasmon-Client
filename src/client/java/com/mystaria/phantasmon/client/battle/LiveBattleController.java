@@ -30,6 +30,8 @@ import net.minecraft.world.entity.player.Player;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
+import com.mystaria.spectacle.battle.BattleCameraDirector;
+import com.mystaria.spectacle.battle.BattleCinematic;
 import com.mystaria.phantasmon.client.gui.PhantasmonBattleLobbyScreen;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
@@ -409,7 +411,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		if (lobby != null) {
 			lobby = null;
 			closeLobbyScreen();
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+			com.mystaria.spectacle.audio.BattleMusic.stop();
 			chat(Component.translatable("phantasmon.battle.lobby.connection_lost").withStyle(ChatFormatting.RED));
 		}
 		if (battleUuid != null) {
@@ -578,7 +580,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			if (packet instanceof BattleInitializePacket init) {
 				spectateInitialized = true;
 				spectatingCobblemonId = init.getBattleId();
-				com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.BATTLE);
+				com.mystaria.spectacle.audio.BattleMusic.play(com.mystaria.spectacle.audio.BattleMusic.Track.BATTLE);
 			} else if (!spectateInitialized) {
 				return;
 			}
@@ -611,7 +613,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			CobblemonPackets.dispatchLocally(new BattleEndPacket());
 		}
 		BattleVisuals.clear();
-		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+		com.mystaria.spectacle.audio.BattleMusic.stop();
 		spectatingUuid = null;
 		spectatingHost = null;
 		spectatingCobblemonId = null;
@@ -644,7 +646,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			lobbyScreenRequested = true;
 			// Either player may host: boot Showdown now, in the background, not when the battle starts.
 			BattleThread.get().submit(() -> BattleThread.get().ensureShowdown());
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.LOBBY);
+			com.mystaria.spectacle.audio.BattleMusic.play(com.mystaria.spectacle.audio.BattleMusic.Track.LOBBY);
 		}
 		lobby.apply(data);
 		lastOpponentTeamSize = lobby.opponentTeamSize();
@@ -655,7 +657,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		boolean ours = lobby != null && lobby.lobbyUuid().equals(lobbyUuid);
 		lobby = null;
 		closeLobbyScreen();
-		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+		com.mystaria.spectacle.audio.BattleMusic.stop();
 		String reason = string(data.get("reason"));
 		String byName = data.get("by_name") == null ? null : data.get("by_name").toString();
 		if ("LEFT".equals(reason)) {
@@ -707,8 +709,9 @@ public final class LiveBattleController implements LiveBattleListener {
 				.append(chatButton("phantasmon.battle.timer.button", "/phantasmon battle timer", ChatFormatting.AQUA)));
 		List<PokemonDto> opponentTeam = host ? team(data.get("opponent_team")) : List.of();
 		// TODO-26: the backend draws the intro, the same for both players (an older backend sends none: X/Y).
+		// Spectacle plays the intro's music, then the battle music when the intro ends.
 		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize, team(data.get("own_team")).size(),
-				BattleCinematic.Intro.of(data.get("intro") instanceof Number number ? number.intValue() : 0));
+				BattleCinematic.Intro.of(data.get("intro") instanceof Number number ? number.intValue() : 0), null);
 		heldPackets.clear();
 		if (!host) {
 			// The host's engine will send us the battle through BattlePacket, once its intro is over too.
@@ -930,9 +933,9 @@ public final class LiveBattleController implements LiveBattleListener {
 		endLocally();
 		// Victory / defeat jingle from the music resource pack, if it has one (else the music just fades out).
 		if (winner != null && !"PARTNER_DISCONNECTED".equals(reason)) {
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.play(winner.equals(localUuid())
-					? com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.VICTORY
-					: com.mystaria.phantasmon.client.audio.PhantasmonMusic.Track.DEFEAT);
+			com.mystaria.spectacle.audio.BattleMusic.play(winner.equals(localUuid())
+					? com.mystaria.spectacle.audio.BattleMusic.Track.VICTORY
+					: com.mystaria.spectacle.audio.BattleMusic.Track.DEFEAT);
 		}
 		Component message;
 		if ("PARTNER_DISCONNECTED".equals(reason)) {
@@ -982,7 +985,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		BattleVisuals.clear();
 		BattleCinematic.stop();
-		com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+		com.mystaria.spectacle.audio.BattleMusic.stop();
 		hostHeld.clear();
 		holdHostUntil = 0;
 		heldPackets.clear();

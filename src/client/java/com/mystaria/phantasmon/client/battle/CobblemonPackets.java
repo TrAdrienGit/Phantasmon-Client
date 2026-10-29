@@ -58,6 +58,14 @@ public final class CobblemonPackets {
 		return clientbound != null ? clientbound : c2sById.get(id);
 	}
 
+	/** Set while {@link #dispatchLocally} runs Cobblemon's handler (client thread only). */
+	private static boolean dispatching;
+
+	/** Whether Cobblemon's client handlers are running a Ghost battle's packet right now. */
+	public static boolean dispatching() {
+		return dispatching;
+	}
+
 	/** Runs Cobblemon's client handler for {@code packet} on the client thread, as if the server had sent it. */
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void dispatchLocally(NetworkPacket<?> packet) {
@@ -69,10 +77,14 @@ public final class CobblemonPackets {
 		}
 		Minecraft client = Minecraft.getInstance();
 		client.execute(() -> {
+			// A Ghost battle's packet: Cobblemon Spectacle's own staging of Cobblemon battles must not take it (D-37).
+			dispatching = true;
 			try {
 				handler.handle((NetworkPacket) packet, client);
 			} catch (Exception ex) {
 				LOG.error("Cobblemon client handler failed for {}", packet.getId(), ex);
+			} finally {
+				dispatching = false;
 			}
 			BattleVisuals.onPacket(packet);
 			for (var listener : DELIVERY_LISTENERS) {

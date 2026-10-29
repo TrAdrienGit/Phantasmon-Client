@@ -93,9 +93,11 @@ Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur
 droite de l'écran de combat passent à la musique suivante, basculent caméra cinéma / libre et activent le chrono
 (qui devient alors le compte à rebours).
 
-**Musiques** : installez le pack de ressources « Phantasmon Music » (modèle dans `resourcepack-template/` du dépôt
-client) et déposez vos `.ogg` dans ses dossiers `lobby`, `intro`, `battle`, `victory`, `defeat` (voir son
-`LISEZ-MOI.txt`). Elles sont tirées au hasard ; F3 + T recharge après un ajout. La touche **N**, le bouton **♪ Musiques** du lobby ou
+**Musiques** (jouées par Cobblemon Spectacle depuis D-37) : installez le pack de ressources « Cobblemon Spectacle
+Music » (modèle dans `resourcepack-template/` du dépôt `Cobblemon-Spectacle`) et déposez vos `.ogg` dans ses dossiers
+`lobby`, `intro`, `battle`, `victory`, `defeat` (voir son `LISEZ-MOI.txt`) ; un ancien pack « Phantasmon Music »
+marche toujours. Les morceaux décochés sont lus dans `config/phantasmon-music.json` puis enregistrés dans
+`config/cobblemon_spectacle-music.json`. Elles sont tirées au hasard ; F3 + T recharge après un ajout. La touche **N**, le bouton **♪ Musiques** du lobby ou
 Mod Menu → Phantasmon → Configurer ouvrent le menu des musiques, qui permet de décocher les morceaux qu'on ne veut pas entendre et d'écouter chacun.
 
 **Regarder un combat** : visez un joueur en combat Ghost (ou son avatar dans le Global Hub), **R** → « Regarder le

@@ -24,6 +24,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import com.mystaria.phantasmon.client.hub.HubAvatars;
+import com.mystaria.spectacle.battle.BattleSpectacle;
 
 /**
  * Ghost battles seen from afar (Adrien 2026-10-07): like in Cobblemon, where a battle's Pokémon are real entities that
@@ -215,7 +216,7 @@ public final class BattleFieldScenes {
 			if (change.aspect() != null && change.aspect().startsWith(FormeChangeVisual.TERA_PREFIX)) {
 				tera.put(change.uuid(), change.teraType());
 			}
-			BattleSpectacle.playInWorld(change, entityAt(change.pnx()));
+			BattleSpectacle.playInWorld(change.transformation(), entityAt(change.pnx()));
 		}
 
 		void retryPending() {

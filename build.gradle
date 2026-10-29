@@ -15,6 +15,10 @@ repositories {
 		url = "https://api.modrinth.com/maven"
 		content { includeGroup "maven.modrinth" }
 	}
+	// Cobblemon Spectacle (D-37): `./gradlew publishToMavenLocal` in ../Cobblemon-Spectacle puts it there.
+	mavenLocal() {
+		content { includeGroup "com.mystaria" }
+	}
 	maven {
 		name = "Henkelmax"
 		url = "https://maven.maxhenkel.de/repository/public"
@@ -53,6 +57,10 @@ dependencies {
 	// (it's a Cobblemon dependency), but javac still needs the class files on the compile
 	// classpath to resolve that interface hierarchy — compileOnly avoids bundling a second copy.
 	compileOnly "org.jetbrains.kotlin:kotlin-stdlib:2.0.21"
+
+	// Cobblemon Spectacle (D-37): films the Ghost battles (camera, intros, set pieces). Required, shipped as its own
+	// jar (Adrien: two separate jars), never bundled; Phantasmon only uses its API.
+	modImplementation "com.mystaria:cobblemon-spectacle:${project.spectacle_version}"
 
 	// Simple Voice Chat: optional (D-36) — only its plugin API is compiled against, never bundled. The oldest 2.5 API, so
 	// any 2.5.x of the modpack (1.21.1) runs it; without the mod, its entrypoint is never loaded and the hub has no voice.

@@ -21,6 +21,15 @@ jobs:
           distribution: 'microsoft'
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
+      # Cobblemon Spectacle (D-37): Phantasmon compiles against it from Maven local.
+      - name: checkout Cobblemon Spectacle
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ github.repository_owner }}/Cobblemon-Spectacle
+          path: Cobblemon-Spectacle
+      - name: publish Cobblemon Spectacle to Maven local
+        working-directory: Cobblemon-Spectacle
+        run: chmod +x ./gradlew && ./gradlew publishToMavenLocal
       - name: build
         run: ./gradlew build
       - name: capture build artifacts

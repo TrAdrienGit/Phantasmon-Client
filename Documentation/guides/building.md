@@ -24,9 +24,26 @@ Inutile de changer le `JAVA_HOME` du système : le préciser pour la commande su
 
 ## 2. Compiler
 
+Phantasmon dépend de **Cobblemon Spectacle** (D-37), un mod à part dans `../Cobblemon-Spectacle`. Phantasmon se
+compile contre le jar que Spectacle publie dans le dépôt Maven local (`~/.m2`) : à faire une première fois, puis
+après chaque changement de Spectacle (le script de déploiement le fait lui-même).
+
+```bash
+cd ../Cobblemon-Spectacle && ./gradlew build publishToMavenLocal
+```
+
+Puis Phantasmon :
+
 ```bash
 ./gradlew build
 ```
+
+Loom garde sa propre copie de Spectacle par version : après une nouvelle publication à la même version, effacer
+`.gradle/loom-cache/remapped_mods/remapped/com/mystaria` (démons arrêtés : `./gradlew --stop`), sinon Phantasmon
+compile contre l'ancienne. Le script de déploiement le fait.
+
+Sans cette publication, Gradle échoue sur `Could not find com.mystaria:cobblemon-spectacle`. En jeu, les deux jars
+doivent être dans `mods/` : sans Spectacle, Fabric refuse de lancer Phantasmon.
 
 Avec un JDK par défaut différent (exemple, adapter le chemin) :
 

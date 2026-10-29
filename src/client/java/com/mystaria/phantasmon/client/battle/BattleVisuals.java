@@ -36,6 +36,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import com.mystaria.phantasmon.client.ghost.PhantasmonEntities;
+import com.mystaria.spectacle.api.BattleStage;
+import com.mystaria.spectacle.battle.BattleCameraDirector;
+import com.mystaria.spectacle.battle.BattleCinematic;
+import com.mystaria.spectacle.battle.BattleSpectacle;
 
 /**
  * Puts each side's active Pokémon in the world in front of its trainer during a Ghost battle, with Cobblemon's
@@ -83,6 +87,24 @@ public final class BattleVisuals {
 	/** Bumped by {@link #clear}, so timers scheduled for a previous battle do nothing. */
 	private static int generation;
 
+	/** This scene, as Cobblemon Spectacle's camera films it. */
+	private static final BattleStage STAGE = new BattleStage() {
+		@Override
+		public Entity pokemonAt(String pnx) {
+			return entityAt(pnx);
+		}
+
+		@Override
+		public Entity activePokemon(boolean local) {
+			return activeEntity(local);
+		}
+
+		@Override
+		public Vec3 trainerPosition(boolean local) {
+			return BattleVisuals.trainerPosition(local);
+		}
+	};
+
 	private BattleVisuals() {
 	}
 
@@ -98,7 +120,7 @@ public final class BattleVisuals {
 				}
 				// Right after the launch intro, the send-outs are staged for the camera: the opponent's first, then ours.
 				boolean staged = stageSendOuts();
-				BattleCameraDirector.start();
+				BattleCameraDirector.start(STAGE);
 				UUID self = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
@@ -173,6 +195,11 @@ public final class BattleVisuals {
 	public static PokemonEntity entityAt(String pnx) {
 		PokemonEntity entity = entities.get(pnx);
 		return entity == null || entity.isRemoved() ? null : entity;
+	}
+
+	/** Whether Cobblemon Spectacle is filming this scene (a Ghost battle), not a Cobblemon battle of its own. */
+	public static boolean filmed() {
+		return BattleCameraDirector.stage() == STAGE;
 	}
 
 	/** Changes whenever the scene is cleared: lets delayed work notice it belongs to a finished battle. */
@@ -338,7 +365,7 @@ public final class BattleVisuals {
 
 	/** A battle gimmick announced (here, or relayed by the host): played as a set piece ({@link BattleSpectacle}). */
 	public static void transform(FormeChangeVisual change) {
-		BattleSpectacle.play(change);
+		BattleSpectacle.play(change.transformation());
 	}
 
 	/** Recall beam back to the trainer, then removal. Returns whether there was something to recall. */

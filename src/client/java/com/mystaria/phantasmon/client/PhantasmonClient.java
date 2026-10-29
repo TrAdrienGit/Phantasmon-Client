@@ -67,8 +67,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			hub.reset();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
-			com.mystaria.phantasmon.client.battle.BattleCinematic.stop();
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.stop();
+			com.mystaria.spectacle.audio.BattleMusic.stop();
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
 			com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
 			authSession.clear();
@@ -83,22 +82,15 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveBattle.tick();
 			hub.tick();
 			com.mystaria.phantasmon.client.voice.HubVoice.tick();
-			com.mystaria.phantasmon.client.battle.BattleCinematic.tick();
-			com.mystaria.phantasmon.client.battle.BattleSpectacle.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
-			com.mystaria.phantasmon.client.audio.PhantasmonMusic.tick();
 			PhantasmonKeybinds.tick(pokemonCommands);
 		});
 
-		WorldRenderEvents.AFTER_ENTITIES.register(com.mystaria.phantasmon.client.battle.BattleCinematic::renderWorld);
 		WorldRenderEvents.AFTER_ENTITIES.register(hub::renderWorld);
-		HudRenderCallback.EVENT.register((graphics, tickCounter) -> {
-			ghostPartyHud.render(graphics);
-			com.mystaria.phantasmon.client.battle.BattleCinematic.renderHud(graphics);
-		});
+		HudRenderCallback.EVENT.register((graphics, tickCounter) -> ghostPartyHud.render(graphics));
 
-		com.mystaria.phantasmon.client.battle.BattleScreenButtons.register(liveBattle);
+		com.mystaria.phantasmon.client.battle.SpectacleBridge.register(liveBattle);
 		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();

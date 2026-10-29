@@ -9,13 +9,13 @@
 
 ```json
 {
-  "backend_url": "http://100.116.43.32:8080"
+  "backend_url": "https://server-linux.tail192969.ts.net"
 }
 ```
 
 | Clé | Valeur par défaut | Règles |
 |---|---|---|
-| `backend_url` | `http://100.116.43.32:8080` (IP Tailscale de la machine de dev) | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur absente ou invalide, ou fichier illisible : valeur par défaut et avertissement dans le log (`BackendUrlFile`). |
+| `backend_url` | `https://server-linux.tail192969.ts.net` (backend de production sur le serveur Ubuntu, publié par Tailscale Funnel, depuis le 2026-10-19 ; avant : `http://100.116.43.32:8080`, machine de dev) | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur absente ou invalide, ou fichier illisible : valeur par défaut et avertissement dans le log (`BackendUrlFile`). |
 
 ## 1. Constantes du code
 
@@ -49,6 +49,6 @@ Le JWT n'est **jamais** écrit sur disque.
 | `gradle.properties` | `minecraft_version=1.21.1`, `loader_version=0.18.1`, `loom_version=1.18-SNAPSHOT`, `fabric_api_version=0.116.17+1.21.1`, `cobblemon_version=gBW3vLC7` (identifiant de version **Modrinth** du build Fabric 1.8.1 ; ne pas le remplacer par `1.8.1`, ambigu avec le build NeoForge), `version=1.0.0` |
 | `build.gradle` | Loom (`splitEnvironmentSourceSets`, mappings officiels), dépôt Maven Modrinth, `kotlin-stdlib` en `compileOnly`, JUnit 5, `options.release = 21`, le jeu de sources `client` branché sur les tests |
 | `src/main/resources/fabric.mod.json` | Identifiant `phantasmon`, `environment: client`, points d'entrée, dépendances (`fabricloader >= 0.18.1`, `minecraft ~1.21.1`, `java >= 21`, `fabric-api`, `cobblemon >= 1.8.1`), licence `GPL-3.0-only`, liens `homepage`/`sources` factices |
-| `src/client/resources/phantasmon.client.mixins.json` | 9 Mixins client, `defaultRequire = 1` |
+| `src/client/resources/phantasmon.client.mixins.json` | 16 Mixins client, `defaultRequire = 1` (ceux de la mise en scène sont dans Cobblemon Spectacle, D-37) |
 | `.env` / `.env.template` | Non utilisés par le mod (reliquat aligné sur le backend : clés `BDD_*`) |
 

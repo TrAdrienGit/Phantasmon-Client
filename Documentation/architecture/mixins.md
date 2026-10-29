@@ -32,6 +32,12 @@
 | `ClientPacketListenerCommandsMixin` | `net.minecraft.client.multiplayer.ClientPacketListener.handleCommands` | `@Inject` HEAD | Garde le dernier arbre de commandes du serveur : `admin.CommandTreeRefresher` le rejoue quand le statut admin change, pour que Fabric recopie les commandes client (sinon `/phantasmon admin` restait absent après un `/phantasmon login` en cours de partie). Remplace `ClientCommands.refreshCommandCompletions()`, absent de Fabric API 0.116 | `admin.CommandTreeRefresher` |
 | `PokemonBattleSpectatorMixin` | `com.cobblemon.mod.common.api.battles.model.PokemonBattle.sendSpectatorUpdate` (Cobblemon 1.8.1) | `@Inject` HEAD | Sur l'hôte d'un combat Ghost, transmet chaque mise à jour que le moteur destine à ses spectateurs (aucun joueur serveur ici) au relais vers les spectateurs Phantasmon (D-31) | `GhostBattles.onSpectatorUpdate` |
 
+Depuis le découpage (D-37, 2026-10-29), Phantasmon déclare **16** Mixins. Les cinq de la mise en scène des
+combats (`CameraMixin`, `GameRendererSpectacleMixin`, `BattleGuiSpectacleMixin`, `EntityGlowMixin`,
+`MusicManagerMixin` : caméra, champ de vision et calque des spectacles, écran de combat masqué, halo Téra, musique
+de Minecraft coupée pendant la musique de combat) sont partis dans Cobblemon Spectacle
+(`../Cobblemon-Spectacle`, `cobblemon_spectacle.mixins.json`), à revalider aussi à chaque mise à jour.
+
 ## 3. Après une mise à jour de Cobblemon ou de Minecraft
 
 1. Mettre à jour `cobblemon_version` (identifiant de version **Modrinth**, pas le numéro) ou `minecraft_version`

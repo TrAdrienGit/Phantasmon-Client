@@ -8,8 +8,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
-import com.mystaria.phantasmon.client.audio.MusicSettings;
-import com.mystaria.phantasmon.client.audio.PhantasmonMusic;
+import com.mystaria.spectacle.audio.MusicSettings;
+import com.mystaria.spectacle.audio.BattleMusic;
 
 /**
  * Picks which music files of the resource pack may play (Adrien 2026-10-05): one tab per folder (lobby, intro,
@@ -18,7 +18,7 @@ import com.mystaria.phantasmon.client.audio.PhantasmonMusic;
  */
 public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 
-	private static final PhantasmonMusic.Track[] TABS = PhantasmonMusic.Track.values();
+	private static final BattleMusic.Track[] TABS = BattleMusic.Track.values();
 	private static final int TAB_X = 250;
 	private static final int TAB_W = 212;
 	private static final int TAB_GAP = 10;
@@ -35,7 +35,7 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 	private static final int CLOSE_Y = 15 + (48 - CLOSE_SIZE) / 2;
 
 	private final Screen parent;
-	private int tab = PhantasmonMusic.Track.BATTLE.ordinal();
+	private int tab = BattleMusic.Track.BATTLE.ordinal();
 	private int scroll;
 
 	public PhantasmonMusicScreen(Screen parent) {
@@ -45,12 +45,12 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public void onClose() {
-		PhantasmonMusic.endPreview();
+		BattleMusic.endPreview();
 		Minecraft.getInstance().setScreen(parent);
 	}
 
 	private List<ResourceLocation> files() {
-		return PhantasmonMusic.allFiles(TABS[tab]);
+		return BattleMusic.allFiles(TABS[tab]);
 	}
 
 	// =====================================================================
@@ -80,10 +80,10 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 			ResourceLocation file = files.get(scroll + row);
 			int rowY = LIST_Y + row * ROW_H;
 			if (inside(x, y, LIST_X + LIST_W - 190, rowY + 12, 170, 36)) {
-				if (PhantasmonMusic.previewing(file)) {
-					PhantasmonMusic.endPreview();
+				if (BattleMusic.previewing(file)) {
+					BattleMusic.endPreview();
 				} else {
-					PhantasmonMusic.preview(file);
+					BattleMusic.preview(file);
 				}
 				return true;
 			}
@@ -122,7 +122,7 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 			boolean selected = i == tab;
 			renderPrimaryButtonFrame(g, tx, TAB_Y, TAB_W, TAB_H, inside(mx, my, tx, TAB_Y, TAB_W, TAB_H), selected);
 			String label = upper(Component.translatable("phantasmon.music.tab." + TABS[i].name().toLowerCase(java.util.Locale.ROOT)).getString())
-					+ " (" + PhantasmonMusic.allFiles(TABS[i]).size() + ")";
+					+ " (" + BattleMusic.allFiles(TABS[i]).size() + ")";
 			drawCentered(g, label, tx + TAB_W / 2f, TAB_Y + 15, 2f, selected ? READY_TEXT : CYAN, true, 1f);
 		}
 
@@ -165,11 +165,11 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 		if (enabled) {
 			drawCentered(g, "✔", boxX + 14, boxY + 7, 2f, READY_TEXT, false, 0f);
 		}
-		drawText(g, fitText(PhantasmonMusic.title(file), LIST_W - 320, 2f, false, 0f), boxX + 48, rowY + 23, 2f, enabled ? WHITE : DIM, false, 0f);
+		drawText(g, fitText(BattleMusic.title(file), LIST_W - 320, 2f, false, 0f), boxX + 48, rowY + 23, 2f, enabled ? WHITE : DIM, false, 0f);
 
 		// Listen / stop.
 		int bx = LIST_X + LIST_W - 190;
-		boolean listening = PhantasmonMusic.previewing(file);
+		boolean listening = BattleMusic.previewing(file);
 		boolean bHovered = inside(mx, my, bx, rowY + 12, 170, 36);
 		int[] gradient = bHovered ? STD_BUTTON_HOVER : STD_BUTTON;
 		g.fillGradient(bx, rowY + 12, bx + 170, rowY + 48, gradient[0], gradient[1]);

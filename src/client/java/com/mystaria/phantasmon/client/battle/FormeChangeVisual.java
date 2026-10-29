@@ -4,9 +4,11 @@ import java.nio.charset.StandardCharsets;
 
 import com.google.gson.Gson;
 
+import com.mystaria.spectacle.api.Transformation;
+
 /**
  * A Mega Evolution, Primal Reversion, Z-Move or Terastallization in a Ghost battle, for both clients' world scene
- * (Adrien 2026-10-05/06; played by {@link BattleSpectacle}).
+ * (Adrien 2026-10-05/06; played by Cobblemon Spectacle as a {@link Transformation}).
  * Cobblemon's engine only announces it ({@code MEGA_EVOLUTION} / {@code FORME_CHANGE} events) — on a Cobblemon Delta
  * server, Delta's server mod then gives the Pokémon its aspect; here the host does it ({@link GhostBattles}) and
  * relays this to the guest. {@code aspect} is what the model resolvers of the pack's resource pack (CCC) key on:
@@ -25,7 +27,7 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 	private static final Gson GSON = new Gson();
 
 	/** Not an aspect: a Z-Move's burst (TODO-28), the model doesn't change. */
-	public static final String Z_POWER = "zpower";
+	public static final String Z_POWER = Transformation.Z_POWER;
 
 	public boolean primal() {
 		return "primal".equals(aspect);
@@ -36,7 +38,7 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 	}
 
 	/** Not an aspect either: a Terastallization, {@code tera:<type>} (fire, water... stellar). */
-	public static final String TERA_PREFIX = "tera:";
+	public static final String TERA_PREFIX = Transformation.TERA_PREFIX;
 
 	public boolean tera() {
 		return aspect != null && aspect.startsWith(TERA_PREFIX);
@@ -48,7 +50,12 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 
 	/** Whether the Pokémon's model changes (Mega Evolution, Primal Reversion). */
 	public static boolean changesModel(String aspect) {
-		return aspect != null && !Z_POWER.equals(aspect) && !aspect.startsWith(TERA_PREFIX);
+		return Transformation.changesModel(aspect);
+	}
+
+	/** What Cobblemon Spectacle plays. */
+	public Transformation transformation() {
+		return new Transformation(pnx, uuid, species, aspect);
 	}
 
 	public byte[] toBytes() {

@@ -3,6 +3,13 @@
 > Paquet `client/battle`. Protocole : `Phantasmon-Backend/Documentation/reference/websocket-protocol.md` §5.
 > Décision : D-05 ([`decisions.md`](decisions.md)). Vérifié le 2026-10-03.
 
+> **Mise en scène** (D-37, 2026-10-29) : la cinématique de lancement et ses 5 intros, la caméra de combat et les
+> spectacles Méga / Primo / Z / Téra (`BattleCinematic`, `BattleIntroScreen`, `BattleCameraDirector`,
+> `BattleSpectacle`, `SpectacleOverlay`, boutons de l'écran de combat) sont dans le mod **Cobblemon Spectacle**
+> (`../Cobblemon-Spectacle`, paquet `com.mystaria.spectacle`). Phantasmon les déclenche aux mêmes moments qu'avant,
+> lui fournit sa scène (`BattleVisuals`, interface `BattleStage`) et y ajoute ses boutons (`SpectacleBridge`). Le
+> tableau ci-dessous décrit le comportement, inchangé.
+
 ## 1. Idée
 
 Il n'y a pas de mod serveur, donc pas de combat Cobblemon côté serveur. L'un des deux clients, l'**hôte** (désigné

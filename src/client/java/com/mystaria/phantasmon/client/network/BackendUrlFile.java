@@ -24,7 +24,7 @@ public final class BackendUrlFile {
 	private static final Logger LOG = LoggerFactory.getLogger(BackendUrlFile.class);
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	static final String DEFAULT_URL = "http://100.116.43.32:8080";
+	static final String DEFAULT_URL = "https://server-linux.tail192969.ts.net";
 	private static final String KEY = "backend_url";
 
 	private BackendUrlFile() {
