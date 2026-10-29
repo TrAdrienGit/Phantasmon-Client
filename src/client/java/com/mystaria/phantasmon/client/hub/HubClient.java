@@ -53,6 +53,18 @@ public final class HubClient {
 				Map.of("name", name, "length", length, "width", width, "height", height), bearerToken, HubDto.class);
 	}
 
+	/** Admin: a mirror hub (D-38) of that radius. */
+	public CompletableFuture<HubDto> createMirrorHub(String bearerToken, String name, int radius) {
+		return httpClient.post(BackendConfig.BASE_URL.resolve("/admin/hubs"),
+				Map.of("name", name, "mirror", true, "radius", radius), bearerToken, HubDto.class);
+	}
+
+	/** Admin: a mirror hub's radius grows by {@code delta} (negative: shrinks). */
+	public CompletableFuture<HubDto> resizeHub(String bearerToken, String name, int delta) {
+		return httpClient.post(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(name) + "/resize"),
+				Map.of("delta", delta), bearerToken, HubDto.class);
+	}
+
 	public record HubDeleted(String hub, int anchorsDeleted, String archivedAs) {
 	}
 

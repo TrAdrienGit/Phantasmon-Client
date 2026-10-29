@@ -388,5 +388,15 @@
   "phantasmon.battle.spectate.ended.won": "[Phantasmon] Combat terminé : %s l'emporte.",
   "phantasmon.battle.spectate.ended.draw": "[Phantasmon] Combat terminé sans vainqueur.",
   "phantasmon.battle.spectator.joined": "[Phantasmon] %s regarde le combat.",
-  "phantasmon.battle.error.spectate_not_battling": "[Phantasmon] Ce joueur n'est pas en combat Ghost."
+  "phantasmon.battle.error.spectate_not_battling": "[Phantasmon] Ce joueur n'est pas en combat Ghost.",
+  "phantasmon.hub.list.entry_mirror": "[Hub] « %1$s » : hub miroir (Phantasmon Events), rayon %5$s (%2$s × %4$s blocs), toute la hauteur du monde.",
+  "phantasmon.admin.hub.created_mirror": "[Phantasmon] Hub miroir « %1$s » créé : rayon %2$s (%3$s × %3$s blocs), toute la hauteur du monde. Posez son Anchor sur le serveur multijoueur (il enverra les blocs), puis dans votre monde solo (il les recevra) : /events hub anchor %1$s.",
+  "phantasmon.hub.anchor.mirror_only": "[Hub] « %1$s » est un hub miroir : son Anchor se pose avec /events hub anchor %1$s.",
+  "phantasmon.hub.anchor.not_mirror": "[Hub] « %1$s » n'est pas un hub miroir : posez son Anchor avec /phantasmon hub anchor create %1$s.",
+  "phantasmon.hub.error.source_taken": "[Hub] Ce hub miroir a déjà son Anchor sur un serveur multijoueur : supprimez-le d'abord (/phantasmon hub anchor delete here, depuis la zone).",
+  "phantasmon.hub.error.mirror_admin_only": "[Hub] Seuls les admins de Phantasmon posent les zones des hubs miroirs.",
+  "phantasmon.hub.error.anchor_role": "[Hub] Type de zone invalide pour ce hub.",
+  "phantasmon.admin.hub.resized": "[Phantasmon] Hub miroir « %1$s » : rayon %2$s (%3$s × %3$s blocs).",
+  "phantasmon.hub.error.invalid_radius": "[Hub] Le rayon d'un hub miroir est d'au moins 1 bloc.",
+  "phantasmon.hub.error.not_mirror": "[Hub] Ce hub n'est pas un hub miroir : il ne se redimensionne pas."
 }

@@ -223,6 +223,10 @@ public final class HubController implements HubListener {
 		state.put("pose", pose(player));
 		state.put("on_ground", player.onGround());
 		state.put("skin_parts", skinParts());
+		if (anchor.mirror()) {
+			// D-38: a mirror hub's anchors share the same ground at the same heights: the exact height is kept.
+			state.put("y", round(player.getY()));
+		}
 		if (!state.equals(lastSentState) && ghostSession.send("HubMove", state)) {
 			lastSentState = state;
 		}
@@ -415,6 +419,16 @@ public final class HubController implements HubListener {
 	}
 
 	/** The anchor this client is in the Hub through, or null. */
+	/** The anchors of the current server and dimension, as last listed. */
+	public List<HubAnchorDto> anchorsHere() {
+		return anchors;
+	}
+
+	/** The player's own anchors, every server. */
+	public java.util.concurrent.CompletableFuture<HubAnchorDto[]> mine() {
+		return hubClient.mine(session.accessToken());
+	}
+
 	public HubAnchorDto joinedAnchor() {
 		return joinedAnchor;
 	}
@@ -490,6 +504,15 @@ public final class HubController implements HubListener {
 	 * overlapping another anchor. Without a name: {@code <hub>-<player>}.
 	 */
 	public void createAnchor(String hubName, String rawName) {
+		createAnchor(hubName, rawName, null);
+	}
+
+	/**
+	 * An anchor of that hub; in a mirror hub (D-38, admins), {@code role} {@code SOURCE} (the zone of this server whose
+	 * terrain is copied) or {@code COPY} (where the copy is built, in a single-player world). A mirror hub's zone is not
+	 * required to be empty: it holds the server's real terrain, or receives its copy.
+	 */
+	public void createAnchor(String hubName, String rawName, String role) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null || !requireAuthenticated()) {
 			return;
@@ -505,18 +528,23 @@ public final class HubController implements HubListener {
 			if (posing == null) {
 				return;
 			}
+			if (hub.mirror() != (role != null)) {
+				chat(Component.translatable(hub.mirror() ? "phantasmon.hub.anchor.mirror_only" : "phantasmon.hub.anchor.not_mirror",
+						hub.name()).withStyle(ChatFormatting.RED));
+				return;
+			}
 			HubAnchorDto.Size size = hub.size();
 			// D-34: the hub's build fills its whole box, which must be empty (air) where the anchor is posed.
 			int inTheWay = HubBuilds.blocksInTheWay((ClientLevel) posing.level(), HubBuildLayout.of(posing.getX(), posing.getY(),
 					posing.getZ(), Math.round(posing.getYRot() / 90f) * 90, size.x(), size.y(), size.z()));
-			if (inTheWay > 0) {
+			if (inTheWay > 0 && !hub.mirror()) {
 				chat(Component.translatable("phantasmon.hub.anchor.not_empty", hub.name(), size.x(), size.y(), size.z(), inTheWay)
 						.withStyle(ChatFormatting.RED));
 				return;
 			}
 			HubAnchorCreateRequestDto request = new HubAnchorCreateRequestDto(UUID.randomUUID(), hub.name(), name,
 					GhostSession.serverFingerprint(), dimension(posing),
-					new HubAnchorDto.Origin(posing.getX(), posing.getY(), posing.getZ()), posing.getYRot());
+					new HubAnchorDto.Origin(posing.getX(), posing.getY(), posing.getZ()), posing.getYRot(), role);
 			hubClient.create(session.accessToken(), request)
 					.thenAccept(anchor -> onClientThread(() -> {
 						chat(Component.translatable("phantasmon.hub.anchor.created", anchor.name(), anchor.hub(),
@@ -591,8 +619,9 @@ public final class HubController implements HubListener {
 				chat(Component.translatable("phantasmon.hub.list.none"));
 			}
 			for (HubDto hub : list) {
-				chat(Component.translatable(hub.schematic() == null ? "phantasmon.hub.list.entry_empty" : "phantasmon.hub.list.entry",
-						hub.name(), hub.size().x(), hub.size().y(), hub.size().z()));
+				chat(Component.translatable(hub.mirror() ? "phantasmon.hub.list.entry_mirror"
+						: hub.schematic() == null ? "phantasmon.hub.list.entry_empty" : "phantasmon.hub.list.entry",
+						hub.name(), hub.size().x(), hub.size().y(), hub.size().z(), hub.radius()));
 			}
 		})).exceptionally(this::reportFailure);
 	}
@@ -606,6 +635,44 @@ public final class HubController implements HubListener {
 				.thenAccept(hub -> onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.created", hub.name(),
 						length, width, height, "hub_" + hub.name()).withStyle(ChatFormatting.GOLD))))
 				.exceptionally(this::reportAdminFailure);
+	}
+
+	/** Admin: a mirror hub (D-38, Phantasmon Events) of that radius, the whole height of the world. */
+	public void adminCreateMirrorHub(String name, int radius) {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		hubClient.createMirrorHub(session.accessToken(), name, radius)
+				.thenAccept(hub -> onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.created_mirror", hub.name(),
+						radius, hub.size().x()).withStyle(ChatFormatting.GOLD))))
+				.exceptionally(this::reportAdminFailure);
+	}
+
+	/** Admin: a mirror hub's radius grows by {@code delta} blocks (negative: shrinks), around the same centre. */
+	public void adminResizeHub(String name, int delta) {
+		if (!requireAuthenticated()) {
+			return;
+		}
+		hubClient.resizeHub(session.accessToken(), name, delta)
+				.thenAccept(hub -> onClientThread(() -> {
+					chat(Component.translatable("phantasmon.admin.hub.resized", hub.name(), hub.radius(), hub.size().x())
+							.withStyle(ChatFormatting.GOLD));
+					refreshAnchors();
+				}))
+				.exceptionally(this::reportAdminFailure);
+	}
+
+	/**
+	 * A mirror hub's anchor (D-38): on a multiplayer server, its source (the zone whose terrain is copied); in a
+	 * single-player world, the player's copy. Centred on the block the player stands on, the whole height of the world.
+	 */
+	public void createMirrorAnchor(String hubName) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player == null) {
+			return;
+		}
+		boolean copy = Minecraft.getInstance().hasSingleplayerServer();
+		createAnchor(hubName, copy ? null : hubName + "-source", copy ? HubAnchorDto.ROLE_COPY : HubAnchorDto.ROLE_SOURCE);
 	}
 
 	/** Admin: {@code /phantasmon admin hub delete <name>}. */

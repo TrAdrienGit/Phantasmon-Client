@@ -447,6 +447,9 @@ public final class GhostSession {
 					if (battleListener != null) {
 						Minecraft.getInstance().execute(() -> battleListener.onLiveBattleMessage(type, data));
 					}
+				} else if (type.startsWith("Events")) {
+					// Phantasmon's add-ons (Phantasmon Events, D-38).
+					Minecraft.getInstance().execute(() -> com.mystaria.phantasmon.client.api.PhantasmonApi.dispatchEvents(type, data));
 				} else if (type.startsWith("Hub")) {
 					var listener = hubListener;
 					if (listener != null) {

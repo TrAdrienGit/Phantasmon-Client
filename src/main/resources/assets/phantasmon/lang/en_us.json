@@ -388,5 +388,15 @@
   "phantasmon.battle.spectate.ended.won": "[Phantasmon] Battle over: %s wins.",
   "phantasmon.battle.spectate.ended.draw": "[Phantasmon] Battle over, no winner.",
   "phantasmon.battle.spectator.joined": "[Phantasmon] %s is watching the battle.",
-  "phantasmon.battle.error.spectate_not_battling": "[Phantasmon] This player is not in a Ghost battle."
+  "phantasmon.battle.error.spectate_not_battling": "[Phantasmon] This player is not in a Ghost battle.",
+  "phantasmon.hub.list.entry_mirror": "[Hub] \"%1$s\": mirror hub (Phantasmon Events), radius %5$s (%2$s × %4$s blocks), the whole height of the world.",
+  "phantasmon.admin.hub.created_mirror": "[Phantasmon] Mirror hub \"%1$s\" created: radius %2$s (%3$s × %3$s blocks), the whole height of the world. Pose its Anchor on the multiplayer server (it sends the blocks), then in your single-player world (it receives them): /events hub anchor %1$s.",
+  "phantasmon.hub.anchor.mirror_only": "[Hub] \"%1$s\" is a mirror hub: its Anchor is posed with /events hub anchor %1$s.",
+  "phantasmon.hub.anchor.not_mirror": "[Hub] \"%1$s\" is not a mirror hub: pose its Anchor with /phantasmon hub anchor create %1$s.",
+  "phantasmon.hub.error.source_taken": "[Hub] This mirror hub already has its Anchor on a multiplayer server: delete it first (/phantasmon hub anchor delete here, from inside the zone).",
+  "phantasmon.hub.error.mirror_admin_only": "[Hub] Only Phantasmon's admins pose the zones of mirror hubs.",
+  "phantasmon.hub.error.anchor_role": "[Hub] Wrong kind of zone for this hub.",
+  "phantasmon.admin.hub.resized": "[Phantasmon] Mirror hub \"%1$s\": radius %2$s (%3$s × %3$s blocks).",
+  "phantasmon.hub.error.invalid_radius": "[Hub] A mirror hub's radius is at least 1 block.",
+  "phantasmon.hub.error.not_mirror": "[Hub] This hub is not a mirror hub: it can't be resized."
 }

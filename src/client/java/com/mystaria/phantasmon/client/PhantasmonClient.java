@@ -53,6 +53,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
 		ghostSession.setHubListener(hub);
+		com.mystaria.phantasmon.client.api.PhantasmonApi.init(hub, ghostSession, httpClient, authSession);
 		com.mystaria.phantasmon.client.voice.HubVoice.bind(ghostSession);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {

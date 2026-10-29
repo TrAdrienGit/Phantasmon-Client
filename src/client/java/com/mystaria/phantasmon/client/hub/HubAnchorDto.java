@@ -2,7 +2,10 @@ package com.mystaria.phantasmon.client.hub;
 
 import java.util.UUID;
 
-/** Matches the backend's {@code HubAnchor} response schema (Phantasmon Network, {@code /hub/anchors}, D-35). */
+/**
+ * Matches the backend's {@code HubAnchor} response schema (Phantasmon Network, {@code /hub/anchors}, D-35).
+ * {@code role}: {@code NORMAL}, or in a mirror hub (D-38) {@code SOURCE} (the server zone copied) or {@code COPY}.
+ */
 public record HubAnchorDto(
 		UUID uuid,
 		UUID ownerUuid,
@@ -12,7 +15,12 @@ public record HubAnchorDto(
 		String dimension,
 		Origin origin,
 		int yaw,
-		Size size) {
+		Size size,
+		String role,
+		boolean mirror) {
+
+	public static final String ROLE_SOURCE = "SOURCE";
+	public static final String ROLE_COPY = "COPY";
 
 	public record Origin(double x, double y, double z) {
 	}
