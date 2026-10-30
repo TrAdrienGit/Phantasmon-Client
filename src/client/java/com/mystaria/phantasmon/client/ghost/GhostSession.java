@@ -554,15 +554,6 @@ public final class GhostSession {
 	 */
 	public static void setFingerprintOverride(String value) {
 		fingerprintOverride = value == null || value.isBlank() ? null : value;
-		try {
-			if (fingerprintOverride == null) {
-				Files.deleteIfExists(OVERRIDE_FILE);
-			} else {
-				Files.writeString(OVERRIDE_FILE, fingerprintOverride);
-			}
-		} catch (IOException ex) {
-			LOG.warn("Failed to persist fingerprint override to {}", OVERRIDE_FILE, ex);
-		}
 		if (activeInstance != null) {
 			activeInstance.rejoinGroupNow();
 		}
@@ -573,13 +564,12 @@ public final class GhostSession {
 	}
 
 	private static String loadPersistedOverride() {
+		// No longer read (Adrien 2026-10-30): a file put back by the launcher kept a stale test value forever, hiding
+		// every real hub. The override lasts until the game closes; an old file is removed.
 		try {
-			if (Files.exists(OVERRIDE_FILE)) {
-				String value = Files.readString(OVERRIDE_FILE).strip();
-				return value.isEmpty() ? null : value;
-			}
+			Files.deleteIfExists(OVERRIDE_FILE);
 		} catch (IOException ex) {
-			LOG.warn("Failed to load persisted fingerprint override from {}", OVERRIDE_FILE, ex);
+			LOG.warn("Failed to remove the old fingerprint override file {}", OVERRIDE_FILE, ex);
 		}
 		return null;
 	}
