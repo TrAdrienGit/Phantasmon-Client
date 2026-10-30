@@ -86,6 +86,15 @@ public final class PhantasmonApi {
 		return httpClient.delete(BackendConfig.BASE_URL.resolve(path), authSession.accessToken(), type);
 	}
 
+	/**
+	 * The player's Cobblemon party as an invitation sends it ({@code team: COBBLEMON}, {@code party}), or null if empty:
+	 * the backend can check it against a format.
+	 */
+	public static Map<String, Object> cobblemonParty() {
+		List<Map<String, Object>> party = com.mystaria.phantasmon.client.battle.CobblemonPartySnapshot.current();
+		return party.isEmpty() ? null : Map.of("team", "COBBLEMON", "party", party);
+	}
+
 	/** The backend's error code of a failed call ({@code ERROR_...}), or null for a network failure. */
 	public static String errorCode(Throwable failure) {
 		Throwable cause = failure instanceof java.util.concurrent.CompletionException ? failure.getCause() : failure;
