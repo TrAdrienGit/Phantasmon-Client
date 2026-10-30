@@ -4,11 +4,11 @@
   "phantasmon.auth.offline_unsupported": "[Phantasmon] Les comptes hors-ligne (crackés) ne sont pas supportés — un compte Microsoft/Mojang est requis.",
   "phantasmon.auth.version_incompatible": "[Phantasmon] Votre version du mod est trop ancienne (minimum requis : %s). Merci de mettre à jour via Modrinth/CurseForge.",
   "phantasmon.auth.version_outdated": "[Phantasmon] Une nouvelle version est disponible (%s). Pensez à mettre à jour prochainement.",
-  "phantasmon.auth.mojang_failed": "[Phantasmon] Échec de la vérification de session Mojang. Merci de réessayer.",
+  "phantasmon.auth.mojang_failed": "[Phantasmon] Mojang a refusé votre session : déconnectez-vous puis reconnectez-vous à votre compte Microsoft dans le launcher, relancez le jeu, puis /phantasmon login.",
   "phantasmon.auth.network_error": "[Phantasmon] Impossible de joindre le backend.",
   "phantasmon.auth.success": "[Phantasmon] Connexion réussie.",
   "phantasmon.auth.session_expired": "[Phantasmon] Votre session a expiré, merci de vous reconnecter.",
-  "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang n'a pas pu vérifier votre session.",
+  "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang n'a pas pu vérifier votre session : déconnectez-vous puis reconnectez-vous à votre compte Microsoft dans le launcher, relancez le jeu, puis /phantasmon login.",
   "phantasmon.auth.error.uuid_mismatch": "[Phantasmon] Incohérence d'identité du compte.",
   "phantasmon.auth.error.invalid_challenge": "[Phantasmon] Connexion expirée ou refusée — réessayez.",
   "phantasmon.auth.error.too_many_challenges": "[Phantasmon] Le serveur est occupé — réessayez de vous connecter dans un instant.",
@@ -400,5 +400,6 @@
   "phantasmon.hub.error.invalid_radius": "[Hub] Le rayon d'un hub miroir est d'au moins 1 bloc.",
   "phantasmon.hub.error.not_mirror": "[Hub] Ce hub n'est pas un hub miroir : il ne se redimensionne pas.",
   "phantasmon.admin.hub.debug_on": "[Phantasmon] Debug du hub « %s » : ses limites sont affichées.",
-  "phantasmon.admin.hub.debug_off": "[Phantasmon] Debug du hub « %s » : limites masquées."
+  "phantasmon.admin.hub.debug_off": "[Phantasmon] Debug du hub « %s » : limites masquées.",
+  "phantasmon.hub.joining": "Connexion au hub « %s »…"
 }

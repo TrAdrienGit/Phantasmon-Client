@@ -203,6 +203,7 @@ public final class HubController implements HubListener {
 	private void join(HubAnchorDto anchor) {
 		pendingInvite = null;
 		if (ghostSession.send("HubJoin", Map.of("anchor_uuid", anchor.uuid()))) {
+			status(Component.translatable("phantasmon.hub.joining", anchor.hub()).withStyle(ChatFormatting.GRAY));
 			joining = anchor;
 			joiningSinceTick = tickCount;
 		} else {
@@ -302,7 +303,7 @@ public final class HubController implements HubListener {
 						}
 					}
 				}
-				chat(Component.translatable("phantasmon.hub.joined", members.size()).withStyle(ChatFormatting.LIGHT_PURPLE));
+				status(Component.translatable("phantasmon.hub.joined", members.size()).withStyle(ChatFormatting.LIGHT_PURPLE));
 				com.mystaria.phantasmon.client.voice.HubVoice.onJoined();
 			}
 			case "HubLeft" -> {
@@ -314,7 +315,7 @@ public final class HubController implements HubListener {
 				members.clear();
 				avatars.clear();
 				String reason = String.valueOf(data.get("reason"));
-				chat(Component.translatable("phantasmon.hub.left." + switch (reason) {
+				status(Component.translatable("phantasmon.hub.left." + switch (reason) {
 					case "SERVER_CHANGED" -> "server_changed";
 					case "ANCHOR_DELETED" -> "anchor_deleted";
 					default -> "left";
@@ -327,7 +328,7 @@ public final class HubController implements HubListener {
 				Member member = putMember(data);
 				showAvatar(member);
 				if (member != null) {
-					chat(Component.translatable("phantasmon.hub.player_enter", member.username()).withStyle(ChatFormatting.GRAY));
+					status(Component.translatable("phantasmon.hub.player_enter", member.username()).withStyle(ChatFormatting.GRAY));
 				}
 			}
 			case "HubPlayerMove" -> {
@@ -347,7 +348,7 @@ public final class HubController implements HubListener {
 					avatars.remove(playerUuid);
 				}
 				if (member != null) {
-					chat(Component.translatable("phantasmon.hub.player_leave", member.username()).withStyle(ChatFormatting.GRAY));
+					status(Component.translatable("phantasmon.hub.player_leave", member.username()).withStyle(ChatFormatting.GRAY));
 				}
 			}
 			case "HubGhostSpawn" -> {
@@ -963,6 +964,17 @@ public final class HubController implements HubListener {
 
 	private static void onClientThread(Runnable action) {
 		Minecraft.getInstance().execute(action);
+	}
+
+	/**
+	 * Entering and leaving hubs, players coming and going: above the hotbar, not in the chat (Adrien 2026-10-29: a
+	 * player walking in and out filled the chat).
+	 */
+	private static void status(Component message) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player != null) {
+			player.displayClientMessage(message, true);
+		}
 	}
 
 	private static void chat(Component message) {

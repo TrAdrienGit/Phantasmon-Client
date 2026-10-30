@@ -75,6 +75,23 @@ public final class PhantasmonApi {
 		return httpClient.get(BackendConfig.BASE_URL.resolve(path), authSession.accessToken(), type);
 	}
 
+	/** {@code POST} on the backend with the player's token; {@code body} null: none. */
+	public static <T> CompletableFuture<T> post(String path, Object body, Class<T> type) {
+		return body == null ? httpClient.postNoBody(BackendConfig.BASE_URL.resolve(path), authSession.accessToken(), type)
+				: httpClient.post(BackendConfig.BASE_URL.resolve(path), body, authSession.accessToken(), type);
+	}
+
+	/** {@code DELETE} on the backend with the player's token. */
+	public static <T> CompletableFuture<T> delete(String path, Class<T> type) {
+		return httpClient.delete(BackendConfig.BASE_URL.resolve(path), authSession.accessToken(), type);
+	}
+
+	/** The backend's error code of a failed call ({@code ERROR_...}), or null for a network failure. */
+	public static String errorCode(Throwable failure) {
+		Throwable cause = failure instanceof java.util.concurrent.CompletionException ? failure.getCause() : failure;
+		return cause instanceof com.mystaria.phantasmon.client.network.BackendApiException api ? api.errorCode() : null;
+	}
+
 	public static void init(HubController hubController, GhostSession session, BackendJsonClient client, AuthSession auth) {
 		hubs = hubController;
 		ghostSession = session;

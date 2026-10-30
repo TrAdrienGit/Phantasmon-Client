@@ -4,11 +4,11 @@
   "phantasmon.auth.offline_unsupported": "[Phantasmon] Offline (cracked) accounts are not supported — a Microsoft/Mojang account is required.",
   "phantasmon.auth.version_incompatible": "[Phantasmon] Your mod version is too old (minimum supported: %s). Please update via Modrinth/CurseForge.",
   "phantasmon.auth.version_outdated": "[Phantasmon] A newer version is available (%s). Consider updating soon.",
-  "phantasmon.auth.mojang_failed": "[Phantasmon] Mojang session verification failed. Please try again.",
+  "phantasmon.auth.mojang_failed": "[Phantasmon] Mojang refused your session: sign out of your Microsoft account in the launcher and back in, restart the game, then /phantasmon login.",
   "phantasmon.auth.network_error": "[Phantasmon] Could not reach the backend.",
   "phantasmon.auth.success": "[Phantasmon] Connected successfully.",
   "phantasmon.auth.session_expired": "[Phantasmon] Your session has expired, please log in again.",
-  "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang could not verify your session.",
+  "phantasmon.auth.error.mojang_verification_failed": "[Phantasmon] Mojang could not verify your session: sign out of your Microsoft account in the launcher and back in, restart the game, then /phantasmon login.",
   "phantasmon.auth.error.uuid_mismatch": "[Phantasmon] Account identity mismatch.",
   "phantasmon.auth.error.invalid_challenge": "[Phantasmon] Login expired or refused — try again.",
   "phantasmon.auth.error.too_many_challenges": "[Phantasmon] The server is busy — try logging in again in a moment.",
@@ -400,5 +400,6 @@
   "phantasmon.hub.error.invalid_radius": "[Hub] A mirror hub's radius is at least 1 block.",
   "phantasmon.hub.error.not_mirror": "[Hub] This hub is not a mirror hub: it can't be resized.",
   "phantasmon.admin.hub.debug_on": "[Phantasmon] Hub \"%s\" debug: its limits are shown.",
-  "phantasmon.admin.hub.debug_off": "[Phantasmon] Hub \"%s\" debug: limits hidden."
+  "phantasmon.admin.hub.debug_off": "[Phantasmon] Hub \"%s\" debug: limits hidden.",
+  "phantasmon.hub.joining": "Joining hub \"%s\"…"
 }

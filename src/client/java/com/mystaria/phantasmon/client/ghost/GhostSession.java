@@ -585,6 +585,21 @@ public final class GhostSession {
 	}
 
 	/** The fingerprint this client sends in {@code JoinServerGroup} (also keys the Hub Anchors of this server). */
+	/**
+	 * The server's address as every player of it writes it: {@code Play.Example.com.:25565} and {@code play.example.com}
+	 * are the same server (Adrien 2026-10-29: a player typing the address another way must meet the others).
+	 */
+	static String normalizedAddress(String address) {
+		String normalized = address.strip().toLowerCase(java.util.Locale.ROOT);
+		if (normalized.endsWith(":25565")) {
+			normalized = normalized.substring(0, normalized.length() - ":25565".length());
+		}
+		while (normalized.endsWith(".")) {
+			normalized = normalized.substring(0, normalized.length() - 1);
+		}
+		return normalized;
+	}
+
 	public static String serverFingerprint() {
 		if (fingerprintOverride != null) {
 			return fingerprintOverride;
@@ -594,8 +609,7 @@ public final class GhostSession {
 			return "singleplayer";
 		}
 		ServerData server = client.getCurrentServer();
-		String ip = server == null ? "unknown" : server.ip;
-		return sha256Hex(ip);
+		return sha256Hex(server == null ? "unknown" : normalizedAddress(server.ip));
 	}
 
 	private static String sha256Hex(String value) {
