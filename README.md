@@ -85,4 +85,4 @@ The three screens extend `gui/PhantasmonCanvasScreen`: a 1600×900 px layout dra
 
 ## License
 
-GNU General Public License v3.0 — see [`LICENSE`](./LICENSE).
+Apache License 2.0 — see [`LICENSE`](./LICENSE). Free to use, modify and redistribute; forks and redistributions must keep [`NOTICE`](./NOTICE) and credit the original author.

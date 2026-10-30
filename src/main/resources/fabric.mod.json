@@ -11,7 +11,7 @@
 		"homepage": "https://github.com/your-account/phantasmon-client",
 		"sources": "https://github.com/your-account/phantasmon-client"
 	},
-	"license": "GPL-3.0-only",
+	"license": "Apache-2.0",
 	"icon": "assets/phantasmon/icon.png",
 	"environment": "client",
 	"entrypoints": {
