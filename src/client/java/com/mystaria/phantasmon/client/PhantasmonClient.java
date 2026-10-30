@@ -75,6 +75,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ghostSession.onClientTick();
 			pcOpener.tick();
+			com.mystaria.phantasmon.client.battle.TrainerProfiles.tick();
 			liveTrade.tick();
 			liveBattle.tick();
 			hub.tick();

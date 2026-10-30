@@ -8,7 +8,8 @@ import com.mystaria.spectacle.api.SpectacleHooks;
 
 /**
  * What Phantasmon plugs into Cobblemon Spectacle (D-37), which films its Ghost battles: Hub avatars as stand-ins for
- * players of another server, Tera glows kept by the battles seen from afar, and the turn timer button under
+ * players of another server, Tera glows kept by the battles seen from afar, the trainers' animation profiles
+ * ({@link TrainerProfiles}), and the turn timer button under
  * Spectacle's music and camera buttons during a Ghost battle.
  */
 public final class SpectacleBridge {
@@ -19,10 +20,12 @@ public final class SpectacleBridge {
 	public static void register(LiveBattleController controller) {
 		SpectacleHooks.setPlayerResolver(HubAvatars::playerOrAvatar);
 		SpectacleHooks.setGlowKeeper(BattleFieldScenes::owns);
-		// Spectacle's music key (N) and settings open Phantasmon's music screen, in Phantasmon's look.
+		// Spectacle's menu (key N) and settings open Phantasmon's music screen, in Phantasmon's look.
 		SpectacleHooks.setMusicScreen(com.mystaria.phantasmon.client.gui.PhantasmonMusicScreen::new);
 		// Ghost battles are staged by BattleVisuals: Spectacle's own staging of Cobblemon battles leaves them alone.
 		SpectacleHooks.setForeignPacketCheck(CobblemonPackets::dispatching);
+		// The trainers' animation profiles, shared through the backend (Spectacle phase E3).
+		TrainerProfiles.register();
 		// Once on, the timer button becomes the countdown (Adrien 2026-10-05).
 		SpectacleHooks.addButton(new BattleButton(BattleButton.CAMERA_ORDER + 10, BattleVisuals::filmed,
 				() -> {
