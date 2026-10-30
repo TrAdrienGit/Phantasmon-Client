@@ -80,6 +80,8 @@ public final class LiveBattleController implements LiveBattleListener {
 	 * 2026-10-05), and what it sends this client's UI waits here until the intro is over, like the guest's relayed
 	 * packets. Filled on the battle thread, emptied on the client thread.
 	 */
+	/** The battle's ambiance, from BattleSessionStarted (Spectacle A3). */
+	private String battleAmbiance;
 	private final java.util.concurrent.ConcurrentLinkedQueue<NetworkPacket<?>> hostHeld = new java.util.concurrent.ConcurrentLinkedQueue<>();
 	private volatile long holdHostUntil;
 	private final List<Map<String, Object>> heldPackets = new ArrayList<>();
@@ -263,6 +265,18 @@ public final class LiveBattleController implements LiveBattleListener {
 		if (lobby != null && formatId != null && !formatId.equals(lobby.formatId())) {
 			send("BattleLobbySetFormat", Map.of("lobby_uuid", lobby.lobbyUuid(), "format_id", formatId));
 		}
+	}
+
+	/** Battle ambiance, for both players (Spectacle A3); "" = each player's own. */
+	public void lobbySetAmbiance(String ambiance) {
+		if (lobby != null && ambiance != null && !ambiance.equals(lobby.ambiance())) {
+			send("BattleLobbySetAmbiance", Map.of("lobby_uuid", lobby.lobbyUuid(), "ambiance", ambiance));
+		}
+	}
+
+	/** The ambiance imposed on the Ghost battle being played (from the lobby), or null: each player's own. */
+	public String battleAmbiance() {
+		return battleUuid == null || battleAmbiance == null || battleAmbiance.isEmpty() ? null : battleAmbiance;
 	}
 
 	public void lobbyEnableTimer() {
@@ -686,6 +700,7 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	private void onSessionStarted(Map<String, Object> data) {
 		battleUuid = uuid(data.get("battle_uuid"));
+		battleAmbiance = data.get("ambiance") == null ? null : data.get("ambiance").toString();
 		host = "HOST".equals(data.get("role"));
 		solo = Boolean.TRUE.equals(data.get("solo"));
 		spectators.clear();
@@ -989,6 +1004,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		heldPackets.clear();
 		holdRelayedUntil = 0;
 		battleUuid = null;
+		battleAmbiance = null;
 		cobblemonBattleId = null;
 		opponentUuid = null;
 		timerEnabled = false;

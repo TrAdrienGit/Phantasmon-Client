@@ -376,5 +376,7 @@
   "phantasmon.hub.joining": "Connexion au hub « %s »…",
   "phantasmon.battle.error.format_locked": "[Phantasmon] Match de tournoi : le format est celui du tournoi, il ne se change pas.",
   "phantasmon.battle.error.tournament_paired": "[Phantasmon] Vous êtes appairé dans un tournoi : vous ne pouvez combattre que votre adversaire de la ronde.",
-  "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] Ce joueur est appairé dans un tournoi : il ne peut combattre que son adversaire de la ronde."
+  "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] Ce joueur est appairé dans un tournoi : il ne peut combattre que son adversaire de la ronde.",
+  "phantasmon.battle.lobby.ambiance": "Ambiance : %s",
+  "phantasmon.battle.lobby.ambiance.each": "chacun la sienne"
 }

@@ -26,6 +26,8 @@ public final class SpectacleBridge {
 		SpectacleHooks.setForeignPacketCheck(CobblemonPackets::dispatching);
 		// The trainers' animation profiles, shared through the backend (Spectacle phase E3).
 		TrainerProfiles.register();
+		// The ambiance picked in the lobby, the same for both players (Spectacle A3).
+		SpectacleHooks.setAmbianceOverride(controller::battleAmbiance);
 		// Once on, the timer button becomes the countdown (Adrien 2026-10-05).
 		SpectacleHooks.addButton(new BattleButton(BattleButton.CAMERA_ORDER + 10, BattleVisuals::filmed,
 				() -> {

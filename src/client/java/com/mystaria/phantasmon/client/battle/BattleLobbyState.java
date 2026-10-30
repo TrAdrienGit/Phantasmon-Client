@@ -47,6 +47,8 @@ public final class BattleLobbyState {
 
 	private List<FormatOption> formats = List.of();
 	private String formatId = "free";
+	/** The battle ambiance both see (Spectacle A3): an ambiance id, or "" for each player's own. */
+	private String ambiance = "";
 	private List<List<Issue>> ownIssues = List.of();
 	private List<Boolean> opponentFlags = List.of();
 
@@ -73,6 +75,7 @@ public final class BattleLobbyState {
 		if (data.get("format_id") != null) {
 			formatId = data.get("format_id").toString();
 		}
+		ambiance = data.get("ambiance") == null ? "" : data.get("ambiance").toString();
 		if (data.get("formats") instanceof List<?> list) {
 			List<FormatOption> options = new ArrayList<>();
 			for (Object entry : list) {
@@ -215,6 +218,10 @@ public final class BattleLobbyState {
 
 	public List<FormatOption> formats() {
 		return formats;
+	}
+
+	public String ambiance() {
+		return ambiance;
 	}
 
 	public String formatId() {
