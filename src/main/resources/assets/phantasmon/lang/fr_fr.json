@@ -401,5 +401,8 @@
   "phantasmon.hub.error.not_mirror": "[Hub] Ce hub n'est pas un hub miroir : il ne se redimensionne pas.",
   "phantasmon.admin.hub.debug_on": "[Phantasmon] Debug du hub « %s » : ses limites sont affichées.",
   "phantasmon.admin.hub.debug_off": "[Phantasmon] Debug du hub « %s » : limites masquées.",
-  "phantasmon.hub.joining": "Connexion au hub « %s »…"
+  "phantasmon.hub.joining": "Connexion au hub « %s »…",
+  "phantasmon.battle.error.format_locked": "[Phantasmon] Match de tournoi : le format est celui du tournoi, il ne se change pas.",
+  "phantasmon.battle.error.tournament_paired": "[Phantasmon] Vous êtes appairé dans un tournoi : vous ne pouvez combattre que votre adversaire de la ronde.",
+  "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] Ce joueur est appairé dans un tournoi : il ne peut combattre que son adversaire de la ronde."
 }

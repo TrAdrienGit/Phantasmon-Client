@@ -401,5 +401,8 @@
   "phantasmon.hub.error.not_mirror": "[Hub] This hub is not a mirror hub: it can't be resized.",
   "phantasmon.admin.hub.debug_on": "[Phantasmon] Hub \"%s\" debug: its limits are shown.",
   "phantasmon.admin.hub.debug_off": "[Phantasmon] Hub \"%s\" debug: limits hidden.",
-  "phantasmon.hub.joining": "Joining hub \"%s\"…"
+  "phantasmon.hub.joining": "Joining hub \"%s\"…",
+  "phantasmon.battle.error.format_locked": "[Phantasmon] Tournament match: the format is the tournament's, it can't be changed.",
+  "phantasmon.battle.error.tournament_paired": "[Phantasmon] You are paired in a tournament: you can only battle your round's opponent.",
+  "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] This player is paired in a tournament: they can only battle their round's opponent."
 }
