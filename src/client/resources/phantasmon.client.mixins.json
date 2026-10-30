@@ -18,7 +18,8 @@
 		"PokemonBattleSpectatorMixin",
 		"ClientLevelHubBuildMixin",
 		"MultiPlayerGameModeHubBuildMixin",
-		"ClientPacketListenerCommandsMixin"
+		"ClientPacketListenerCommandsMixin",
+		"ScreenChatActionMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

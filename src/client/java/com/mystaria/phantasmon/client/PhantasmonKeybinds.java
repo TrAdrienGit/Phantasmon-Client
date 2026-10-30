@@ -5,7 +5,7 @@ import org.lwjgl.glfw.GLFW;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.minecraft.client.KeyMapping;
 
-import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.pokemon.PcOpener;
 
 /**
  * The mod's keybind: opening the PC screen (P, Adrien: 2026-09-29). The music menu's key (N) is Cobblemon Spectacle's
@@ -35,9 +35,9 @@ public final class PhantasmonKeybinds {
 	}
 
 	/** Called every client tick (see {@link PhantasmonClient}) — {@code consumeClick()} is the standard vanilla pattern for a keybind's action firing once per press, queued click included, regardless of how long the key is held. */
-	public static void tick(PokemonCommandHandler pokemonCommands) {
+	public static void tick(PcOpener pcOpener) {
 		while (OPEN_PC.consumeClick()) {
-			pokemonCommands.openPc();
+			pcOpener.openPc();
 		}
 	}
 }

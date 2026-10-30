@@ -42,7 +42,7 @@ flowchart LR
 
 | Étape | Hôte | Invité |
 |---|---|---|
-| Invitation | Roue Cobblemon uniquement (« Combat Ghost », Nord-Ouest) ; l'invité accepte par [Accepter] (`/phantasmon battle join`) ou refuse (`decline`) | |
+| Invitation | Roue Cobblemon uniquement (« Combat Ghost », Nord-Ouest) ; l'invité accepte par [Accepter] ou refuse par [Refuser] (boutons du chat, D-39) | |
 | Lobby | `PhantasmonBattleLobbyScreen` (DA de l'écran d'échange) s'ouvre chez les deux sur `BattleLobbyUpdated` (`BattleLobbyState`). Rail gauche : son équipe, clic = lead ; rail droit : aperçu adverse (modèle et nom seulement, `renderSlot(..., details = false)`) ; au centre, une carte par joueur avec son modèle 3D (`InventoryScreen.renderEntityInInventory`, tête de skin s'il n'est pas chargé), la source d'équipe, son lead (celui de l'adversaire reste « ? ») et le bouton Ghost ⇄ Cobblemon ; en-tête : PRÊT ; pied : timer du lobby et QUITTER (Échap). Le combat démarre quand les deux sont prêts. | Idem |
 | Cinématique de lancement | `BattleCinematic`, 5,5 s identiques chez les deux, une des 5 intros (`BattleCinematic.Intro`, tirée par le backend : `BattleSessionStarted.intro`, TODO-26). Toutes commencent par le plan de côté sur les deux joueurs avec un « ! » au-dessus de l'adversaire et finissent sur un flash blanc ; entre les deux, `PhantasmonBattleIntroScreen` joue la scène de l'intro : **X/Y** (balayage en losanges, panneau du challenger : fond à traînées, adversaire en 3D en silhouette puis coloré, balles de son équipe, « Vous êtes défié par … ! ») ; **Épée/Bouclier** (moitiés bleue et rose en diagonale, les deux dresseurs face à face, « VS », puis lancer de l'adversaire sur fond rose) ; **Diamant/Perle** (coins noirs autour d'une Poké Ball qui tourne, bande bleue, éclat blanc, plateformes qui glissent avec les deux dresseurs, barre de balles, texte) ; **Émeraude** (boîte de dialogue, bandes noires poussées par des Poké Balls qui roulent, ouverture sur une ligne, dresseurs qui traversent, deux barres de balles, « … veut se battre ! ») ; **Noir/Blanc** (la caméra du monde fonce sur l'adversaire sous des traînées radiales, blanc, recul depuis la silhouette de l'adversaire sur sa plateforme, révélation). Aperçu : `/phantasmon admin debug intro <nom>`. L'hôte démarre son moteur dès le début de l'intro (Showdown préchauffé dès le lobby) et retient les paquets pour sa propre interface jusqu'à la fin ; puis sorties filmées (`CameraMixin`, HUD masqué) : Pokémon adverse de face, puis le nôtre par-dessus l'épaule, retour en douceur à la vue du joueur | Joue la même intro ; garde les `BattlePacket` reçus pendant l'intro et les joue juste après |
 | Démarrage | Reçoit `BattleSessionStarted` (rôle `HOST`, deux équipes) → `GhostBattles.startHostedBattle` | Reçoit `BattleSessionStarted` (rôle `GUEST`, sa propre équipe) |
@@ -113,7 +113,7 @@ après 20 s si une lecture ne se termine pas.
 ## 7. Chrono
 
 - Désactivé par défaut. L'un ou l'autre joueur l'active pour les deux (bouton [Activer le chrono] dans le chat ou
-  `/phantasmon battle timer`), sans retour possible.
+  bouton du chat), sans retour possible.
 - 90 s par choix ; l'hôte applique l'action automatique (IA aléatoire de Cobblemon) pour les deux camps, avec 3 s
   de marge réseau pour l'invité.
 - Chaque client affiche son propre compte à rebours dans la barre d'action (rouge sous 10 s).

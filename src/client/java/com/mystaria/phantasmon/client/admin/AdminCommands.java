@@ -13,16 +13,15 @@ import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.SharedSuggestionProvider;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 
+import com.mystaria.phantasmon.client.command.ChatActions;
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.network.PingToggle;
-import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.pokemon.PcOpener;
 
 /**
  * {@code /phantasmon admin ...} (TODO-25, Adrien 2026-10-06), only offered to the players of the backend's admin file
@@ -30,7 +29,7 @@ import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
  * <ul>
  *   <li>{@code pc <player>} — that player's PC, handled as if it were one's own;</li>
  *   <li>{@code stopbattle <player>} — ends the battle (draw) or cancels the lobby that player is in;</li>
- *   <li>{@code reboot} — restarts the backend, after a click on [Confirm];</li>
+ *   <li>{@code reboot} — restarts the backend, after a click on the [Confirm] chat button;</li>
  *   <li>{@code battle solo} — a live Ghost battle against a mirror of one's own team, played by Cobblemon's AI
  *   (Adrien 2026-10-07): spectatable, never stored;</li>
  *   <li>{@code ping} and {@code debug fingerprint [value]} — moved here from the players' commands.</li>
@@ -42,15 +41,19 @@ public final class AdminCommands {
 	private AdminCommands() {
 	}
 
-	public static void register(AdminClient admin, AuthSession session, PokemonCommandHandler pokemonCommands, PingToggle pingToggle,
+	public static void register(AdminClient admin, AuthSession session, PcOpener pcOpener, PingToggle pingToggle,
 			com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle) {
+		// The reboot is confirmed by a chat button, not a command.
+		ChatActions.register("admin.reboot", () -> admin.reboot(session.accessToken())
+				.thenAccept(ignored -> chat(Component.translatable("phantasmon.admin.rebooting").withStyle(ChatFormatting.GOLD)))
+				.exceptionally(ex -> fail(ex)));
 		ClientCommandRegistrationCallback.EVENT.register((dispatcher, registryAccess) -> {
 			LiteralArgumentBuilder<FabricClientCommandSource> node = ClientCommandManager.literal("admin")
 					.requires(source -> AdminSession.isAdmin())
 					.then(ClientCommandManager.literal("pc").then(playerArgument().executes(context -> {
 						String name = StringArgumentType.getString(context, "player");
 						admin.player(session.accessToken(), name)
-								.thenAccept(player -> Minecraft.getInstance().execute(() -> pokemonCommands.openPcOf(player.uuid(), player.name())))
+								.thenAccept(player -> Minecraft.getInstance().execute(() -> pcOpener.openPcOf(player.uuid(), player.name())))
 								.exceptionally(ex -> fail(ex));
 						return Command.SINGLE_SUCCESS;
 					})))
@@ -63,22 +66,12 @@ public final class AdminCommands {
 								.exceptionally(ex -> fail(ex));
 						return Command.SINGLE_SUCCESS;
 					})))
-					.then(ClientCommandManager.literal("reboot")
-							.executes(context -> {
-								chat(Component.translatable("phantasmon.admin.reboot_confirm").withStyle(ChatFormatting.RED)
-										.append(" ")
-										.append(Component.translatable("phantasmon.admin.reboot_button").withStyle(ChatFormatting.RED, ChatFormatting.BOLD)
-												.withStyle(style -> style
-														.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/phantasmon admin reboot confirm"))
-														.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("/phantasmon admin reboot confirm"))))));
-								return Command.SINGLE_SUCCESS;
-							})
-							.then(ClientCommandManager.literal("confirm").executes(context -> {
-								admin.reboot(session.accessToken())
-										.thenAccept(ignored -> chat(Component.translatable("phantasmon.admin.rebooting").withStyle(ChatFormatting.GOLD)))
-										.exceptionally(ex -> fail(ex));
-								return Command.SINGLE_SUCCESS;
-							})))
+					.then(ClientCommandManager.literal("reboot").executes(context -> {
+						chat(Component.translatable("phantasmon.admin.reboot_confirm").withStyle(ChatFormatting.RED)
+								.append(" ")
+								.append(ChatActions.button("phantasmon.admin.reboot_button", "admin.reboot", ChatFormatting.RED)));
+						return Command.SINGLE_SUCCESS;
+					}))
 					.then(ClientCommandManager.literal("battle").then(ClientCommandManager.literal("solo").executes(context -> {
 						liveBattle.startSolo();
 						return Command.SINGLE_SUCCESS;

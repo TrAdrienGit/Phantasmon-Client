@@ -16,10 +16,8 @@ import com.mystaria.phantasmon.client.network.BackendHealthPinger;
 import com.mystaria.phantasmon.client.network.BackendJsonClient;
 import com.mystaria.phantasmon.client.network.PingToggle;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
-import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
+import com.mystaria.phantasmon.client.pokemon.PcOpener;
 import com.mystaria.phantasmon.client.trade.LiveTradeController;
-import com.mystaria.phantasmon.client.trade.TradeClient;
-import com.mystaria.phantasmon.client.trade.TradeCommandHandler;
 
 public class PhantasmonClient implements ClientModInitializer {
 
@@ -31,11 +29,10 @@ public class PhantasmonClient implements ClientModInitializer {
 	private final SessionRefreshScheduler refreshScheduler = new SessionRefreshScheduler(authService);
 	private final PokemonClient pokemonClient = new PokemonClient(httpClient);
 	private final com.mystaria.phantasmon.client.admin.AdminClient adminClient = new com.mystaria.phantasmon.client.admin.AdminClient(httpClient);
-	private final PokemonCommandHandler pokemonCommands = new PokemonCommandHandler(pokemonClient, authSession);
+	private final PcOpener pcOpener = new PcOpener(pokemonClient, authSession);
 	private final GhostSession ghostSession = new GhostSession(authSession);
 	private final com.mystaria.phantasmon.client.ghost.GhostPartyHud ghostPartyHud =
 			new com.mystaria.phantasmon.client.ghost.GhostPartyHud(pokemonClient, authSession, ghostSession);
-	private final TradeCommandHandler tradeCommands = new TradeCommandHandler(new TradeClient(httpClient), authSession);
 	private final LiveTradeController liveTrade = new LiveTradeController(ghostSession, authSession);
 	private final com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle =
 			new com.mystaria.phantasmon.client.battle.LiveBattleController(ghostSession, authSession);
@@ -49,7 +46,6 @@ public class PhantasmonClient implements ClientModInitializer {
 			// Admin (TODO-25): the backend says whether this player may use /phantasmon admin.
 			com.mystaria.phantasmon.client.admin.AdminSession.refresh(adminClient, authSession);
 		});
-		ghostSession.setTradeNotificationListener(tradeCommands);
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
 		ghostSession.setHubListener(hub);
@@ -78,14 +74,14 @@ public class PhantasmonClient implements ClientModInitializer {
 				com.mystaria.phantasmon.client.hub.HubBuilds.onChunkLoad(level, chunk.getPos()));
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			ghostSession.onClientTick();
-			pokemonCommands.tick();
+			pcOpener.tick();
 			liveTrade.tick();
 			liveBattle.tick();
 			hub.tick();
 			com.mystaria.phantasmon.client.voice.HubVoice.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
-			PhantasmonKeybinds.tick(pokemonCommands);
+			PhantasmonKeybinds.tick(pcOpener);
 		});
 
 		WorldRenderEvents.AFTER_ENTITIES.register(hub::renderWorld);
@@ -97,8 +93,8 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
-		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pokemonCommands, pingToggle, liveBattle);
+		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);
 		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
-		PhantasmonCommands.register(authService, pingToggle, pokemonCommands, ghostSession, tradeCommands, liveTrade, liveBattle);
+		PhantasmonCommands.register(authService, ghostSession, liveTrade, liveBattle);
 	}
 }

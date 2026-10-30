@@ -153,11 +153,11 @@ Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs diffé
       un second `create` répond « vous avez déjà un Anchor ».
 - [ ] Partage (D-30) : un second joueur **du même serveur** voit le carré et le nom (rechargement toutes les 30 s au
       plus) et peut entrer dans le Hub par cet Anchor ; un joueur d'un **autre** serveur (autre empreinte) ne le voit pas.
-- [ ] Entrer dans le carré : invitation [Oui] [Non] [Toujours ici] ; [Non] puis ressortir et revenir : nouvelle invitation.
-- [ ] [Oui] sur deux serveurs différents : chacun reçoit « … est arrivé dans le Hub » ; `/hc salut` arrive chez
+- [ ] Entrer dans le carré fait entrer dans le Hub sans invitation.
+- [ ] Deux serveurs différents : chacun reçoit « … est arrivé dans le Hub » ; `/hc salut` arrive chez
       l'autre ; deux messages en moins d'une seconde : le second est refusé.
 - [ ] Sortir du carré : « Vous avez quitté le Global Hub », l'autre voit le départ.
-- [ ] [Toujours ici] : sortir puis revenir fait rentrer sans invitation ; `/phantasmon hub autojoin off` l'annule.
+- [ ] `/phantasmon hub leave` dans le carré : sortie du Hub, pas de retour avant d'être sorti du carré puis revenu.
 - [ ] Rester près d'un Anchor avec le jeu en pause (Échap, monde solo) une minute puis reprendre : pas de rafale de
       particules ni de saccade.
 - [ ] `/phantasmon hub anchor delete` en étant dans le Hub : « l'Anchor … a été supprimé », sortie du Hub.

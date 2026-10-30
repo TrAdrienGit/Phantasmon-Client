@@ -15,7 +15,7 @@ Presse-papiers (texte Showdown, un ou plusieurs blocs séparés par une ligne vi
   → POST /pokemon           un appel par Pokémon, première case libre du PC
 ```
 
-Points d'entrée : bouton IMPORTER du PC, `/phantasmon pokemon import`, et bouton IMPORTER de l'éditeur (qui remplit
+Points d'entrée : bouton IMPORTER du PC et bouton IMPORTER de l'éditeur (qui remplit
 le formulaire sans rien enregistrer ni changer l'espèce). Le chat Minecraft ne gère pas le texte sur plusieurs
 lignes : le presse-papiers est lu directement (`KeyboardHandler.getClipboard()`).
 
@@ -82,8 +82,6 @@ Côté client uniquement, comme l'import (D-09) : le client a déjà les Pokémo
 |---|---|
 | Bouton EXPORTER du PC (à droite d'IMPORTER) | L'équipe active, dans l'ordre des emplacements |
 | Bouton EXPORTER de l'éditeur | Le Pokémon **tel qu'affiché**, modifications non enregistrées comprises |
-| `/phantasmon pokemon export` | L'équipe active |
-| `/phantasmon pokemon export <uuid>` | Un de ses Pokémon (PC ou équipe) |
 
 - `ShowdownExporter` écrit les lignes dans l'ordre de l'export de Showdown et omet ses valeurs implicites : `Level`
   à 100, `Happiness` à 255, EV à 0, IV à 31. Plusieurs Pokémon sont séparés par une ligne vide.

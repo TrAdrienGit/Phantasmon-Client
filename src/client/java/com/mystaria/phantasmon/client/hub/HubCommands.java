@@ -20,9 +20,7 @@ import com.mystaria.phantasmon.client.admin.AdminSession;
  *   anchor the player stands in (its creator or an admin). Anchors are shared within a server, never across (D-30);</li>
  *   <li>admins: {@code /phantasmon admin hub create <hub> <length> <width> <height>}, {@code delete <hub>},
  *   {@code reload <hub>};</li>
- *   <li>{@code /phantasmon hub join} / {@code decline} / {@code always} — the invitation's chat buttons;</li>
- *   <li>{@code /phantasmon hub autojoin on|off} — join without being asked through the anchor the player stands in;</li>
- *   <li>{@code /phantasmon hub leave};</li>
+ *   <li>{@code /phantasmon hub leave} — entering an anchor joins the hub by itself (no invitation any more);</li>
  *   <li>{@code /phantasmon hub chat <message>}, shortcut {@code /hc <message>} — never sent to the Minecraft server.</li>
  * </ul>
  */
@@ -98,27 +96,6 @@ public final class HubCommands {
 						hub.listHubs();
 						return Command.SINGLE_SUCCESS;
 					}))
-					.then(ClientCommandManager.literal("join").executes(context -> {
-						hub.acceptInvite();
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("decline").executes(context -> {
-						hub.declineInvite();
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("always").executes(context -> {
-						hub.acceptAlways();
-						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("autojoin")
-							.then(ClientCommandManager.literal("on").executes(context -> {
-								hub.setAutoJoinHere(true);
-								return Command.SINGLE_SUCCESS;
-							}))
-							.then(ClientCommandManager.literal("off").executes(context -> {
-								hub.setAutoJoinHere(false);
-								return Command.SINGLE_SUCCESS;
-							})))
 					.then(ClientCommandManager.literal("leave").executes(context -> {
 						hub.leave();
 						return Command.SINGLE_SUCCESS;

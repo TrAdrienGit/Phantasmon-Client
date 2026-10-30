@@ -22,12 +22,10 @@ import com.google.gson.GsonBuilder;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Player;
 
+import com.mystaria.phantasmon.client.command.ChatActions;
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.spectacle.battle.BattleCameraDirector;
@@ -51,7 +49,7 @@ import com.mystaria.phantasmon.client.pokemon.PokemonDto;
  * Cobblemon UI and sends its choices to the host. Both build the same world scene ({@link BattleVisuals}).
  *
  * <p><b>Turn timer</b> (Adrien's rule): off by default; either player turns it on for both with
- * {@code /phantasmon battle timer} (or the chat button), it can't be turned off again; after 90 s without a
+ * the chat button, it can't be turned off again; after 90 s without a
  * choice an automatic one is played. The host enforces it for both sides (with a short network grace for the
  * guest); each client shows its own countdown in the action bar.
  */
@@ -304,7 +302,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		return Math.max(0, (localDeadline - System.currentTimeMillis() + 999) / 1000);
 	}
 
-	/** {@code /phantasmon battle timer}: in the lobby, its timer; in battle, the 90 s turn timer for both players. */
+	/** The chat [Timer] button: in the lobby, its timer; in battle, the 90 s turn timer for both players. */
 	public void enableTimer() {
 		if (lobby != null) {
 			lobbyEnableTimer();
@@ -630,9 +628,9 @@ public final class LiveBattleController implements LiveBattleListener {
 		// The team is picked in the lobby: a plain accept / decline here.
 		chat(Component.translatable("phantasmon.battle.invite.received", pendingInviteFrom)
 				.append(" ")
-				.append(chatButton("phantasmon.trade.live.invite.accept_button", "/phantasmon battle join", ChatFormatting.GREEN))
+				.append(ChatActions.button("phantasmon.trade.live.invite.accept_button", "battle.join", ChatFormatting.GREEN))
 				.append(" ")
-				.append(chatButton("phantasmon.trade.live.invite.decline_button", "/phantasmon battle decline", ChatFormatting.RED)));
+				.append(ChatActions.button("phantasmon.trade.live.invite.decline_button", "battle.decline", ChatFormatting.RED)));
 	}
 
 	private void onLobbyUpdated(Map<String, Object> data) {
@@ -706,7 +704,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		chat(Component.translatable("phantasmon.battle.started_teams", opponentName,
 						teamLabel(data.get("own_team_source")), teamLabel(data.get("opponent_team_source")))
 				.append(" ")
-				.append(chatButton("phantasmon.battle.timer.button", "/phantasmon battle timer", ChatFormatting.AQUA)));
+				.append(ChatActions.button("phantasmon.battle.timer.button", "battle.timer", ChatFormatting.AQUA)));
 		List<PokemonDto> opponentTeam = host ? team(data.get("opponent_team")) : List.of();
 		// TODO-26: the backend draws the intro, the same for both players (an older backend sends none: X/Y).
 		// Spectacle plays the intro's music, then the battle music when the intro ends.
@@ -1099,12 +1097,6 @@ public final class LiveBattleController implements LiveBattleListener {
 		return Component.translatable("COBBLEMON".equals(source) ? "phantasmon.battle.team.cobblemon" : "phantasmon.battle.team.ghost");
 	}
 
-	private static MutableComponent chatButton(String labelKey, String command, ChatFormatting color) {
-		return Component.translatable(labelKey).withStyle(color, ChatFormatting.BOLD)
-				.withStyle(style -> style
-						.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
-						.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(command))));
-	}
 
 	private static void chat(Component message) {
 		Minecraft.getInstance().execute(() -> {

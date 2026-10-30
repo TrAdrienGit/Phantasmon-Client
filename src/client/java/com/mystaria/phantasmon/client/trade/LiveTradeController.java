@@ -5,12 +5,11 @@ import java.util.UUID;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.entity.player.Player;
 
+import com.mystaria.phantasmon.client.command.ChatActions;
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.gui.PhantasmonTradeScreen;
@@ -26,8 +25,7 @@ import com.mystaria.phantasmon.client.pokemon.PokemonDto;
  * shown once the server echoes it back in a {@code TradeSessionUpdate}.
  *
  * <p>Rides the presence WebSocket owned by {@link GhostSession} (no second
- * connection), same as the older {@code TradeNotificationListener} for the
- * asynchronous {@code /phantasmon trade propose} flow, which stays available.
+ * connection).
  */
 public final class LiveTradeController implements LiveTradeListener {
 
@@ -62,12 +60,12 @@ public final class LiveTradeController implements LiveTradeListener {
 		send("TradeInvite", Map.of("target_uuid", targetUuid));
 	}
 
-	/** {@code /phantasmon trade join} — also what the chat [Accept] button runs. */
+	/** The chat [Accept] button. */
 	public void acceptInvite() {
 		respondToInvite(true);
 	}
 
-	/** {@code /phantasmon trade decline} — also what the chat [Decline] button runs. */
+	/** The chat [Decline] button. */
 	public void declineInvite() {
 		respondToInvite(false);
 	}
@@ -144,7 +142,7 @@ public final class LiveTradeController implements LiveTradeListener {
 		return name == null ? "?" : name;
 	}
 
-	/** Called every client tick — opens the screen outside of any command dispatch (see {@code PokemonCommandHandler.openPc}'s chat-close race). */
+	/** Called every client tick — opens the screen outside of any command dispatch (see {@code PcOpener}'s chat-close race). */
 	public void tick() {
 		if (screenRequested) {
 			screenRequested = false;
@@ -197,9 +195,9 @@ public final class LiveTradeController implements LiveTradeListener {
 		pendingInviteFrom = string(data.get("from_name"));
 		MutableComponent message = Component.translatable("phantasmon.trade.live.invite.received", pendingInviteFrom)
 				.append(" ")
-				.append(chatButton("phantasmon.trade.live.invite.accept_button", "/phantasmon trade join", ChatFormatting.GREEN))
+				.append(ChatActions.button("phantasmon.trade.live.invite.accept_button", "trade.join", ChatFormatting.GREEN))
 				.append(" ")
-				.append(chatButton("phantasmon.trade.live.invite.decline_button", "/phantasmon trade decline", ChatFormatting.RED));
+				.append(ChatActions.button("phantasmon.trade.live.invite.decline_button", "trade.decline", ChatFormatting.RED));
 		chat(message);
 	}
 
@@ -288,12 +286,6 @@ public final class LiveTradeController implements LiveTradeListener {
 		}
 	}
 
-	private static MutableComponent chatButton(String labelKey, String command, ChatFormatting color) {
-		return Component.translatable(labelKey).withStyle(color, ChatFormatting.BOLD)
-				.withStyle(style -> style
-						.withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, command))
-						.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(command))));
-	}
 
 	private static void chat(Component message) {
 		var player = Minecraft.getInstance().player;

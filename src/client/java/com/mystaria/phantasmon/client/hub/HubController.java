@@ -1,14 +1,9 @@
 package com.mystaria.phantasmon.client.hub;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Pattern;
@@ -21,7 +16,6 @@ import org.slf4j.LoggerFactory;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -53,8 +47,8 @@ import com.mystaria.phantasmon.client.network.BackendErrorMessages;
  * <li>Knows the Hub Anchors of the current server and dimension ({@code GET /hub/anchors}, refreshed every 30 s) —
  * shared by the players of that server, never seen from another one (D-30) — and draws their ground square in
  * particles and their name above the centre.</li>
- * <li>Entering any of them <b>invites</b> the player into the Hub (D-29), unless they chose "always here" for that
- * anchor; leaving the cube leaves the Hub.</li>
+ * <li>Entering any of them joins the Hub (Adrien 2026-10-29, replaces D-29's invitation); leaving the cube leaves
+ * the Hub.</li>
  * <li>While in the Hub, sends {@code HubMove} (anchor-relative coordinates, height above the local ground) up to
  * 10 times a second, only when something changed.</li>
  * <li>Shows the Hub chat, arrivals and departures in the local chat, and the remote players' avatars
@@ -78,7 +72,6 @@ public final class HubController implements HubListener {
 	/** The hubs list is asked again when suggestions are older than this. */
 	private static final long HUBS_STALE_MILLIS = 10_000;
 	private static final Pattern ANCHOR_NAME = Pattern.compile("[\\p{L}\\p{N}_-][\\p{L}\\p{N} _-]{1,30}[\\p{L}\\p{N}_-]");
-	private static final Path AUTO_JOIN_FILE = FabricLoader.getInstance().getConfigDir().resolve("phantasmon-hub-autojoin.txt");
 
 	/** A remote player in the Hub as last reported; {@code state} is null until they move (no avatar until then). */
 	public record Member(UUID playerUuid, String username, Map<String, Object> state) {
@@ -87,7 +80,6 @@ public final class HubController implements HubListener {
 	private final HubClient hubClient;
 	private final AuthSession session;
 	private final GhostSession ghostSession;
-	private final Set<UUID> autoJoin = new LinkedHashSet<>();
 	private final Map<UUID, Member> members = new LinkedHashMap<>();
 	private final HubAvatars avatars = new HubAvatars();
 	/** The Global Hub's build around each anchor (D-34). */
@@ -103,8 +95,6 @@ public final class HubController implements HubListener {
 	private int tickCount;
 	/** The anchor whose cube the player stands in, or null. */
 	private HubAnchorDto currentAnchor;
-	/** The anchor the player was invited through and has not answered yet. */
-	private HubAnchorDto pendingInvite;
 	/** {@code HubJoin} sent through this anchor, waiting for {@code HubJoined}. */
 	private HubAnchorDto joining;
 	private int joiningSinceTick;
@@ -119,7 +109,6 @@ public final class HubController implements HubListener {
 		this.session = session;
 		this.ghostSession = ghostSession;
 		this.builds = new HubBuilds(hubClient, session);
-		loadAutoJoin();
 	}
 
 	// ---------------------------------------------------------------- tick
@@ -141,7 +130,6 @@ public final class HubController implements HubListener {
 			anchors = List.of();
 			builds.setAnchors(anchors);
 			currentAnchor = null;
-			pendingInvite = null;
 			refreshAnchors();
 		} else if (++ticksSinceRefresh >= ANCHOR_REFRESH_TICKS) {
 			refreshAnchors();
@@ -192,7 +180,6 @@ public final class HubController implements HubListener {
 	}
 
 	private void onExitAnchor(HubAnchorDto anchor) {
-		pendingInvite = null;
 		leftByHand = false;
 		if (sameAnchor(anchor, joinedAnchor) || sameAnchor(anchor, joining)) {
 			joining = null;
@@ -201,7 +188,6 @@ public final class HubController implements HubListener {
 	}
 
 	private void join(HubAnchorDto anchor) {
-		pendingInvite = null;
 		if (ghostSession.send("HubJoin", Map.of("anchor_uuid", anchor.uuid()))) {
 			status(Component.translatable("phantasmon.hub.joining", anchor.hub()).withStyle(ChatFormatting.GRAY));
 			joining = anchor;
@@ -385,7 +371,6 @@ public final class HubController implements HubListener {
 		}
 		joinedAnchor = null;
 		joining = null;
-		pendingInvite = null;
 		currentAnchor = null;
 		members.clear();
 		avatars.clear();
@@ -440,51 +425,7 @@ public final class HubController implements HubListener {
 
 	// ---------------------------------------------------------------- commands
 
-	/** {@code /phantasmon hub join} — the chat [Yes] button. */
-	public void acceptInvite() {
-		if (pendingInvite == null || !sameAnchor(pendingInvite, currentAnchor)) {
-			chat(Component.translatable("phantasmon.hub.no_invite"));
-			return;
-		}
-		join(pendingInvite);
-	}
-
-	/** {@code /phantasmon hub decline} — the chat [No] button. */
-	public void declineInvite() {
-		if (pendingInvite == null) {
-			chat(Component.translatable("phantasmon.hub.no_invite"));
-			return;
-		}
-		pendingInvite = null;
-		chat(Component.translatable("phantasmon.hub.declined").withStyle(ChatFormatting.GRAY));
-	}
-
-	/** {@code /phantasmon hub always} — the chat [Always here] button: join now, and from now on without asking. */
-	public void acceptAlways() {
-		HubAnchorDto anchor = pendingInvite != null ? pendingInvite : currentAnchor;
-		if (anchor == null || !sameAnchor(anchor, currentAnchor)) {
-			chat(Component.translatable("phantasmon.hub.not_in_anchor"));
-			return;
-		}
-		setAutoJoin(anchor, true);
-		if (joinedAnchor == null && joining == null) {
-			join(anchor);
-		}
-	}
-
-	/** {@code /phantasmon hub autojoin on|off} for the anchor the player stands in. */
-	public void setAutoJoinHere(boolean enabled) {
-		if (currentAnchor == null) {
-			chat(Component.translatable("phantasmon.hub.not_in_anchor"));
-			return;
-		}
-		setAutoJoin(currentAnchor, enabled);
-		if (enabled && joinedAnchor == null && joining == null) {
-			join(currentAnchor);
-		}
-	}
-
-	/** {@code /phantasmon hub leave}: out of the Hub; stepping out of the cube and back in invites again. */
+	/** {@code /phantasmon hub leave}: out of the Hub; stepping out of the cube and back in joins again. */
 	public void leave() {
 		if (joinedAnchor == null && joining == null) {
 			chat(Component.translatable("phantasmon.hub.not_in_hub"));
@@ -606,7 +547,6 @@ public final class HubController implements HubListener {
 						chat(Component.translatable("phantasmon.hub.anchor.none_in_hub", hubName).withStyle(ChatFormatting.RED));
 						return;
 					}
-					setAutoJoin(anchor, false);
 					chat(Component.translatable("phantasmon.hub.anchor.deleted", anchor.name()).withStyle(ChatFormatting.LIGHT_PURPLE));
 					refreshAnchors();
 				}))
@@ -872,38 +812,6 @@ public final class HubController implements HubListener {
 	}
 
 	// ---------------------------------------------------------------- helpers
-
-	private void setAutoJoin(HubAnchorDto anchor, boolean enabled) {
-		boolean changed = enabled ? autoJoin.add(anchor.uuid()) : autoJoin.remove(anchor.uuid());
-		if (changed) {
-			saveAutoJoin();
-		}
-		chat(Component.translatable(enabled ? "phantasmon.hub.autojoin.on" : "phantasmon.hub.autojoin.off", anchor.name())
-				.withStyle(ChatFormatting.GRAY));
-	}
-
-	private void loadAutoJoin() {
-		try {
-			if (Files.exists(AUTO_JOIN_FILE)) {
-				for (String line : Files.readAllLines(AUTO_JOIN_FILE)) {
-					UUID anchorUuid = uuid(line.strip());
-					if (anchorUuid != null) {
-						autoJoin.add(anchorUuid);
-					}
-				}
-			}
-		} catch (IOException ex) {
-			LOG.warn("Could not read {}", AUTO_JOIN_FILE, ex);
-		}
-	}
-
-	private void saveAutoJoin() {
-		try {
-			Files.write(AUTO_JOIN_FILE, autoJoin.stream().map(UUID::toString).toList());
-		} catch (IOException ex) {
-			LOG.warn("Could not write {}", AUTO_JOIN_FILE, ex);
-		}
-	}
 
 	private boolean requireAuthenticated() {
 		if (!session.isAuthenticated()) {

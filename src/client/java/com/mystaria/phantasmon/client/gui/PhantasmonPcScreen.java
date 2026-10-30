@@ -17,7 +17,6 @@ import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
-import com.mystaria.phantasmon.client.pokemon.PokemonCommandHandler;
 import com.mystaria.phantasmon.client.pokemon.PokemonCreateRequestDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonUpdateRequestDto;
@@ -308,8 +307,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	/**
 	 * Reads a Showdown export (one or more Pokémon, blank-line separated) from
-	 * the clipboard and creates each via the backend, exactly mirroring
-	 * {@code /phantasmon pokemon import}'s logic — just triggered from the HUD.
+	 * the clipboard and creates each via the backend.
 	 */
 	/** Copies the active team (slot order) as Showdown text (CAD Partie 1 §11, TODO-11). */
 	private void exportTeamToClipboard() {

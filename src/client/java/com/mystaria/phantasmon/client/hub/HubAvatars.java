@@ -71,7 +71,7 @@ public final class HubAvatars {
 	private static final long SKIN_RETRY_MILLIS = 15_000;
 
 	/** How far R reaches an avatar, like Cobblemon's own reach on a player. */
-	private static final double AIM_REACH = 10.0;
+	private static final double AIM_REACH = 20.0;
 
 	/** The client's one instance (owned by {@code HubController}), for the static lookups below. */
 	private static HubAvatars instance;

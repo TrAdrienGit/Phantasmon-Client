@@ -12,8 +12,7 @@
 |---|---|
 | Roue Cobblemon (**R** sur un joueur) | Entrée « Échange Ghost » (Est, cyan) |
 
-L'invité reçoit un message avec **[Accepter]** / **[Refuser]** cliquables (`/phantasmon trade join` /
-`/phantasmon trade decline`). L'invitation expire après 60 s. L'écran s'ouvre chez les deux joueurs à
+L'invité reçoit un message avec **[Accepter]** / **[Refuser]** cliquables (actions de chat, D-39, pas de commande). L'invitation expire après 60 s. L'écran s'ouvre chez les deux joueurs à
 l'acceptation, au tick suivant (piège de fermeture du chat). Le premier Pokémon de l'équipe est proposé par défaut.
 
 ### Dans l'écran

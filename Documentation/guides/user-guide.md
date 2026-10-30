@@ -86,7 +86,7 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
    commence quand les deux joueurs sont prêts. **Timer** (en bas) : 150 s, ensuite le premier Pokémon est choisi
    pour qui n'est pas prêt, et le chrono de combat s'active.
 3. Le combat utilise l'interface de Cobblemon, avec ses animations. Vos Pokémon apparaissent devant vous.
-4. Facultatif : **[Activer le chrono]** dans le chat (ou `/phantasmon battle timer`) impose 90 s par choix aux deux
+4. Facultatif : **[Activer le chrono]** dans le chat impose 90 s par choix aux deux
    joueurs, jusqu'à la fin du combat. Passé ce délai, une action est jouée automatiquement.
 
 Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur les attaques). Les boutons à
