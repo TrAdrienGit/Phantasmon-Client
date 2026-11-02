@@ -32,6 +32,14 @@ public abstract class PartySendBindingMixin {
 		Minecraft mc = Minecraft.getInstance();
 		if (mc.player != null && mc.screen == null && !mc.player.isSpectator() && mc.player.getVehicle() == null
 				&& CobblemonClient.INSTANCE.getBattle() == null) {
+			if (com.mystaria.phantasmon.client.api.PhantasmonApi.openAimedWheel(mc.player)) {
+				// Another mod's entity (an event's trainer NPC) opened its own wheel.
+				PartySendBinding binding = (PartySendBinding) (Object) this;
+				binding.setWasDown(false);
+				binding.setHeldDownSeconds(0f);
+				ci.cancel();
+				return;
+			}
 			HubAvatarEntity avatar = HubAvatars.aimedAvatar(mc.player);
 			if (avatar != null) {
 				PartySendBinding binding = (PartySendBinding) (Object) this;

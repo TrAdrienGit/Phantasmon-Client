@@ -102,6 +102,8 @@ public final class LiveBattleController implements LiveBattleListener {
 
 	/** Admin solo battle: the opponent is a mirror of our own team, played by Cobblemon's AI on this client. */
 	private boolean solo;
+	/** Its AI level ({@code random} for the mirror; an event NPC's own, Phantasmon Events). */
+	private String soloAi;
 	/** Host: players watching our battle; their catch-up waits here until the engine's battle exists. */
 	private final java.util.Set<UUID> spectators = java.util.concurrent.ConcurrentHashMap.newKeySet();
 	private final java.util.Set<UUID> pendingCatchUps = java.util.concurrent.ConcurrentHashMap.newKeySet();
@@ -111,6 +113,8 @@ public final class LiveBattleController implements LiveBattleListener {
 	/** Spectator: the battle we watch (backend uuid), its two players, and whether its catch-up has arrived. */
 	private UUID spectatingUuid;
 	private UUID spectatingHost;
+	/** The watched battle's ambiance, from BattleSpectateStarted (Spectacle A3). */
+	private String spectatingAmbiance;
 	private String spectatingHostName;
 	private String spectatingGuestName;
 	private UUID spectatingCobblemonId;
@@ -175,6 +179,29 @@ public final class LiveBattleController implements LiveBattleListener {
 			return;
 		}
 		send("BattleSoloStart", Map.of());
+	}
+
+	/**
+	 * Phantasmon Events: a battle against an event's trainer NPC, with the Ghost team ({@code cobblemonParty} null) or
+	 * that Cobblemon party ({@code team: COBBLEMON}, {@code party}). The backend answers with the session, played
+	 * here against the NPC's AI.
+	 */
+	public void startNpc(UUID npcUuid, Map<String, Object> cobblemonParty) {
+		if (!requireReady()) {
+			return;
+		}
+		if (battleUuid != null || lobby != null || spectatingUuid != null) {
+			chat(Component.translatable("phantasmon.battle.error.already_battling").withStyle(ChatFormatting.RED));
+			return;
+		}
+		Map<String, Object> message = new java.util.HashMap<>();
+		if (cobblemonParty != null) {
+			message.putAll(cobblemonParty);
+		} else {
+			message.put("team", "GHOST");
+		}
+		message.put("npc_uuid", npcUuid.toString());
+		send("BattleNpcStart", message);
 	}
 
 	public void acceptInvite(TeamChoice team) {
@@ -274,9 +301,10 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
-	/** The ambiance imposed on the Ghost battle being played (from the lobby), or null: each player's own. */
+	/** The ambiance imposed on the Ghost battle being played or watched (from the lobby), or null: each player's own. */
 	public String battleAmbiance() {
-		return battleUuid == null || battleAmbiance == null || battleAmbiance.isEmpty() ? null : battleAmbiance;
+		String ambiance = battleUuid != null ? battleAmbiance : spectatingUuid != null ? spectatingAmbiance : null;
+		return ambiance == null || ambiance.isEmpty() ? null : ambiance;
 	}
 
 	public void lobbyEnableTimer() {
@@ -552,6 +580,7 @@ public final class LiveBattleController implements LiveBattleListener {
 	private void onSpectateStarted(Map<String, Object> data) {
 		spectatingUuid = uuid(data.get("battle_uuid"));
 		spectatingHost = uuid(data.get("host_uuid"));
+		spectatingAmbiance = string(data.get("ambiance"));
 		spectatingHostName = string(data.get("host_name"));
 		spectatingGuestName = string(data.get("guest_name"));
 		spectateInitialized = false;
@@ -703,6 +732,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		battleAmbiance = data.get("ambiance") == null ? null : data.get("ambiance").toString();
 		host = "HOST".equals(data.get("role"));
 		solo = Boolean.TRUE.equals(data.get("solo"));
+		soloAi = data.get("ai") == null ? "random" : data.get("ai").toString();
 		spectators.clear();
 		pendingCatchUps.clear();
 		fieldViewers.clear();
@@ -741,7 +771,7 @@ public final class LiveBattleController implements LiveBattleListener {
 		java.util.function.Consumer<NetworkPacket<?>> guestSink = solo ? packet -> { } : this::relayToGuest;
 		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
 				battleRules(data.get("format")), adjustLevel(data.get("format")),
-				this::deliverToHostUi, guestSink, solo, new GhostBattles.HostCallbacks() {
+				this::deliverToHostUi, guestSink, solo ? soloAi : null, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
 						Minecraft.getInstance().execute(() -> {

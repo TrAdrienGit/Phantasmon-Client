@@ -5,15 +5,16 @@ package com.mystaria.phantasmon.client.hub;
  * {@code HubBox} computes the same boxes (overlap check).
  *
  * <p>The build is block-aligned: its centre column is the block the anchor was posed from ({@code floor} of the
- * origin's {@code x} / {@code z}), its bottom layer the block the player's feet were in (the origin's {@code y},
- * rounded up so a player on a slab starts on the next block). The schematic's bottom-layer centre (block
+ * origin's {@code x} / {@code z}), its bottom layer one block below the player's feet (the origin's {@code y},
+ * rounded up so a player on a slab starts on the next block, minus one): the schematic's floor layer takes the place
+ * of the real ground under the anchor (TODO-33, Adrien 2026-11-01), its client-only blocks hiding the real ones. The schematic's bottom-layer centre (block
  * {@code sizeX / 2}, {@code sizeZ / 2}) is that point, and the schematic turns with the anchor by quarter-turns,
  * clockwise like Minecraft's yaw (the schematic's +Z is the direction the anchor faces, as in {@link HubCoordinates}).
  */
 public record HubBuildLayout(int centerX, int baseY, int centerZ, int yaw, int sizeX, int sizeY, int sizeZ) {
 
 	public static HubBuildLayout of(double originX, double originY, double originZ, int yaw, int sizeX, int sizeY, int sizeZ) {
-		return new HubBuildLayout((int) Math.floor(originX), (int) Math.ceil(originY - 1.0E-4), (int) Math.floor(originZ),
+		return new HubBuildLayout((int) Math.floor(originX), (int) Math.ceil(originY - 1.0E-4) - 1, (int) Math.floor(originZ),
 				Math.floorMod(yaw, 360), sizeX, sizeY, sizeZ);
 	}
 
@@ -34,7 +35,7 @@ public record HubBuildLayout(int centerX, int baseY, int centerZ, int yaw, int s
 		};
 	}
 
-	/** The box's lowest corner, inclusive — with {@link #max()}, what must be air when the anchor is posed. */
+	/** The box's lowest corner, inclusive — with {@link #max()}, the box (above its floor layer, what must be air when the anchor is posed). */
 	public int[] min() {
 		int[] a = toWorld(0, 0, 0);
 		int[] b = toWorld(sizeX - 1, sizeY - 1, sizeZ - 1);

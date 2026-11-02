@@ -23,6 +23,7 @@ public final class PhantasmonApi {
 	private static GhostSession ghostSession;
 	private static BackendJsonClient httpClient;
 	private static AuthSession authSession;
+	private static com.mystaria.phantasmon.client.battle.LiveBattleController liveBattle;
 	private static final List<BiConsumer<String, Map<String, Object>>> EVENTS_LISTENERS = new CopyOnWriteArrayList<>();
 
 	private PhantasmonApi() {
@@ -106,6 +107,57 @@ public final class PhantasmonApi {
 		ghostSession = session;
 		httpClient = client;
 		authSession = auth;
+	}
+
+	private static final List<java.util.function.Predicate<net.minecraft.world.entity.Entity>> WHEEL_TARGETS = new CopyOnWriteArrayList<>();
+
+	/**
+	 * Cobblemon's send key (R) on an entity of another mod (Phantasmon Events' trainer NPCs): aimed at an entity
+	 * {@code accepts} takes, {@code open} opens its own wheel for it (see
+	 * {@link com.mystaria.phantasmon.client.wheel.GhostWheelOptions#openCustom}), and Cobblemon then does nothing.
+	 */
+	public static void registerWheelTarget(java.util.function.Predicate<net.minecraft.world.entity.Entity> accepts,
+			java.util.function.Consumer<net.minecraft.world.entity.Entity> open) {
+		WHEEL_TARGETS.add(accepts);
+		WHEEL_OPENERS.add(open);
+	}
+
+	private static final List<java.util.function.Consumer<net.minecraft.world.entity.Entity>> WHEEL_OPENERS = new CopyOnWriteArrayList<>();
+
+	/**
+	 * The player aims at an entity a registered mod accepts, within the wheel's reach (the hub avatars' 20 blocks):
+	 * that mod opens its wheel; true if one did.
+	 */
+	public static boolean openAimedWheel(net.minecraft.client.player.LocalPlayer player) {
+		for (int i = 0; i < WHEEL_TARGETS.size(); i++) {
+			java.util.function.Predicate<net.minecraft.world.entity.Entity> accepts = WHEEL_TARGETS.get(i);
+			net.minecraft.world.entity.Entity aimed = com.mystaria.phantasmon.client.hub.HubAvatars.aimed(player, accepts);
+			if (aimed != null) {
+				WHEEL_OPENERS.get(i).accept(aimed);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	public static void bindLiveBattle(com.mystaria.phantasmon.client.battle.LiveBattleController controller) {
+		liveBattle = controller;
+	}
+
+	/**
+	 * A battle against an event's trainer NPC ({@code npcUuid}), with the Ghost team or the Cobblemon party; the
+	 * NPC's AI plays it on this client. False if there is no party when asked for one.
+	 */
+	public static boolean startNpcBattle(java.util.UUID npcUuid, boolean cobblemonTeam) {
+		if (liveBattle == null) {
+			return false;
+		}
+		Map<String, Object> party = cobblemonTeam ? cobblemonParty() : null;
+		if (cobblemonTeam && party == null) {
+			return false;
+		}
+		liveBattle.startNpc(npcUuid, party);
+		return true;
 	}
 
 	/** Phantasmon's WebSocket received an {@code Events*} message (client thread). */

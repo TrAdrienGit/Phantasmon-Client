@@ -40,6 +40,28 @@ public final class AdminClient {
 		return http.post(BackendConfig.BASE_URL.resolve("/admin/battles/stop"), Map.of("player", playerName), token, Stopped.class);
 	}
 
+	public record Muted(String player, String until) {
+	}
+
+	public record Unmuted(String player, boolean was_muted) {
+	}
+
+	public record Locked(boolean locked) {
+	}
+
+	/** Hub chat moderation (TODO-31). */
+	public CompletableFuture<Muted> hubMute(String token, String playerName, long minutes) {
+		return http.post(BackendConfig.BASE_URL.resolve("/admin/hub/mute"), Map.of("player", playerName, "minutes", minutes), token, Muted.class);
+	}
+
+	public CompletableFuture<Unmuted> hubUnmute(String token, String playerName) {
+		return http.post(BackendConfig.BASE_URL.resolve("/admin/hub/unmute"), Map.of("player", playerName), token, Unmuted.class);
+	}
+
+	public CompletableFuture<Locked> hubLock(String token) {
+		return http.post(BackendConfig.BASE_URL.resolve("/admin/hub/lock"), Map.of(), token, Locked.class);
+	}
+
 	public CompletableFuture<Map> reboot(String token) {
 		return http.postNoBody(BackendConfig.BASE_URL.resolve("/admin/reboot"), token, Map.class);
 	}

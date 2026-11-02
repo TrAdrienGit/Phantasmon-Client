@@ -354,9 +354,21 @@ public final class HubController implements HubListener {
 				refreshHubs();
 				refreshAnchors();
 			}
-			case "HubChatMessage" -> chat(Component.translatable("phantasmon.hub.chat.prefix").withStyle(ChatFormatting.LIGHT_PURPLE)
-					.append(Component.literal(" <" + data.get("username") + "> ").withStyle(ChatFormatting.WHITE))
-					.append(Component.literal(String.valueOf(data.get("message"))).withStyle(ChatFormatting.WHITE)));
+			case "HubChatMessage" -> {
+				if (Boolean.TRUE.equals(data.get("announcement"))) {
+					announce(String.valueOf(data.get("username")), String.valueOf(data.get("message")));
+				} else {
+					chat(Component.translatable("phantasmon.hub.chat.prefix").withStyle(ChatFormatting.LIGHT_PURPLE)
+							.append(Component.literal(" <" + data.get("username") + "> ").withStyle(ChatFormatting.WHITE))
+							.append(Component.literal(String.valueOf(data.get("message"))).withStyle(ChatFormatting.WHITE)));
+				}
+			}
+			// Hub chat moderation (TODO-31).
+			case "HubChatMuted" -> chat(Component.translatable("phantasmon.hub.chat.muted",
+					com.mystaria.phantasmon.client.admin.AdminCommands.localTime(String.valueOf(data.get("until")))).withStyle(ChatFormatting.RED));
+			case "HubChatUnmuted" -> chat(Component.translatable("phantasmon.hub.chat.unmuted").withStyle(ChatFormatting.GREEN));
+			case "HubChatLock" -> chat(Component.translatable(Boolean.TRUE.equals(data.get("locked"))
+					? "phantasmon.hub.chat.locked" : "phantasmon.hub.chat.unlocked").withStyle(ChatFormatting.GOLD));
 			default -> {
 				// Messages of later steps are ignored by this version.
 			}
@@ -878,6 +890,24 @@ public final class HubController implements HubListener {
 	 * Entering and leaving hubs, players coming and going: above the hotbar, not in the chat (Adrien 2026-10-29: a
 	 * player walking in and out filled the chat).
 	 */
+	/**
+	 * An admin's announcement (TODO-31, message starting with {@code !!}): a highlighted chat block, and the message
+	 * in big letters on screen (title) with a bell, so nobody misses it.
+	 */
+	private static void announce(String admin, String message) {
+		Minecraft mc = Minecraft.getInstance();
+		Component bar = Component.literal("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━").withStyle(ChatFormatting.GOLD);
+		chat(bar);
+		chat(Component.translatable("phantasmon.hub.announcement", admin).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+		chat(Component.literal(message).withStyle(ChatFormatting.YELLOW, ChatFormatting.BOLD));
+		chat(bar);
+		mc.gui.setTimes(10, 100, 20);
+		mc.gui.setTitle(Component.translatable("phantasmon.hub.announcement.title").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+		mc.gui.setSubtitle(Component.literal(message).withStyle(ChatFormatting.YELLOW));
+		mc.getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(
+				net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BELL.value(), 1f, 1f));
+	}
+
 	private static void status(Component message) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player != null) {

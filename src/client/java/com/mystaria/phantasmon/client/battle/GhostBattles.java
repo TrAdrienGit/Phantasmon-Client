@@ -261,15 +261,25 @@ public final class GhostBattles {
 				guestSink, false, callbacks);
 	}
 
-	/**
-	 * {@code guestIsAi}: the admin solo battle (Adrien 2026-10-07) — the guest side is a mirror of the host's team that
-	 * Cobblemon's random AI plays on this client, every time the engine asks it to choose; {@code guestSink} then only
-	 * sees its packets.
-	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
 			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, boolean guestIsAi, HostCallbacks callbacks) {
+		startHostedBattle(hostUuid, hostName, hostTeam, guestUuid, guestName, guestTeam, battleRules, adjustLevel, hostSink,
+				guestSink, guestIsAi ? "random" : null, callbacks);
+	}
+
+	/**
+	 * {@code guestAi} non-null: the guest side is played by an AI on this client, every time the engine asks it to
+	 * choose — the admin solo battle (Adrien 2026-10-07, a mirror of the host's team, {@code random}) or an event's
+	 * trainer NPC (Phantasmon Events, its AI level: see {@link #ai}); {@code guestSink} then only sees its packets.
+	 */
+	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
+			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
+			java.util.function.Consumer<NetworkPacket<?>> hostSink,
+			java.util.function.Consumer<NetworkPacket<?>> guestSink, String guestAi, HostCallbacks callbacks) {
+		boolean guestIsAi = guestAi != null;
+		com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai = guestIsAi ? ai(guestAi) : null;
 		BattleThread.get().submit(() -> {
 			try {
 				BattleThread.get().ensureShowdown();
@@ -288,7 +298,7 @@ public final class GhostBattles {
 						BattleThread.get().submit(() -> {
 							GhostBattleActor actor = guestRef[0];
 							if (actor != null && actor.getBattle() != null && !actor.getBattle().getEnded()) {
-								autoChoose(actor.getBattle(), actor);
+								autoChoose(actor.getBattle(), actor, ai);
 							}
 						});
 					}
@@ -365,15 +375,113 @@ public final class GhostBattles {
 		});
 	}
 
-	/** Cobblemon's random AI picks for {@code actor}, if the engine is waiting on it. Battle thread. */
+	/**
+	 * An AI level (Phantasmon Events' NPCs): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal},
+	 * {@code hard}, {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out,
+	 * statuses and boosts by skill). Unknown: {@code normal}.
+	 */
+	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
+		return switch (level == null ? "normal" : level) {
+			case "random" -> new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
+			case "easy" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(1);
+			case "hard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(4);
+			case "veryhard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(5);
+			default -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(3);
+		};
+	}
+
+	/** Cobblemon's random AI picks for {@code actor} (the turn timer ran out). Battle thread. */
 	private static boolean autoChoose(PokemonBattle battle, BattleActor actor) {
+		return autoChoose(battle, actor, new com.cobblemon.mod.common.battles.ai.RandomBattleAI());
+	}
+
+	/** {@code ai} picks for {@code actor}, if the engine is waiting on it. Battle thread. */
+	private static boolean autoChoose(PokemonBattle battle, BattleActor actor, com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai) {
 		if (!actor.getMustChoose() || actor.getRequest() == null) {
 			return false;
 		}
-		var ai = new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
+		java.util.Set<UUID> switchedIn = new java.util.HashSet<>();
 		actor.setActionResponses(actor.getRequest().iterate(actor.getActivePokemon(),
-				(active, moveset, forceSwitch) -> ai.choose(active, battle, actor.getSide(), moveset, forceSwitch)));
+				(active, moveset, forceSwitch) -> safeChoice(ai, battle, actor, active, moveset, forceSwitch, switchedIn)));
 		return true;
+	}
+
+	/**
+	 * {@code ai}'s choice, made safe (Adrien's tests 2026-11-02: after a K.O., Cobblemon's strong AI kept sending
+	 * "pass" where a replacement was required — "Can't pass: You need to switch in a Pokémon" — and the battle stuck,
+	 * its last Pokémon, a damaged Zamazenta, never sent). A <b>forced switch</b> is never left to the AI: the healthiest
+	 * Pokémon of the actor's own list, not on the field, goes in. Any other switch the AI proposes must name one of
+	 * them; a failure or anything else invalid falls back to the random AI.
+	 */
+	private static com.cobblemon.mod.common.battles.ShowdownActionResponse safeChoice(
+			com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai, PokemonBattle battle, BattleActor actor,
+			com.cobblemon.mod.common.battles.ActiveBattlePokemon active, com.cobblemon.mod.common.battles.ShowdownMoveset moveset,
+			boolean forceSwitch, java.util.Set<UUID> switchedIn) {
+		if (forceSwitch) {
+			BattlePokemon replacement = bestReplacement(actor, switchedIn);
+			if (replacement != null) {
+				switchedIn.add(replacement.getUuid());
+				return new com.cobblemon.mod.common.battles.SwitchActionResponse(replacement.getUuid());
+			}
+			LOG.warn("Forced switch with no Pokémon left to send: passing");
+			return com.cobblemon.mod.common.battles.PassActionResponse.INSTANCE;
+		}
+		com.cobblemon.mod.common.battles.ShowdownActionResponse response = null;
+		try {
+			response = ai.choose(active, battle, actor.getSide(), moveset, false);
+		} catch (RuntimeException ex) {
+			LOG.warn("Battle AI failed to choose, falling back", ex);
+		}
+		if (response instanceof com.cobblemon.mod.common.battles.SwitchActionResponse change) {
+			BattlePokemon target = switchable(actor, change.getNewPokemonId(), switchedIn);
+			if (target != null) {
+				switchedIn.add(target.getUuid());
+				return response;
+			}
+			LOG.info("Battle AI switch to {} refused (not a Pokémon able to come in): falling back", change.getNewPokemonId());
+			response = null;
+		}
+		if (response != null && !(response instanceof com.cobblemon.mod.common.battles.PassActionResponse)
+				&& response.isValid(active, moveset, false)) {
+			return response;
+		}
+		return new com.cobblemon.mod.common.battles.ai.RandomBattleAI().choose(active, battle, actor.getSide(), moveset, false);
+	}
+
+	/** The actor's Pokémon with {@code uuid} if it can come in: healthy, not on the field, not already chosen. */
+	private static BattlePokemon switchable(BattleActor actor, UUID uuid, java.util.Set<UUID> switchedIn) {
+		if (uuid == null || switchedIn.contains(uuid)) {
+			return null;
+		}
+		java.util.Set<UUID> onField = new java.util.HashSet<>();
+		for (com.cobblemon.mod.common.battles.ActiveBattlePokemon slot : actor.getActivePokemon()) {
+			if (slot.getBattlePokemon() != null) {
+				onField.add(slot.getBattlePokemon().getUuid());
+			}
+		}
+		for (BattlePokemon pokemon : actor.getPokemonList()) {
+			if (pokemon.getUuid().equals(uuid)) {
+				return pokemon.getHealth() > 0 && !onField.contains(uuid) ? pokemon : null;
+			}
+		}
+		return null;
+	}
+
+	/** The healthiest Pokémon (by share of HP left) able to come in, or null. */
+	private static BattlePokemon bestReplacement(BattleActor actor, java.util.Set<UUID> switchedIn) {
+		BattlePokemon best = null;
+		double bestShare = -1;
+		for (BattlePokemon pokemon : actor.getPokemonList()) {
+			if (switchable(actor, pokemon.getUuid(), switchedIn) == null) {
+				continue;
+			}
+			double share = pokemon.getHealth() / (double) Math.max(1, pokemon.getMaxHealth());
+			if (share > bestShare) {
+				bestShare = share;
+				best = pokemon;
+			}
+		}
+		return best;
 	}
 
 	/** Whether {@code playerUuid} currently has to choose in this hosted battle (timer bookkeeping). */

@@ -116,6 +116,10 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 | `/phantasmon admin stopbattle <joueur>` | Arrête le combat de ce joueur (match nul, aucun vainqueur) ou annule son lobby |
 | `/phantasmon admin battle solo` | Combat Ghost contre un miroir de votre équipe Ghost, joué par l'IA de Cobblemon (format Libre, sans lobby) ; regardable par les autres, non enregistré (D-32) |
 | `/phantasmon admin reboot` | Redémarre le backend, après un clic sur [Confirmer] (combats en cours : match nul ; les clients se reconnectent seuls) |
+| `/phantasmon admin hub mute <joueur> <durée>` | Rend ce joueur muet dans le chat des hubs pour la durée donnée (`30m`, `2h`, `7d` ; un nombre seul = minutes ; 365 jours au plus). Gardé au redémarrage du backend (TODO-31) |
+| `/phantasmon admin hub unmute <joueur>` | Lève ce silence |
+| `/phantasmon admin hub lock` | Verrouille ou déverrouille le chat des hubs : seuls les admins y écrivent |
+| `/hc !!<message>` | **Admin** : annonce, en surbrillance dans le chat et en grand à l'écran de chaque membre, avec un son |
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
 | `/phantasmon admin debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` ; **à retirer** avant publication (TODO-2) |
 | `/phantasmon admin debug fingerprint` | Supprime la surcharge |

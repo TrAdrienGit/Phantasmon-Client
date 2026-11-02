@@ -378,5 +378,21 @@
   "phantasmon.battle.error.tournament_paired": "[Phantasmon] Vous êtes appairé dans un tournoi : vous ne pouvez combattre que votre adversaire de la ronde.",
   "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] Ce joueur est appairé dans un tournoi : il ne peut combattre que son adversaire de la ronde.",
   "phantasmon.battle.lobby.ambiance": "Ambiance : %s",
-  "phantasmon.battle.lobby.ambiance.each": "chacun la sienne"
+  "phantasmon.battle.lobby.ambiance.each": "chacun la sienne",
+  "phantasmon.admin.hub.muted": "%s est muet dans le chat des hubs jusqu'au %s.",
+  "phantasmon.admin.hub.unmuted": "%s peut de nouveau écrire dans le chat des hubs.",
+  "phantasmon.admin.hub.not_muted": "%s n'était pas muet.",
+  "phantasmon.admin.hub.locked": "Chat des hubs verrouillé : seuls les administrateurs peuvent écrire.",
+  "phantasmon.admin.hub.unlocked": "Chat des hubs déverrouillé.",
+  "phantasmon.admin.hub.bad_duration": "Durée invalide : 30m, 2h, 7d (365 jours au plus).",
+  "phantasmon.hub.chat.muted": "Un administrateur t'a rendu muet dans le chat des hubs jusqu'au %s.",
+  "phantasmon.hub.chat.unmuted": "Tu peux de nouveau écrire dans le chat des hubs.",
+  "phantasmon.hub.chat.locked": "Le chat des hubs est verrouillé par un administrateur.",
+  "phantasmon.hub.chat.unlocked": "Le chat des hubs est de nouveau ouvert.",
+  "phantasmon.hub.error.chat_muted": "Tu es muet dans le chat des hubs.",
+  "phantasmon.hub.error.chat_locked": "Le chat des hubs est verrouillé : seuls les administrateurs peuvent écrire.",
+  "phantasmon.hub.announcement": "📢 Annonce de %s",
+  "phantasmon.hub.announcement.title": "Annonce",
+  "phantasmon.battle.error.npc_not_found": "Ce dresseur n'est pas disponible (son événement est fermé).",
+  "phantasmon.battle.error.npc_empty_team": "Ce dresseur n'a pas encore d'équipe."
 }

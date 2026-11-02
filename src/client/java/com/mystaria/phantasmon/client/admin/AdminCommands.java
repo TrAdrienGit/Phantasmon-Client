@@ -32,7 +32,10 @@ import com.mystaria.phantasmon.client.pokemon.PcOpener;
  *   <li>{@code reboot} — restarts the backend, after a click on the [Confirm] chat button;</li>
  *   <li>{@code battle solo} — a live Ghost battle against a mirror of one's own team, played by Cobblemon's AI
  *   (Adrien 2026-10-07): spectatable, never stored;</li>
- *   <li>{@code ping} and {@code debug fingerprint [value]} — moved here from the players' commands.</li>
+ *   <li>{@code ping} and {@code debug fingerprint [value]} — moved here from the players' commands;</li>
+ *   <li>{@code hub mute <player> <duration>}, {@code hub unmute <player>}, {@code hub lock} — hub chat moderation
+ *   (TODO-31): a timed mute ({@code 30m}, {@code 2h}, {@code 7d}; a bare number is minutes), the global chat lock
+ *   (toggled; admins still write). An admin's hub message starting with {@code !!} is an announcement.</li>
  * </ul>
  * The intro and set piece previews are Cobblemon Spectacle's ({@code /spectacle preview}, D-37).
  */
@@ -76,6 +79,37 @@ public final class AdminCommands {
 						liveBattle.startSolo();
 						return Command.SINGLE_SUCCESS;
 					})))
+					.then(ClientCommandManager.literal("hub")
+							.then(ClientCommandManager.literal("mute").then(playerArgument()
+									.then(ClientCommandManager.argument("duration", StringArgumentType.word()).executes(context -> {
+										String name = StringArgumentType.getString(context, "player");
+										long minutes = minutes(StringArgumentType.getString(context, "duration"));
+										if (minutes <= 0) {
+											chat(Component.translatable("phantasmon.admin.hub.bad_duration").withStyle(ChatFormatting.RED));
+											return Command.SINGLE_SUCCESS;
+										}
+										admin.hubMute(session.accessToken(), name, minutes)
+												.thenAccept(muted -> chat(Component.translatable("phantasmon.admin.hub.muted", muted.player(),
+														localTime(muted.until())).withStyle(ChatFormatting.GOLD)))
+												.exceptionally(ex -> fail(ex));
+										return Command.SINGLE_SUCCESS;
+									}))))
+							.then(ClientCommandManager.literal("unmute").then(playerArgument().executes(context -> {
+								String name = StringArgumentType.getString(context, "player");
+								admin.hubUnmute(session.accessToken(), name)
+										.thenAccept(unmuted -> chat(Component.translatable(unmuted.was_muted()
+												? "phantasmon.admin.hub.unmuted" : "phantasmon.admin.hub.not_muted", unmuted.player())
+												.withStyle(ChatFormatting.GOLD)))
+										.exceptionally(ex -> fail(ex));
+								return Command.SINGLE_SUCCESS;
+							})))
+							.then(ClientCommandManager.literal("lock").executes(context -> {
+								admin.hubLock(session.accessToken())
+										.thenAccept(lock -> chat(Component.translatable(lock.locked()
+												? "phantasmon.admin.hub.locked" : "phantasmon.admin.hub.unlocked").withStyle(ChatFormatting.GOLD)))
+										.exceptionally(ex -> fail(ex));
+								return Command.SINGLE_SUCCESS;
+							})))
 					.then(ClientCommandManager.literal("ping").executes(context -> {
 						boolean enabled = pingToggle.toggle();
 						context.getSource().sendFeedback(Component.translatable(enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));
@@ -103,6 +137,37 @@ public final class AdminCommands {
 	private static com.mojang.brigadier.builder.RequiredArgumentBuilder<FabricClientCommandSource, String> playerArgument() {
 		return ClientCommandManager.argument("player", StringArgumentType.word())
 				.suggests((context, builder) -> SharedSuggestionProvider.suggest(onlinePlayerNames(), builder));
+	}
+
+	/** {@code 30m}, {@code 2h}, {@code 7d}, or a bare number of minutes; 0 if unreadable. */
+	static long minutes(String duration) {
+		String text = duration.strip().toLowerCase(java.util.Locale.ROOT);
+		long unit = 1;
+		if (text.endsWith("m")) {
+			text = text.substring(0, text.length() - 1);
+		} else if (text.endsWith("h")) {
+			unit = 60;
+			text = text.substring(0, text.length() - 1);
+		} else if (text.endsWith("d") || text.endsWith("j")) {
+			unit = 60 * 24;
+			text = text.substring(0, text.length() - 1);
+		}
+		try {
+			long value = Long.parseLong(text);
+			return value > 0 ? value * unit : 0;
+		} catch (NumberFormatException ex) {
+			return 0;
+		}
+	}
+
+	/** An ISO instant from the backend, in local time (DD-MM-YYYY HH:mm, like the tournaments' dates). */
+	public static String localTime(String instant) {
+		try {
+			return java.time.format.DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")
+					.format(java.time.Instant.parse(instant).atZone(java.time.ZoneId.systemDefault()));
+		} catch (RuntimeException ex) {
+			return instant;
+		}
 	}
 
 	private static List<String> onlinePlayerNames() {

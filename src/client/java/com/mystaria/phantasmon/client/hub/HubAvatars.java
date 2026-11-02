@@ -71,7 +71,8 @@ public final class HubAvatars {
 	private static final long SKIN_RETRY_MILLIS = 15_000;
 
 	/** How far R reaches an avatar, like Cobblemon's own reach on a player. */
-	private static final double AIM_REACH = 20.0;
+	/** How far the interaction wheel reaches (R held): the same for avatars and other mods' entities (event NPCs). */
+	public static final double AIM_REACH = 20.0;
 
 	/** The client's one instance (owned by {@code HubController}), for the static lookups below. */
 	private static HubAvatars instance;
@@ -119,12 +120,17 @@ public final class HubAvatars {
 		if (instance == null || instance.avatars.isEmpty()) {
 			return null;
 		}
+		return (HubAvatarEntity) aimed(player, entity -> entity instanceof HubAvatarEntity);
+	}
+
+	/** The entity {@code accepted} the player aims at within {@link #AIM_REACH} blocks, unless a block is in the way. */
+	public static net.minecraft.world.entity.Entity aimed(LocalPlayer player, java.util.function.Predicate<net.minecraft.world.entity.Entity> accepted) {
 		Vec3 eye = player.getEyePosition();
 		Vec3 view = player.getViewVector(1f);
 		Vec3 reach = eye.add(view.scale(AIM_REACH));
 		EntityHitResult hit = ProjectileUtil.getEntityHitResult(player, eye, reach,
 				player.getBoundingBox().expandTowards(view.scale(AIM_REACH)).inflate(1.0),
-				entity -> entity instanceof HubAvatarEntity && !entity.isRemoved(), AIM_REACH * AIM_REACH);
+				entity -> accepted.test(entity) && !entity.isRemoved(), AIM_REACH * AIM_REACH);
 		if (hit == null) {
 			return null;
 		}
@@ -132,7 +138,7 @@ public final class HubAvatars {
 		if (block.getType() == HitResult.Type.BLOCK && block.getLocation().distanceToSqr(eye) < hit.getLocation().distanceToSqr(eye)) {
 			return null;
 		}
-		return (HubAvatarEntity) hit.getEntity();
+		return hit.getEntity();
 	}
 
 	/** Creates or moves {@code playerUuid}'s avatar to its Hub {@code state}, seen from {@code anchor}. */

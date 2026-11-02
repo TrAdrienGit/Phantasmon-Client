@@ -480,14 +480,14 @@ public final class HubBuilds {
 
 	// ---------------------------------------------------------------- the check before posing an anchor
 
-	/** Number of non-air blocks in the cube an anchor posed here would build in (0: it may be posed). */
+	/** Number of non-air blocks in the cube an anchor posed here would build in, floor layer aside (it replaces the ground; 0: it may be posed). */
 	public static int blocksInTheWay(ClientLevel atLevel, HubBuildLayout layout) {
 		int[] min = layout.min();
 		int[] max = layout.max();
 		int count = 0;
 		BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 		for (int x = min[0]; x <= max[0]; x++) {
-			for (int y = min[1]; y <= max[1]; y++) {
+			for (int y = min[1] + 1; y <= max[1]; y++) {
 				for (int z = min[2]; z <= max[2]; z++) {
 					if (!atLevel.getBlockState(pos.set(x, y, z)).isAir()) {
 						count++;

@@ -1,16 +1,15 @@
 # Déployer pour les tests
 
-> Le mod n'est pas encore publié (Phase 10). Ce guide décrit l'environnement de test actuel (2026-10-03).
+> Le mod n'est pas encore publié (Phase 10). Ce guide décrit l'environnement de test actuel (2026-11-01).
 
 ## 1. Script de déploiement
 
 `scripts/deploy-to-prod-server.sh` (Bash, Git Bash sous Windows) :
 
-1. compile une fois (`./gradlew build -q`) ;
-2. copie le jar dans l'instance locale CurseForge « Cobblemon Academy 2.0 » (en supprimant l'ancien
-   `phantasmon-client-*.jar`, et rien d'autre) ;
-3. si la machine serveur répond en SSH (alias `production-server`, délai de 8 s), copie le jar dans son instance
-   « Cobblemon Academy 2.0 - Copie » ; **sinon**, le copie dans l'instance locale de secours « Cobblemon 2 ».
+1. compile Spectacle, Phantasmon et Events ;
+2. copie leurs jars dans chaque instance CurseForge locale dont le dossier `mods/` contient déjà Phantasmon ou
+   Spectacle (aujourd'hui « Cobblemon Academy 2.0 - MystAria_ » et « Cobblemon Academy 2.0 - TheMashen »), en
+   supprimant seulement leurs anciens jars.
 
 ```bash
 ./scripts/deploy-to-prod-server.sh
@@ -23,12 +22,12 @@ contient des chemins propres aux machines d'Adrien) : il n'existe que sur la mac
 
 | Machine | Compte | Instance | Rôle |
 |---|---|---|---|
-| Développement (`100.116.43.32` sur Tailscale) | `MystAria_` | Cobblemon Academy 2.0 | Backend + PostgreSQL + client |
-| « production-server » (`100.106.248.73`) | `TheMashen` | Cobblemon Academy 2.0 - Copie | Second client |
-| Développement (secours) | — | Cobblemon 2 | Reçoit le jar si la machine serveur est injoignable |
+| Développement (`100.116.43.32` sur Tailscale) | `MystAria_` | Cobblemon Academy 2.0 - MystAria_ | Premier client |
+| Développement | `TheMashen` | Cobblemon Academy 2.0 - TheMashen | Second client |
+| Serveur Ubuntu (`100.101.1.79`) | — | — | Backend + PostgreSQL (`guides/deploying-ubuntu.md` du dépôt Backend) |
 
-Les deux clients doivent viser **le même backend** (celui de la machine de dev) : `backend_url` de
-`config/phantasmon.json` dans chaque instance (valeur par défaut = machine de dev, rien à faire).
+Les deux clients doivent viser **le même backend** (celui du serveur Ubuntu) : `backend_url` de
+`config/phantasmon.json` dans chaque instance.
 
 ### Rejoindre la même partie
 

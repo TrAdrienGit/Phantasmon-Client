@@ -84,6 +84,24 @@ public final class GhostWheelOptions {
 		Minecraft.getInstance().setScreen(new InteractWheelGUI(options, Component.literal(playerName)));
 	}
 
+	/** One entry of a wheel opened by another mod ({@link #openCustom}): Cobblemon's icon name, tint as {@code 0xRRGGBB}. */
+	public record Entry(String orientation, String icon, String tooltipKey, int rgb, Runnable action) {
+	}
+
+	/**
+	 * Cobblemon's interaction wheel opened locally with these entries (Phantasmon Events' trainer NPCs, Adrien
+	 * 2026-11-02): {@code orientation} one of Cobblemon's ({@code NORTH}, {@code NORTHEAST}…).
+	 */
+	public static void openCustom(Component title, java.util.List<Entry> entries) {
+		Multimap<Orientation, InteractWheelOption> options = ArrayListMultimap.create();
+		for (Entry entry : entries) {
+			options.put(Orientation.valueOf(entry.orientation()), option(entry.icon(), entry.tooltipKey(),
+					new Vector3f(((entry.rgb() >> 16) & 255) / 255f, ((entry.rgb() >> 8) & 255) / 255f, (entry.rgb() & 255) / 255f),
+					entry.action()));
+		}
+		Minecraft.getInstance().setScreen(new InteractWheelGUI(options, title));
+	}
+
 	private static InteractWheelOption option(String icon, String tooltipKey, Vector3f tint, Runnable action) {
 		ResourceLocation iconResource = ResourceLocation.fromNamespaceAndPath("cobblemon",
 				"textures/gui/interact/interact_wheel_icon_" + icon + ".png");

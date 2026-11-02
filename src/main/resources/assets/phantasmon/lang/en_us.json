@@ -378,5 +378,21 @@
   "phantasmon.battle.error.tournament_paired": "[Phantasmon] You are paired in a tournament: you can only battle your round's opponent.",
   "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] This player is paired in a tournament: they can only battle their round's opponent.",
   "phantasmon.battle.lobby.ambiance": "Ambiance: %s",
-  "phantasmon.battle.lobby.ambiance.each": "each their own"
+  "phantasmon.battle.lobby.ambiance.each": "each their own",
+  "phantasmon.admin.hub.muted": "%s is muted in the hubs' chat until %s.",
+  "phantasmon.admin.hub.unmuted": "%s can write in the hubs' chat again.",
+  "phantasmon.admin.hub.not_muted": "%s wasn't muted.",
+  "phantasmon.admin.hub.locked": "Hubs' chat locked: only admins can write.",
+  "phantasmon.admin.hub.unlocked": "Hubs' chat unlocked.",
+  "phantasmon.admin.hub.bad_duration": "Invalid duration: 30m, 2h, 7d (365 days at most).",
+  "phantasmon.hub.chat.muted": "An admin muted you in the hubs' chat until %s.",
+  "phantasmon.hub.chat.unmuted": "You can write in the hubs' chat again.",
+  "phantasmon.hub.chat.locked": "The hubs' chat was locked by an admin.",
+  "phantasmon.hub.chat.unlocked": "The hubs' chat is open again.",
+  "phantasmon.hub.error.chat_muted": "You are muted in the hubs' chat.",
+  "phantasmon.hub.error.chat_locked": "The hubs' chat is locked: only admins can write.",
+  "phantasmon.hub.announcement": "📢 Announcement from %s",
+  "phantasmon.hub.announcement.title": "Announcement",
+  "phantasmon.battle.error.npc_not_found": "This trainer isn't available (its event is closed).",
+  "phantasmon.battle.error.npc_empty_team": "This trainer has no team yet."
 }
