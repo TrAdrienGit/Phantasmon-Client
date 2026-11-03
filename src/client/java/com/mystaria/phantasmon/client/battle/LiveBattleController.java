@@ -733,7 +733,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		battleAmbiance = data.get("ambiance") == null ? null : data.get("ambiance").toString();
 		host = "HOST".equals(data.get("role"));
 		solo = Boolean.TRUE.equals(data.get("solo"));
-		soloAi = data.get("ai") == null ? "random" : data.get("ai").toString();
+		soloAi = (data.get("ai") == null ? "random" : data.get("ai").toString())
+				+ (Boolean.TRUE.equals(data.get("ai_debug")) ? ":debug" : "");
 		spectators.clear();
 		pendingCatchUps.clear();
 		fieldViewers.clear();

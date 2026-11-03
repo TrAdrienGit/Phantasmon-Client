@@ -385,6 +385,14 @@ public final class GhostBattles {
 	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}). Unknown: {@code normal}.
 	 */
 	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
+		// "<level>:debug": the NPC's AI debug, its reasoning in the chat (the Expert AI only, Adrien 2026-11-03).
+		boolean debug = level != null && level.endsWith(":debug");
+		if (debug) {
+			level = level.substring(0, level.length() - ":debug".length());
+		}
+		if ("expert".equals(level)) {
+			return new ExpertBattleAI(debug);
+		}
 		return switch (level == null ? "normal" : level) {
 			case "random" -> new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
 			case "easy" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(1);

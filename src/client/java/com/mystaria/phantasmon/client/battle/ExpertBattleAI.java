@@ -87,6 +87,27 @@ public final class ExpertBattleAI implements BattleAI {
 	private static Map<String, JsonObject> sets;
 
 	private final Set<UUID> seenFoes = new HashSet<>();
+	/** Revealed by the battle (Showdown's log): Pokémon uuid → item ("" once lost), ability, Tera type. */
+	private static final class Revealed {
+		String item;
+		String ability;
+		String tera;
+	}
+
+	private final Map<UUID, Revealed> revealed = new HashMap<>();
+	/** The NPC's AI debug (Adrien 2026-11-03): each decision explained in the chat of the player battling it. */
+	private final boolean debug;
+
+	public ExpertBattleAI() {
+		this(false);
+	}
+
+	public ExpertBattleAI(boolean debug) {
+		this.debug = debug;
+	}
+	private int logRead;
+	/** Switches in a row: each makes the next one dearer (no panic switching when every option looks bad). */
+	private int switchesInARow;
 	private final Map<UUID, String> terastallized = new HashMap<>();
 	private boolean zUsed;
 
@@ -103,7 +124,69 @@ public final class ExpertBattleAI implements BattleAI {
 		}
 	}
 
+	/**
+	 * Reads what Showdown revealed since last time: an item shown or lost ({@code -item}, {@code -enditem}), an ability
+	 * ({@code -ability}), a Tera ({@code -terastallize}). Pokémon are named by their uuid in Cobblemon's Showdown.
+	 */
+	private void readLog(com.cobblemon.mod.common.api.battles.model.PokemonBattle battle) {
+		List<String> log = battle.getShowdownMessages();
+		for (int i = Math.min(logRead, log.size()); i < log.size(); i++) {
+			for (String line : log.get(i).split("\n")) {
+				String[] parts = line.split("\\|");
+				if (parts.length < 4) {
+					continue;
+				}
+				String kind = parts[1];
+				if (!kind.equals("-item") && !kind.equals("-enditem") && !kind.equals("-ability") && !kind.equals("-terastallize")) {
+					continue;
+				}
+				UUID uuid = uuidOf(parts[2]);
+				if (uuid == null) {
+					continue;
+				}
+				Revealed known = revealed.computeIfAbsent(uuid, key -> new Revealed());
+				String value = id(parts[3].replaceFirst("^(item|ability): ", ""));
+				switch (kind) {
+					case "-item" -> known.item = value;
+					case "-enditem" -> known.item = "";
+					case "-ability" -> known.ability = value;
+					default -> known.tera = value;
+				}
+			}
+		}
+		logRead = log.size();
+	}
+
+	private static UUID uuidOf(String ident) {
+		int colon = ident.indexOf(": ");
+		String name = colon < 0 ? ident : ident.substring(colon + 2);
+		try {
+			return UUID.fromString(name.strip());
+		} catch (IllegalArgumentException ex) {
+			return null;
+		}
+	}
+
+	/** The believed set corrected by what the battle revealed. */
+	private Mon belief(BattlePokemon battler, boolean opponent) {
+		Mon mon = opponent ? belief(battler) : own(battler);
+		Revealed known = revealed.get(battler.getUuid());
+		if (opponent && known != null) {
+			if (known.item != null) {
+				mon.item = known.item;
+			}
+			if (known.ability != null) {
+				mon.ability = known.ability;
+			}
+			if (known.tera != null) {
+				mon.teraType = known.tera;
+			}
+		}
+		return mon;
+	}
+
 	private ShowdownActionResponse decide(ActiveBattlePokemon active, BattleSide side, ShowdownMoveset moveset, boolean forceSwitch) {
+		readLog(active.getBattle());
 		ActiveBattlePokemon foeSlot = side.getOppositeSide().getActivePokemon().get(0);
 		BattlePokemon foeActive = foeSlot.getBattlePokemon();
 		if (foeActive != null) {
@@ -135,13 +218,18 @@ public final class ExpertBattleAI implements BattleAI {
 				return null;
 			}
 			LOG.debug("Expert AI sends in {} ({})", board.mine.get(best).name, String.format(Locale.ROOT, "%.2f", bestValue));
+			if (debug) {
+				say("§6[IA] §fRemplaçant après KO : §a" + board.mine.get(best).name + " §7(" + signed(bestValue) + ")");
+			}
 			return new SwitchActionResponse(board.mine.get(best).battler.getUuid());
 		}
+		board.switchesInARow = switchesInARow;
 		List<Action> mine = board.rootOptions(moveset, zUsed);
 		List<Action> theirs = board.foeOptions(root);
 		double[] p = board.foePolicy(root, theirs);
 		Action best = null;
 		double bestValue = Double.NEGATIVE_INFINITY;
+		Map<Action, Double> values = new LinkedHashMap<>();
 		for (Action a : mine) {
 			double value = -a.cost;
 			for (int k = 0; k < theirs.size(); k++) {
@@ -151,6 +239,7 @@ public final class ExpertBattleAI implements BattleAI {
 				State next = board.turn(root, a, theirs.get(k));
 				value += p[k] * board.value(next, 1);
 			}
+			values.put(a, value);
 			if (value > bestValue) {
 				bestValue = value;
 				best = a;
@@ -160,9 +249,14 @@ public final class ExpertBattleAI implements BattleAI {
 			return null;
 		}
 		LOG.debug("Expert AI: {} ({})", board.label(best), String.format(Locale.ROOT, "%.2f", bestValue));
+		if (debug) {
+			report(board, root, theirs, p, values, best, bestValue);
+		}
 		if (best.switchTo >= 0) {
+			switchesInARow++;
 			return new SwitchActionResponse(board.mine.get(best.switchTo).battler.getUuid());
 		}
+		switchesInARow = 0;
 		String gimmick = best.gimmick;
 		if (gimmick == null && moveset.getCanMegaEvo()) {
 			gimmick = ShowdownMoveset.Gimmick.MEGA_EVOLUTION.getId(); // no reason to wait
@@ -176,6 +270,82 @@ public final class ExpertBattleAI implements BattleAI {
 		// No target in a single battle: a spread move (Earthquake, Surf…) refuses one and the battle would wait forever
 		// (Adrien's test 2026-11-03: "You can't choose a target for Earthquake").
 		return new MoveActionResponse(best.moveId, null, gimmick);
+	}
+
+	/**
+	 * The AI debug, in the chat: the field and the board's score, what it believes of the opponent's Pokémon, the
+	 * opponent's likely answers, its options with their values, threats and win conditions, its choice.
+	 */
+	private void report(Board board, State root, List<Action> theirs, double[] p, Map<Action, Double> values, Action best,
+			double bestValue) {
+		Mon me = board.mine.get(root.myActive);
+		Mon foe = board.theirs.get(root.foeActive);
+		say("§6[IA] §f" + me.name + " §7" + percent(root.myHp[root.myActive], me.maxHp) + " §fcontre " + foe.name + " §7"
+				+ percent(root.foeHp[root.foeActive], foe.maxHp) + " · plateau " + signed(board.evaluate(root)));
+		StringBuilder belief = new StringBuilder("§7Croit : ");
+		for (int m = 0; m < foe.moveList.size(); m++) {
+			belief.append(m > 0 ? ", " : "").append(moveName(foe.moveList.get(m)));
+			if (foe.movePrior.get(m) < 1) {
+				belief.append(" ").append(Math.round(foe.movePrior.get(m) * 100)).append("%");
+			}
+		}
+		belief.append(" · objet ").append(foe.item.isEmpty() ? "?" : foe.item).append(" · talent ").append(foe.ability.isEmpty() ? "?" : foe.ability);
+		if (foe.teraType != null) {
+			belief.append(" · Téra ").append(foe.teraType);
+		}
+		say(belief.toString());
+		List<Integer> order = new ArrayList<>();
+		for (int k = 0; k < theirs.size(); k++) {
+			order.add(k);
+		}
+		order.sort((x, y) -> Double.compare(p[y], p[x]));
+		StringBuilder expects = new StringBuilder("§7Prévoit : ");
+		for (int n = 0; n < Math.min(4, order.size()); n++) {
+			Action b = theirs.get(order.get(n));
+			String label = b.switchTo >= 0 ? "→ " + board.theirs.get(b.switchTo).name : moveName(foe.moveList.get(b.move));
+			expects.append(n > 0 ? " · " : "").append(label).append(" ").append(Math.round(p[order.get(n)] * 100)).append("%");
+		}
+		say(expects.toString());
+		List<Map.Entry<Action, Double>> ranked = new ArrayList<>(values.entrySet());
+		ranked.sort((x, y) -> Double.compare(y.getValue(), x.getValue()));
+		StringBuilder options = new StringBuilder("§7Options : ");
+		for (int n = 0; n < Math.min(5, ranked.size()); n++) {
+			options.append(n > 0 ? " · " : "").append(optionName(board, ranked.get(n).getKey())).append(" ").append(signed(ranked.get(n).getValue()));
+		}
+		say(options.toString());
+		say("§7" + board.describe(root));
+		say("§6[IA] §fChoisit : §a" + optionName(board, best) + " §7(" + signed(bestValue) + ")");
+	}
+
+	private static String optionName(Board board, Action a) {
+		if (a.switchTo >= 0) {
+			return "→ " + board.mine.get(a.switchTo).name;
+		}
+		Mon me = board.mine.get(board.myActive);
+		String name = a.move >= 0 && a.move < me.moveList.size() ? moveName(me.moveList.get(a.move)) : a.moveId;
+		return name + (a.tera ? " + Téra " + board.teraType : "") + (a.z ? " (Z)" : "");
+	}
+
+	private static String moveName(MoveTemplate move) {
+		return move.getDisplayName().getString();
+	}
+
+	private static String percent(double hp, double max) {
+		return Math.max(0, Math.round(hp * 100 / Math.max(1, max))) + "%";
+	}
+
+	private static String signed(double value) {
+		return String.format(Locale.ROOT, "%+.2f", value);
+	}
+
+	/** A line in the chat of this client (the player battling the NPC hosts the battle). */
+	private static void say(String line) {
+		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
+		mc.execute(() -> {
+			if (mc.player != null) {
+				mc.player.displayClientMessage(net.minecraft.network.chat.Component.literal(line), false);
+			}
+		});
 	}
 
 	private static BattlePokemon healthiest(ActiveBattlePokemon active) {
@@ -253,7 +423,7 @@ public final class ExpertBattleAI implements BattleAI {
 				foeIndex = theirs.size();
 			}
 			if (pokemon == foeActive || seenFoes.contains(pokemon.getUuid())) {
-				Mon mon = belief(pokemon);
+				Mon mon = belief(pokemon, true);
 				if (pokemon != foeActive) {
 					mon.stages = Map.of();
 				}
@@ -341,6 +511,7 @@ public final class ExpertBattleAI implements BattleAI {
 		final int foeActive;
 		final int unknownFoes;
 		String teraType;
+		int switchesInARow;
 		/** [my i][move m][foe j]: expected damage; the same with Tera (my active only) and as a Z-move. */
 		double[][][] myDamage;
 		double[][] myTeraDamage;
@@ -469,6 +640,7 @@ public final class ExpertBattleAI implements BattleAI {
 					if (i != myActive && mine.get(i).hp > 0 && canComeIn(mine.get(i).battler, mine.get(myActive).battler)) {
 						Action change = new Action();
 						change.switchTo = i;
+						change.cost = 0.08 + 0.35 * switchesInARow;
 						options.add(change);
 					}
 				}
@@ -604,8 +776,8 @@ public final class ExpertBattleAI implements BattleAI {
 			if (a.tera) {
 				s.myTera = true;
 			}
-			boolean myMove = a.move >= 0 && s.myHp[s.myActive] > 0;
-			boolean foeMove = b.move >= 0 && s.foeHp[s.foeActive] > 0;
+			boolean myMove = a.move >= 0 && s.myHp[s.myActive] > 0 && !failsAgainst(true, s, a, b);
+			boolean foeMove = b.move >= 0 && s.foeHp[s.foeActive] > 0 && !failsAgainst(false, s, b, a);
 			if (myMove && foeMove) {
 				MoveTemplate mine = this.mine.get(s.myActive).moveList.get(a.move);
 				MoveTemplate theirs = this.theirs.get(s.foeActive).moveList.get(b.move);
@@ -640,7 +812,21 @@ public final class ExpertBattleAI implements BattleAI {
 			return s;
 		}
 
-		/** A Pokémon comes in: the field boosts go, hazards hit it. */
+		/** Sucker Punch and Thunderclap fail when the target switches or uses a status move (Adrien 2026-11-03). */
+		private boolean failsAgainst(boolean ours, State s, Action action, Action other) {
+			Mon user = ours ? mine.get(s.myActive) : theirs.get(s.foeActive);
+			String name = user.moveList.get(action.move).getName();
+			if (!name.equals("suckerpunch") && !name.equals("thunderclap")) {
+				return false;
+			}
+			if (other.switchTo >= 0 || other.move < 0) {
+				return true;
+			}
+			Mon target = ours ? theirs.get(s.foeActive) : mine.get(s.myActive);
+			return isStatus(target.moveList.get(other.move));
+		}
+
+		/** A Pokémon comes in: the field boosts go, hazards hit it, Intimidate lowers the other side's Attack. */
 		void enter(State s, boolean ours, int index) {
 			Mon mon = ours ? mine.get(index) : theirs.get(index);
 			if (ours) {
@@ -654,6 +840,16 @@ public final class ExpertBattleAI implements BattleAI {
 				s.foeAttack = 1;
 				s.foeSpeed = 1;
 				s.foeDefence = 1;
+			}
+			if (mon.ability.equals("intimidate")) {
+				Mon other = ours ? theirs.get(s.foeActive) : mine.get(s.myActive);
+				if (other.stat(Stats.ATTACK) >= other.stat(Stats.SPECIAL_ATTACK)) {
+					if (ours) {
+						s.foeAttack *= 2.0 / 3;
+					} else {
+						s.myAttack *= 2.0 / 3;
+					}
+				}
 			}
 			double[] hp = ours ? s.myHp : s.foeHp;
 			boolean rocks = ours ? s.rocksOnMe : s.rocksOnFoe;
@@ -736,6 +932,12 @@ public final class ExpertBattleAI implements BattleAI {
 				if (user.item.equals("lifeorb")) {
 					(ours ? s.myHp : s.foeHp)[ours ? s.myActive : s.foeActive] -= user.maxHp * 0.1 * acts;
 				}
+				if (contact(move) && !user.ability.equals("longreach") && !user.item.equals("protectivepads")) {
+					// Adrien 2026-11-03: Garchomp's Rocky Helmet + Rough Skin punish every contact hit.
+					double punished = (target.item.equals("rockyhelmet") ? 1.0 / 6 : 0)
+							+ (target.ability.equals("roughskin") || target.ability.equals("ironbarbs") ? 1.0 / 8 : 0);
+					(ours ? s.myHp : s.foeHp)[ours ? s.myActive : s.foeActive] -= user.maxHp * punished * acts;
+				}
 				if (ai.getSelfRecoveryMoves().contains(name)) {
 					(ours ? s.myHp : s.foeHp)[ours ? s.myActive : s.foeActive] += damage * 0.5; // a draining hit
 				}
@@ -791,6 +993,17 @@ public final class ExpertBattleAI implements BattleAI {
 				}
 				return;
 			}
+			if (ai.getAntiBoostMoves().contains(name) && !targetProtects) {
+				// Haze, Clear Smog, Roar, Whirlwind, Dragon Tail…: the boosts go.
+				s.foeAttack = Math.min(1, s.foeAttack);
+				s.foeSpeed = Math.min(1, s.foeSpeed);
+				s.foeDefence = Math.min(1, s.foeDefence);
+				if (!ours) {
+					s.myAttack = Math.min(1, s.myAttack);
+					s.mySpeed = Math.min(1, s.mySpeed);
+					s.myDefence = Math.min(1, s.myDefence);
+				}
+			}
 			if (ai.getAntiHazardsMoves().contains(name)) {
 				if (ours) {
 					s.rocksOnMe = false;
@@ -840,6 +1053,16 @@ public final class ExpertBattleAI implements BattleAI {
 		 * priority, Speed), and how hard each hits. In [-1, 1].
 		 */
 		double duel(int i, int j, double myHp, double foeHp) {
+			return duel(i, j, myHp, foeHp, 1, 1, 1, 1, 1, 1);
+		}
+
+		/**
+		 * The same with the field multipliers of each side (boosts of the Pokémon facing each other): a boosted sweeper
+		 * beats what it beat not, and must be answered. A priority move that finishes the other wins whatever the
+		 * Speed (Adrien 2026-11-03: winning the race with priority).
+		 */
+		double duel(int i, int j, double myHp, double foeHp, double myAttack, double mySpeed, double myDefence, double foeAttack,
+				double foeSpeed, double foeDefence) {
 			if (myHp <= 0) {
 				return -1;
 			}
@@ -849,25 +1072,34 @@ public final class ExpertBattleAI implements BattleAI {
 			Mon a = mine.get(i);
 			Mon b = theirs.get(j);
 			double dealt = 0;
-			int myPriority = 0;
+			double myPriorityHit = 0;
 			for (int m = 0; m < a.moveList.size(); m++) {
-				if (myDamage[i][m][j] > dealt) {
-					dealt = myDamage[i][m][j];
-					myPriority = a.moveList.get(m).getPriority();
+				double damage = myDamage[i][m][j] * myAttack / foeDefence;
+				dealt = Math.max(dealt, damage);
+				if (a.moveList.get(m).getPriority() > 0) {
+					myPriorityHit = Math.max(myPriorityHit, damage);
 				}
 			}
 			double taken = 0;
-			int foePriority = 0;
+			double foePriorityHit = 0;
 			for (int m = 0; m < b.moveList.size(); m++) {
-				if (foeDamage[j][m][i] > taken) {
-					taken = foeDamage[j][m][i];
-					foePriority = b.moveList.get(m).getPriority();
+				double damage = foeDamage[j][m][i] * foeAttack / myDefence;
+				taken = Math.max(taken, damage);
+				if (b.moveList.get(m).getPriority() > 0) {
+					foePriorityHit = Math.max(foePriorityHit, damage);
 				}
 			}
-			boolean first = myPriority != foePriority ? myPriority > foePriority : ExpertBattleAI.speed(a) >= ExpertBattleAI.speed(b);
-			double toKo = dealt <= 0 ? 99 : Math.ceil(foeHp / dealt);
-			double toDie = taken <= 0 ? 99 : Math.ceil(myHp / taken);
-			double wins = toKo < toDie || toKo == toDie && first ? 0.6 : -0.6;
+			double wins;
+			if (myPriorityHit >= foeHp && foePriorityHit < myHp) {
+				wins = 0.6;
+			} else if (foePriorityHit >= myHp && myPriorityHit < foeHp) {
+				wins = -0.6;
+			} else {
+				boolean first = ExpertBattleAI.speed(a) * mySpeed >= ExpertBattleAI.speed(b) * foeSpeed;
+				double toKo = dealt <= 0 ? 99 : Math.ceil(foeHp / dealt);
+				double toDie = taken <= 0 ? 99 : Math.ceil(myHp / taken);
+				wins = toKo < toDie || toKo == toDie && first ? 0.6 : -0.6;
+			}
 			return wins + 0.2 * Math.min(1, dealt / b.maxHp) - 0.2 * Math.min(1, taken / a.maxHp);
 		}
 
@@ -881,7 +1113,15 @@ public final class ExpertBattleAI implements BattleAI {
 			double[][] table = new double[n][f];
 			for (int i = 0; i < n; i++) {
 				for (int j = 0; j < f; j++) {
-					table[i][j] = s.myHp[i] > 0 && s.foeHp[j] > 0 ? duel(i, j, s.myHp[i], s.foeHp[j]) : 0;
+					if (s.myHp[i] <= 0 || s.foeHp[j] <= 0) {
+						continue;
+					}
+					// Each side's boosts count where its boosted Pokémon is: on the field.
+					boolean mineOut = i == s.myActive;
+					boolean foeOut = j == s.foeActive;
+					table[i][j] = duel(i, j, s.myHp[i], s.foeHp[j],
+							mineOut ? s.myAttack : 1, mineOut ? s.mySpeed : 1, mineOut ? s.myDefence : 1,
+							foeOut ? s.foeAttack : 1, foeOut ? s.foeSpeed : 1, foeOut ? s.foeDefence : 1);
 				}
 			}
 			int[] checksOfFoe = new int[f];
@@ -961,7 +1201,7 @@ public final class ExpertBattleAI implements BattleAI {
 				score += 0.3 * table[s.myActive][s.foeActive];
 			}
 			score += 0.25 * (Math.min(s.myAttack, 3) - 1) + 0.1 * (Math.min(s.mySpeed, 2) - 1) + 0.1 * (s.myDefence - 1);
-			score -= 0.25 * (Math.min(s.foeAttack, 3) - 1) + 0.1 * (Math.min(s.foeSpeed, 2) - 1) + 0.1 * (s.foeDefence - 1);
+			score -= 0.4 * (Math.min(s.foeAttack, 4) - 1) + 0.2 * (Math.min(s.foeSpeed, 3) - 1) + 0.15 * (s.foeDefence - 1);
 			score += (s.rocksOnFoe ? 0.05 : 0) * (foeAlive - 1) + 0.03 * s.spikesOnFoe * (foeAlive - 1);
 			score -= (s.rocksOnMe ? 0.05 : 0) * (n - 1) + 0.03 * s.spikesOnMe * (n - 1);
 			for (int j = 0; j < f; j++) {
@@ -976,6 +1216,68 @@ public final class ExpertBattleAI implements BattleAI {
 				}
 			}
 			return score;
+		}
+
+		/** For the AI debug: opposing threats nothing answers, and the win conditions of both sides. */
+		String describe(State s) {
+			int n = mine.size();
+			int f = theirs.size();
+			List<String> unanswered = new ArrayList<>();
+			List<String> foeWin = new ArrayList<>();
+			List<String> ourWin = new ArrayList<>();
+			int myAlive = 0;
+			for (int i = 0; i < n; i++) {
+				myAlive += s.myHp[i] > 0 ? 1 : 0;
+			}
+			int foeAlive = unknownFoes;
+			for (int j = 0; j < f; j++) {
+				foeAlive += s.foeHp[j] > 0 ? 1 : 0;
+			}
+			for (int j = 0; j < f; j++) {
+				if (s.foeHp[j] <= 0) {
+					continue;
+				}
+				int checks = 0;
+				int beats = 0;
+				for (int i = 0; i < n; i++) {
+					if (s.myHp[i] <= 0) {
+						continue;
+					}
+					boolean mineOut = i == s.myActive;
+					boolean foeOut = j == s.foeActive;
+					double d = duel(i, j, s.myHp[i], s.foeHp[j], mineOut ? s.myAttack : 1, mineOut ? s.mySpeed : 1, mineOut ? s.myDefence : 1,
+							foeOut ? s.foeAttack : 1, foeOut ? s.foeSpeed : 1, foeOut ? s.foeDefence : 1);
+					if (d > 0) {
+						checks++;
+					} else {
+						beats++;
+					}
+				}
+				if (checks == 0) {
+					unanswered.add(theirs.get(j).name);
+				}
+				if (beats > 0 && beats == myAlive) {
+					foeWin.add(theirs.get(j).name);
+				}
+			}
+			for (int i = 0; i < n; i++) {
+				if (s.myHp[i] <= 0) {
+					continue;
+				}
+				int beaten = 0;
+				for (int j = 0; j < f; j++) {
+					if (s.foeHp[j] > 0 && duel(i, j, s.myHp[i], s.foeHp[j]) > 0) {
+						beaten++;
+					}
+				}
+				if (beaten > 0 && beaten == foeAlive) {
+					ourWin.add(mine.get(i).name);
+				}
+			}
+			return "Sans réponse chez nous : " + (unanswered.isEmpty() ? "aucun" : String.join(", ", unanswered))
+					+ " · condition de victoire adverse : " + (foeWin.isEmpty() ? "aucune" : String.join(", ", foeWin))
+					+ " · la nôtre : " + (ourWin.isEmpty() ? "aucune" : String.join(", ", ourWin))
+					+ (unknownFoes > 0 ? " · " + unknownFoes + " adverse(s) pas encore vu(s)" : "");
 		}
 
 		String label(Action a) {
@@ -1142,6 +1444,20 @@ public final class ExpertBattleAI implements BattleAI {
 	 * move or an immune target. {@code attackerTera}: its Tera type (STAB), {@code defenderTera}: the defender's (its
 	 * only type), {@code zPower}: a Z-move's power.
 	 */
+	/** Common physical moves that make no contact; every other physical move does (special ones never). */
+	private static final Set<String> NO_CONTACT = Set.of("earthquake", "stoneedge", "rockslide", "bulldoze", "earthpower",
+			"iciclecrash", "iciclespear", "rockblast", "bulletseed", "scaleshot", "pinmissile", "gunkshot",
+			"bonemerang", "precipiceblades", "thousandarrows", "diamondstorm", "seedbomb", "magnetbomb", "beatup", "fling",
+			"pyroball", "bonerush", "glaciallance", "rockwrecker", "explosion", "selfdestruct",
+			"saltcure", "spiritshackle", "skyattack", "drumbeating", "terablast", "smackdown",
+			"thousandwaves", "shadowbone", "mountaingale", "stoneaxe", "ceaselessedge", "tachyoncutter",
+			"barrage", "eggbomb", "rockthrow", "rocktomb", "iceshard", "aquacutter",
+			"psychocut", "razorleaf", "sacredfire");
+
+	private static boolean contact(MoveTemplate move) {
+		return "physical".equals(move.getDamageCategory().getName()) && !NO_CONTACT.contains(move.getName());
+	}
+
 	private static double damage(Mon attacker, Mon defender, MoveTemplate move, String attackerTera, double zPower, String defenderTera) {
 		String name = move.getName();
 		String moveType = move.getElementalType().getName().toLowerCase(Locale.ROOT);
