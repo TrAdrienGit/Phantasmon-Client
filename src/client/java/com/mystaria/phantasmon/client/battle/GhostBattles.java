@@ -382,7 +382,8 @@ public final class GhostBattles {
 	/**
 	 * An AI level (Phantasmon Events' NPCs): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal},
 	 * {@code hard}, {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out,
-	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}). Unknown: {@code normal}.
+	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}); {@code reborn} Pokémon
+	 * Reborn's, translated ({@link RebornBattleAI}). Unknown: {@code normal}.
 	 */
 	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
 		// "<level>:debug": the NPC's AI debug, its reasoning in the chat (the Expert AI only, Adrien 2026-11-03).
@@ -392,6 +393,9 @@ public final class GhostBattles {
 		}
 		if ("expert".equals(level)) {
 			return new ExpertBattleAI(debug);
+		}
+		if ("reborn".equals(level)) {
+			return new RebornBattleAI(debug);
 		}
 		return switch (level == null ? "normal" : level) {
 			case "random" -> new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
@@ -431,8 +435,8 @@ public final class GhostBattles {
 			com.cobblemon.mod.common.battles.ActiveBattlePokemon active, com.cobblemon.mod.common.battles.ShowdownMoveset moveset,
 			boolean forceSwitch, java.util.Set<UUID> switchedIn) {
 		if (forceSwitch) {
-			// The expert AI picks its best matchup (checked); the others get the healthiest Pokémon.
-			if (ai instanceof ExpertBattleAI) {
+			// The expert and Reborn AIs pick their replacement (checked); the others get the healthiest Pokémon.
+			if (ai instanceof ExpertBattleAI || ai instanceof RebornBattleAI) {
 				try {
 					if (ai.choose(active, battle, actor.getSide(), moveset, true) instanceof com.cobblemon.mod.common.battles.SwitchActionResponse change
 							&& switchable(actor, change.getNewPokemonId(), switchedIn) != null) {

@@ -157,7 +157,7 @@ public final class ExpertBattleAI implements BattleAI {
 		logRead = log.size();
 	}
 
-	private static UUID uuidOf(String ident) {
+	static UUID uuidOf(String ident) {
 		int colon = ident.indexOf(": ");
 		String name = colon < 0 ? ident : ident.substring(colon + 2);
 		try {
@@ -326,20 +326,20 @@ public final class ExpertBattleAI implements BattleAI {
 		return name + (a.tera ? " + Téra " + board.teraType : "") + (a.z ? " (Z)" : "");
 	}
 
-	private static String moveName(MoveTemplate move) {
+	static String moveName(MoveTemplate move) {
 		return move.getDisplayName().getString();
 	}
 
-	private static String percent(double hp, double max) {
+	static String percent(double hp, double max) {
 		return Math.max(0, Math.round(hp * 100 / Math.max(1, max))) + "%";
 	}
 
-	private static String signed(double value) {
+	static String signed(double value) {
 		return String.format(Locale.ROOT, "%+.2f", value);
 	}
 
 	/** A line in the chat of this client (the player battling the NPC hosts the battle). */
-	private static void say(String line) {
+	static void say(String line) {
 		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
 		mc.execute(() -> {
 			if (mc.player != null) {
@@ -358,7 +358,7 @@ public final class ExpertBattleAI implements BattleAI {
 		return best;
 	}
 
-	private static boolean canComeIn(BattlePokemon candidate, BattlePokemon current) {
+	static boolean canComeIn(BattlePokemon candidate, BattlePokemon current) {
 		return candidate != current && candidate.getHealth() > 0 && !candidate.isSentOut() && candidate.canBeSentOut();
 	}
 
@@ -1291,7 +1291,7 @@ public final class ExpertBattleAI implements BattleAI {
 	// ================================================================ what is known of a Pokémon
 
 	/** A Pokémon as the AI sees it: exact for its own, believed (revealed + Smogon) for the opponent's. */
-	private static final class Mon {
+	static final class Mon {
 		BattlePokemon battler;
 		String name = "?";
 		int level;
@@ -1331,7 +1331,7 @@ public final class ExpertBattleAI implements BattleAI {
 		}
 	}
 
-	private static Mon common(BattlePokemon battler) {
+	static Mon common(BattlePokemon battler) {
 		Pokemon pokemon = battler.getEffectedPokemon();
 		Mon mon = new Mon();
 		mon.battler = battler;
@@ -1349,7 +1349,7 @@ public final class ExpertBattleAI implements BattleAI {
 	}
 
 	/** One of ours: everything known. */
-	private static Mon own(BattlePokemon battler) {
+	static Mon own(BattlePokemon battler) {
 		Mon mon = common(battler);
 		Pokemon pokemon = battler.getEffectedPokemon();
 		for (Stat stat : List.of(Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED)) {
@@ -1371,7 +1371,7 @@ public final class ExpertBattleAI implements BattleAI {
 	 * the rest from Smogon's usage (moves until four, item, ability, spread). A Pokémon Smogon has no data on is read
 	 * as it is.
 	 */
-	private static Mon belief(BattlePokemon battler) {
+	static Mon belief(BattlePokemon battler) {
 		Pokemon pokemon = battler.getEffectedPokemon();
 		JsonObject set = sets().get(id(pokemon.getForm().showdownId()));
 		if (set == null) {
@@ -1412,7 +1412,7 @@ public final class ExpertBattleAI implements BattleAI {
 		return mon;
 	}
 
-	private static synchronized Map<String, JsonObject> sets() {
+	static synchronized Map<String, JsonObject> sets() {
 		if (sets == null) {
 			sets = new HashMap<>();
 			try (InputStream in = ExpertBattleAI.class.getResourceAsStream("/assets/phantasmon/ai/smogon_sets.json")) {
@@ -1427,7 +1427,7 @@ public final class ExpertBattleAI implements BattleAI {
 		return sets;
 	}
 
-	private static String id(String name) {
+	static String id(String name) {
 		return name == null ? "" : name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
 	}
 
@@ -1435,7 +1435,7 @@ public final class ExpertBattleAI implements BattleAI {
 
 	private static final Set<String> FIXED_DAMAGE = Set.of("seismictoss", "nightshade");
 
-	private static boolean isStatus(MoveTemplate move) {
+	static boolean isStatus(MoveTemplate move) {
 		return "status".equals(move.getDamageCategory().getName()) || move.getPower() <= 0 && !FIXED_DAMAGE.contains(move.getName());
 	}
 
@@ -1454,24 +1454,39 @@ public final class ExpertBattleAI implements BattleAI {
 			"barrage", "eggbomb", "rockthrow", "rocktomb", "iceshard", "aquacutter",
 			"psychocut", "razorleaf", "sacredfire");
 
-	private static boolean contact(MoveTemplate move) {
+	static boolean contact(MoveTemplate move) {
 		return "physical".equals(move.getDamageCategory().getName()) && !NO_CONTACT.contains(move.getName());
 	}
 
 	private static double damage(Mon attacker, Mon defender, MoveTemplate move, String attackerTera, double zPower, String defenderTera) {
-		String name = move.getName();
-		String moveType = move.getElementalType().getName().toLowerCase(Locale.ROOT);
-		double effectiveness = effectiveness(move.getElementalType(), defender, defenderTera);
-		if (effectiveness == 0) {
+		if (effectiveness(move.getElementalType(), defender, defenderTera) == 0) {
 			return 0;
 		}
-		if (FIXED_DAMAGE.contains(name)) {
+		if (FIXED_DAMAGE.contains(move.getName())) {
 			return attacker.level * accuracy(move);
 		}
 		if (isStatus(move)) {
 			return 0;
 		}
-		boolean physical = "physical".equals(move.getDamageCategory().getName());
+		return 0.925 * rawDamage(attacker, defender, move.getName(), move.getElementalType(),
+				"physical".equals(move.getDamageCategory().getName()), move.getPower(), attackerTera, zPower, defenderTera)
+				* (zPower > 0 ? 1 : accuracy(move));
+	}
+
+	/**
+	 * A damaging move's damage at the top roll, multi-hit counted, without accuracy nor stat stages (shared with the
+	 * Reborn AI, which rolls and stages it itself). {@code physical}: the category.
+	 */
+	static double rawDamage(Mon attacker, Mon defender, String name, ElementalType type, boolean physical, double basePower,
+			String attackerTera, double zPower, String defenderTera) {
+		String moveType = type.getName().toLowerCase(Locale.ROOT);
+		double effectiveness = effectiveness(type, defender, defenderTera);
+		if (effectiveness == 0) {
+			return 0;
+		}
+		if (FIXED_DAMAGE.contains(name)) {
+			return attacker.level;
+		}
 		double attack = name.equals("foulplay") ? defender.stat(Stats.ATTACK)
 				: name.equals("bodypress") ? attacker.stat(Stats.DEFENCE)
 				: attacker.stat(physical ? Stats.ATTACK : Stats.SPECIAL_ATTACK);
@@ -1489,7 +1504,7 @@ public final class ExpertBattleAI implements BattleAI {
 		if (defender.item.equals("eviolite")) {
 			defence *= 1.5;
 		}
-		double power = zPower > 0 ? zPower : move.getPower();
+		double power = zPower > 0 ? zPower : basePower;
 		double base = Math.floor(Math.floor(Math.floor(2.0 * attacker.level / 5 + 2) * power * attack / Math.max(1, defence)) / 50) + 2;
 		double stab = 1;
 		boolean original = attacker.types.contains(moveType);
@@ -1499,7 +1514,7 @@ public final class ExpertBattleAI implements BattleAI {
 		if (attackerTera != null && attackerTera.equals(moveType)) {
 			stab = original ? 2 : 1.5;
 		}
-		double modifier = 0.925 * stab * effectiveness;
+		double modifier = stab * effectiveness;
 		if (physical && attacker.ability.equals("guts") && !attacker.status.isEmpty()) {
 			modifier *= 1.5;
 		}
@@ -1512,11 +1527,11 @@ public final class ExpertBattleAI implements BattleAI {
 		var hits = zPower > 0 ? null : AIUtility.INSTANCE.getMultiHitMoves().get(name);
 		double count = hits == null ? 1
 				: attacker.ability.equals("skilllink") ? hits.getSecond() : (hits.getFirst() + hits.getSecond()) / 2.0 + (hits.getSecond() == 5 ? 0.1 : 0);
-		return base * modifier * count * (zPower > 0 ? 1 : accuracy(move));
+		return base * modifier * count;
 	}
 
 	/** Type effectiveness on a Pokémon (its Tera type alone if terastallized), immunity abilities and Air Balloon included. */
-	private static double effectiveness(ElementalType moveType, Mon defender, String defenderTera) {
+	static double effectiveness(ElementalType moveType, Mon defender, String defenderTera) {
 		if (moveType == null) {
 			return 1;
 		}
@@ -1540,7 +1555,7 @@ public final class ExpertBattleAI implements BattleAI {
 	}
 
 	/** A Z-move's power from its base move's (the games' table). */
-	private static double zPower(double power) {
+	static double zPower(double power) {
 		if (power <= 55) {
 			return 100;
 		} else if (power <= 65) {
@@ -1563,13 +1578,13 @@ public final class ExpertBattleAI implements BattleAI {
 		return 200;
 	}
 
-	private static double accuracy(MoveTemplate move) {
+	static double accuracy(MoveTemplate move) {
 		double accuracy = move.getAccuracy();
 		return accuracy <= 0 || accuracy > 100 ? 1 : accuracy / 100;
 	}
 
 	/** Speed with its stage, paralysis and Choice Scarf (for the one-on-one table). */
-	private static double speed(Mon mon) {
+	static double speed(Mon mon) {
 		int stage = mon.stages.getOrDefault(Stats.SPEED, 0);
 		double speed = mon.stat(Stats.SPEED) * (stage >= 0 ? (2.0 + stage) / 2 : 2.0 / (2 - stage));
 		if (mon.status.equals("par")) {
