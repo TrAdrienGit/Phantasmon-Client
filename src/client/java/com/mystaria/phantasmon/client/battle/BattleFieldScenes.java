@@ -47,6 +47,54 @@ public final class BattleFieldScenes {
 
 	/** Backend battle uuid → its scene. */
 	private static final Map<UUID, Scene> scenes = new HashMap<>();
+	/** Backend battle uuid → its ambiance ({@code BattleFieldAmbiance}; "" = this player's own). */
+	private static final Map<UUID, String> ambiances = new HashMap<>();
+	/** The battle whose ambiance plays here, restricted to its field (Spectacle's distant mode), or null. */
+	private static UUID ambianceOf;
+
+	/**
+	 * {@code BattleFieldAmbiance}: the ambiance of a battle seen from afar. Spectacle plays it around its field only —
+	 * what changes the whole world only while this player stands in the field (Adrien 2026-11-02). One at a time.
+	 */
+	public static void onAmbiance(UUID battleUuid, String ambiance) {
+		if (battleUuid == null) {
+			return;
+		}
+		ambiances.put(battleUuid, ambiance == null ? "" : ambiance);
+		if (scenes.containsKey(battleUuid)) {
+			startAmbiance(battleUuid);
+		}
+	}
+
+	private static void startAmbiance(UUID battleUuid) {
+		if (ambianceOf != null || !ambiances.containsKey(battleUuid)) {
+			return;
+		}
+		ambianceOf = battleUuid;
+		com.mystaria.spectacle.ambiance.BattleAmbiance.startDistant(ambiances.get(battleUuid), () -> {
+			Scene scene = scenes.get(battleUuid);
+			java.util.List<net.minecraft.world.phys.Vec3> spots = new java.util.ArrayList<>();
+			if (scene != null) {
+				scene.entities.values().forEach(entity -> spots.add(entity.position()));
+			}
+			return spots;
+		});
+	}
+
+	private static void stopAmbiance(UUID battleUuid) {
+		ambiances.remove(battleUuid);
+		if (battleUuid.equals(ambianceOf)) {
+			ambianceOf = null;
+			com.mystaria.spectacle.ambiance.BattleAmbiance.endDistant();
+			// Another battle seen from afar takes over.
+			for (UUID other : scenes.keySet()) {
+				if (ambiances.containsKey(other)) {
+					startAmbiance(other);
+					break;
+				}
+			}
+		}
+	}
 	private static int ticks;
 
 	private BattleFieldScenes() {
@@ -88,6 +136,7 @@ public final class BattleFieldScenes {
 				scene = new Scene(level);
 				scenes.put(battleUuid, scene);
 				scene.initialize(init);
+				startAmbiance(battleUuid);
 			} else if (scene != null) {
 				// Anything before the field as it stands is dropped: it carries the whole battle.
 				scene.onPacket(packet);
@@ -104,6 +153,9 @@ public final class BattleFieldScenes {
 	 */
 	public static void onEnded(UUID battleUuid, String reason) {
 		Scene scene = scenes.remove(battleUuid);
+		if (battleUuid != null) {
+			stopAmbiance(battleUuid);
+		}
 		if (scene == null) {
 			return;
 		}
@@ -118,6 +170,11 @@ public final class BattleFieldScenes {
 	public static void clear() {
 		scenes.values().forEach(Scene::discard);
 		scenes.clear();
+		ambiances.clear();
+		if (ambianceOf != null) {
+			ambianceOf = null;
+			com.mystaria.spectacle.ambiance.BattleAmbiance.endDistant();
+		}
 	}
 
 	/** Whether this entity belongs to a battle seen from afar (its Tera glow survives the local scene's clear). */

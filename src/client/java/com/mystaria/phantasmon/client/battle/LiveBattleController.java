@@ -439,6 +439,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			case "BattleFieldViewerLeft" -> onFieldViewerLeft(data);
 			case "BattleFieldPacket" -> BattleFieldScenes.onPacket(uuid(data.get("battle_uuid")), string(data.get("id")),
 					string(data.get("payload")));
+			case "BattleFieldAmbiance" -> BattleFieldScenes.onAmbiance(uuid(data.get("battle_uuid")), string(data.get("ambiance")));
 			case "BattleFieldEnded" -> BattleFieldScenes.onEnded(uuid(data.get("battle_uuid")), string(data.get("reason")));
 			default -> {
 			}

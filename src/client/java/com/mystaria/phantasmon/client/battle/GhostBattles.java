@@ -378,7 +378,7 @@ public final class GhostBattles {
 	/**
 	 * An AI level (Phantasmon Events' NPCs): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal},
 	 * {@code hard}, {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out,
-	 * statuses and boosts by skill). Unknown: {@code normal}.
+	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}). Unknown: {@code normal}.
 	 */
 	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
 		return switch (level == null ? "normal" : level) {
@@ -386,6 +386,7 @@ public final class GhostBattles {
 			case "easy" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(1);
 			case "hard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(4);
 			case "veryhard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(5);
+			case "expert" -> new ExpertBattleAI();
 			default -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(3);
 		};
 	}
@@ -418,6 +419,18 @@ public final class GhostBattles {
 			com.cobblemon.mod.common.battles.ActiveBattlePokemon active, com.cobblemon.mod.common.battles.ShowdownMoveset moveset,
 			boolean forceSwitch, java.util.Set<UUID> switchedIn) {
 		if (forceSwitch) {
+			// The expert AI picks its best matchup (checked); the others get the healthiest Pokémon.
+			if (ai instanceof ExpertBattleAI) {
+				try {
+					if (ai.choose(active, battle, actor.getSide(), moveset, true) instanceof com.cobblemon.mod.common.battles.SwitchActionResponse change
+							&& switchable(actor, change.getNewPokemonId(), switchedIn) != null) {
+						switchedIn.add(change.getNewPokemonId());
+						return change;
+					}
+				} catch (RuntimeException ex) {
+					LOG.warn("Expert AI failed to pick a replacement, falling back", ex);
+				}
+			}
 			BattlePokemon replacement = bestReplacement(actor, switchedIn);
 			if (replacement != null) {
 				switchedIn.add(replacement.getUuid());

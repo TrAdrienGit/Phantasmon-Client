@@ -147,7 +147,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 ### Global Hub (Phantasmon Network, N3)
 
-Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs différentes) et deux comptes.
+Deux serveurs (deux adresses différentes : chacun a sa propre empreinte) et deux comptes.
 
 - [ ] `/phantasmon hub anchor create Test` : message de confirmation, carré violet au sol, nom flottant au centre ;
       un second `create` répond « vous avez déjà un Anchor ».
@@ -183,11 +183,8 @@ Deux serveurs (ou `/phantasmon admin debug fingerprint` avec deux valeurs diffé
 
 ### Global Hub — Ghost (Phantasmon Network, N5)
 
-> **Empreintes** : deux mondes solo distincts sont deux « serveurs » : leur donner **deux** empreintes différentes
-> (`/phantasmon admin debug fingerprint mondeA` / `mondeB`). Avec la même empreinte forcée, Phantasmon les croit sur
-> le même serveur alors que le vrai joueur n'est pas dans le monde de l'autre : le groupe serveur du Core y affiche
-> son Ghost à ses coordonnées relayées, en plus du Ghost du Hub (fausse impression de doublon, 2026-10-07). Le cas
-> « même serveur » se teste avec les deux comptes dans le **même** monde (ouverture au LAN).
+> **Empreintes** : deux serveurs d'adresses différentes (par exemple notre serveur dédié et un autre) sont deux
+> « serveurs » pour Phantasmon. Le cas « même serveur » se teste avec les deux comptes sur notre serveur dédié.
 
 - [ ] Dans le Hub, sortir un Ghost (overlay Ghost, R) : chez l'autre joueur, le Ghost apparaît en sortant de sa
       Poké Ball à côté de l'avatar, le suit, se balade quand l'avatar reste immobile.

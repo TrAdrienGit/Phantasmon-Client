@@ -625,11 +625,19 @@ public final class HubController implements HubListener {
 	 * single-player world, the player's copy. Centred on the block the player stands on, the whole height of the world.
 	 */
 	public void createMirrorAnchor(String hubName) {
+		createMirrorAnchor(hubName, null);
+	}
+
+	/**
+	 * {@code copy} null: a copy in a single-player world, the source on a multiplayer server; true: a copy wherever it is
+	 * (Adrien 2026-11-02: our own dedicated server builds its copy with its server mod); false: the source.
+	 */
+	public void createMirrorAnchor(String hubName, Boolean forceCopy) {
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null) {
 			return;
 		}
-		boolean copy = Minecraft.getInstance().hasSingleplayerServer();
+		boolean copy = forceCopy != null ? forceCopy : Minecraft.getInstance().hasSingleplayerServer();
 		createAnchor(hubName, copy ? null : hubName + "-source", copy ? HubAnchorDto.ROLE_COPY : HubAnchorDto.ROLE_SOURCE);
 	}
 

@@ -32,7 +32,7 @@ import com.mystaria.phantasmon.client.pokemon.PcOpener;
  *   <li>{@code reboot} — restarts the backend, after a click on the [Confirm] chat button;</li>
  *   <li>{@code battle solo} — a live Ghost battle against a mirror of one's own team, played by Cobblemon's AI
  *   (Adrien 2026-10-07): spectatable, never stored;</li>
- *   <li>{@code ping} and {@code debug fingerprint [value]} — moved here from the players' commands;</li>
+ *   <li>{@code ping} — moved here from the players' commands;</li>
  *   <li>{@code hub mute <player> <duration>}, {@code hub unmute <player>}, {@code hub lock} — hub chat moderation
  *   (TODO-31): a timed mute ({@code 30m}, {@code 2h}, {@code 7d}; a bare number is minutes), the global chat lock
  *   (toggled; admins still write). An admin's hub message starting with {@code !!} is an announcement.</li>
@@ -114,21 +114,7 @@ public final class AdminCommands {
 						boolean enabled = pingToggle.toggle();
 						context.getSource().sendFeedback(Component.translatable(enabled ? "phantasmon.ping.enabled" : "phantasmon.ping.disabled"));
 						return Command.SINGLE_SUCCESS;
-					}))
-					.then(ClientCommandManager.literal("debug").then(ClientCommandManager.literal("fingerprint")
-							.executes(context -> {
-								GhostSession.setFingerprintOverride(null);
-								context.getSource().sendFeedback(Component.literal(
-										"[Phantasmon] server_fingerprint override retiré, valeur calculée normalement."));
-								return Command.SINGLE_SUCCESS;
-							})
-							.then(ClientCommandManager.argument("value", StringArgumentType.word()).executes(context -> {
-								String value = StringArgumentType.getString(context, "value");
-								GhostSession.setFingerprintOverride(value);
-								context.getSource().sendFeedback(Component.literal(
-										"[Phantasmon] server_fingerprint forcé à \"" + value + "\" (test uniquement)."));
-								return Command.SINGLE_SUCCESS;
-							}))));
+					}));
 			dispatcher.register(ClientCommandManager.literal("phantasmon").then(node));
 		});
 	}

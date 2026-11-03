@@ -23,10 +23,7 @@ le client et ajoutée directement au monde local avec `ClientLevel.addEntity`. L
 | Arrêt | Déconnexion du monde : fermeture du WebSocket, suppression de tous les Ghost locaux |
 
 **Empreinte de serveur** : `"singleplayer"` si le client héberge le monde (`Minecraft.isLocalServer()`), sinon
-SHA-256 de `Minecraft.getCurrentServer().ip`. Pour les tests « Ouvrir au LAN », `/phantasmon admin debug fingerprint
-<valeur>` force une valeur (identique sur les deux clients), enregistrée dans
-`config/phantasmon-fingerprint-override.txt` et appliquée immédiatement (nouveau `JoinServerGroup`). Sans
-argument, la commande supprime la surcharge. **Commande de test à retirer** quand un vrai serveur dédié sera utilisé.
+SHA-256 de `Minecraft.getCurrentServer().ip`. Tous les joueurs d'un même serveur tapent la même adresse, donc ont la même empreinte (le forçage de test pour le LAN a été retiré le 2026-11-03).
 
 **Sortie et rappel** : sur l'overlay de l'équipe Phantasm (touche O de Cobblemon), haut / bas et R (touches de
 Cobblemon) choisissent et sortent / rappellent un Ghost (`GhostPartyHud`). Plus de touche dédiée ni de commande. Le chat affiche « Envoi en cours… », puis la confirmation quand le

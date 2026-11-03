@@ -87,6 +87,7 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_HUB_MUTE_DURATION", "phantasmon.admin.hub.bad_duration"),
 			Map.entry("ERROR_NPC_NOT_FOUND", "phantasmon.battle.error.npc_not_found"),
 			Map.entry("ERROR_NPC_EMPTY_TEAM", "phantasmon.battle.error.npc_empty_team"),
+			Map.entry("ERROR_NPC_BUSY", "phantasmon.battle.error.npc_busy"),
 			Map.entry("ERROR_HUB_ANCHOR_OVERLAP", "phantasmon.hub.error.anchor_overlap"),
 			Map.entry("ERROR_HUB_NOT_FOUND", "phantasmon.hub.error.not_found"),
 			Map.entry("ERROR_HUB_NAME_TAKEN", "phantasmon.hub.error.name_taken"),

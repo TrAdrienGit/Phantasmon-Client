@@ -121,8 +121,6 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 | `/phantasmon admin hub lock` | Verrouille ou déverrouille le chat des hubs : seuls les admins y écrivent |
 | `/hc !!<message>` | **Admin** : annonce, en surbrillance dans le chat et en grand à l'écran de chaque membre, avec un son |
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
-| `/phantasmon admin debug fingerprint <valeur>` | Force l'empreinte de serveur (tests « Ouvrir au LAN »), persistée dans `config/phantasmon-fingerprint-override.txt` ; **à retirer** avant publication (TODO-2) |
-| `/phantasmon admin debug fingerprint` | Supprime la surcharge |
 
 Les aperçus de mise en scène appartiennent désormais à Cobblemon Spectacle (D-37), ouverts à tous les joueurs :
 

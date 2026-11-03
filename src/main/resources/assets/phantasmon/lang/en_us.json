@@ -394,5 +394,6 @@
   "phantasmon.hub.announcement": "📢 Announcement from %s",
   "phantasmon.hub.announcement.title": "Announcement",
   "phantasmon.battle.error.npc_not_found": "This trainer isn't available (its event is closed).",
-  "phantasmon.battle.error.npc_empty_team": "This trainer has no team yet."
+  "phantasmon.battle.error.npc_empty_team": "This trainer has no team yet.",
+  "phantasmon.battle.error.npc_busy": "This trainer is already battling. Wait until it's done."
 }

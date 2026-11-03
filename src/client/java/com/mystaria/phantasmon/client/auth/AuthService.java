@@ -37,11 +37,10 @@ public final class AuthService {
 	private static final String MOD_ID = "phantasmon";
 
 	/**
-	 * Placeholder — no real Modrinth/CurseForge listing exists yet (Adrien:
-	 * 2026-09-26). Swap for the real URL once the mod is published (CAD Partie
-	 * 3 §J).
+	 * Where a newer version is found: the project's GitHub releases (Adrien 2026-11-03), until it is published on
+	 * Modrinth or CurseForge (CAD Partie 3 §J).
 	 */
-	private static final String DOWNLOAD_URL_PLACEHOLDER = "https://modrinth.com/mod/phantasmon";
+	private static final String DOWNLOAD_URL_PLACEHOLDER = "https://github.com/TrAdrienGit/Phantasmon-Client/releases";
 
 	private final BackendJsonClient httpClient;
 	private final AuthSession session;

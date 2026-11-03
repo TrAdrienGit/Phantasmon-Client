@@ -31,27 +31,15 @@ Les deux clients doivent viser **le même backend** (celui du serveur Ubuntu) : 
 
 ### Rejoindre la même partie
 
-Pas de serveur dédié (le modpack compte environ 230 mods) : l'un des joueurs ouvre son monde solo en LAN, l'autre
-s'y connecte **directement** avec l'IP Tailscale de l'hôte et le port annoncé dans le chat (Tailscale ne relaie pas
-la découverte LAN).
-
-### Empreinte de serveur
-
-L'hôte LAN calcule `"singleplayer"`, l'invité un hash de l'adresse : le backend ne les regroupe pas. Sur **chaque**
-client, taper une fois la même valeur :
-
-```text
-/phantasmon admin debug fingerprint test
-```
-
-La valeur est enregistrée (`config/phantasmon-fingerprint-override.txt`) et appliquée immédiatement, puis à chaque
-connexion. `/phantasmon admin debug fingerprint` sans argument revient au calcul normal. Sur un vrai serveur dédié, cette
-manipulation est inutile.
+Les tests se font sur **notre serveur Minecraft dédié** (server-linux, Cobblemon Academy, `100.101.1.79:25565`,
+Tailscale seulement ; allumé et éteint depuis la supervision) avec les deux comptes (Adrien 2026-11-03). Tout le monde
+y tape la même adresse, donc a la même empreinte de serveur : plus de LAN ni d'empreinte forcée (la commande de test
+`/phantasmon admin debug fingerprint` a été retirée le 2026-11-03).
 
 ## 3. Avant une publication
 
 - URL du backend configurable (aujourd'hui en dur).
-- Retirer `/phantasmon admin debug fingerprint`.
-- Renseigner les liens de `fabric.mod.json` et le lien de mise à jour (`AuthService`).
+- Lien de mise à jour (`AuthService`) : aujourd'hui les versions GitHub du projet, à remplacer par la page
+  Modrinth ou CurseForge.
 - Traiter les points de priorité haute de [`project/known-issues.md`](../project/known-issues.md).
 - Aligner `version` (`gradle.properties`) et `phantasmon.version.current` / `min-supported` du backend.
