@@ -25,6 +25,7 @@ import com.cobblemon.mod.common.api.pokemon.Natures;
 import com.cobblemon.mod.common.api.pokemon.stats.Stat;
 import com.cobblemon.mod.common.api.pokemon.stats.Stats;
 import com.cobblemon.mod.common.api.types.ElementalType;
+import com.cobblemon.mod.common.api.types.ElementalTypes;
 import com.cobblemon.mod.common.battles.ActiveBattlePokemon;
 import com.cobblemon.mod.common.battles.BattleSide;
 import com.cobblemon.mod.common.battles.InBattleGimmickMove;
@@ -46,46 +47,46 @@ import com.google.gson.JsonParser;
 import net.minecraft.core.registries.BuiltInRegistries;
 
 /**
- * Phantasmon's own competitive AI, level {@code expert} (Adrien 2026-11-03), second version. Single battles only (the
+ * Phantasmon's own competitive AI, level {@code expert} (Adrien 2026-11-03), third version. Single battles only (the
  * only kind Phantasmon plays).
  *
  * <p><b>What it knows of the opponent</b>: what a player would — the Pokémon on the field (species, level, HP, stat
- * stages, status), the moves it has used, the Pokémon of its team already seen. The rest comes from Smogon's usage
- * stats ({@code assets/phantasmon/ai/smogon_sets.json}, see {@code tools/smogon_sets.py}): its usual moves, item, ability,
- * EV spread and nature. It never reads the opponent's real set (only for a Pokémon Smogon has no data on).
+ * stages, status), the moves it has used, the Pokémon of its team already seen, how many it has. The rest comes from
+ * Smogon's usage stats ({@code assets/phantasmon/ai/smogon_sets.json}, {@code tools/smogon_sets.py}): usual moves, item,
+ * ability, EV spread and nature. It never reads the opponent's real set (only for a Pokémon Smogon has no data on).
  *
- * <p><b>How it chooses</b>, each turn, one turn ahead with both sides choosing at once:
- * <ol>
- * <li>its options: every move it can use — with Mega Evolution, Terastallization or its Z-move when it can — and every
- * switch;</li>
- * <li>the opponent's options: its likely moves (weighted by how often they are run) and switches to the Pokémon it has
- * shown; how likely each is comes from how good it looks to the opponent against the AI's most obvious attack — so it
- * predicts a switch into a resist, and hits the Pokémon coming in;</li>
- * <li>each pair is played out: switches first, then moves by priority and Speed, a KO stopping the slower move;
- * scored by HP taken and lost, KOs, what status moves bring (boosts when safe, recovery, hazards, status), and the
- * matchup left on the field;</li>
- * <li>it plays the option with the best expected score; Tera and Z-moves cost something (they are used once), so they
- * come out when they win the exchange; Mega Evolution is always taken.</li>
- * </ol>
- * After a KO, the Pokémon with the best matchup comes in. Battle thread only.
+ * <p><b>The team picture</b> (Adrien 2026-11-03: teams are rock-paper-scissors cycles — whoever breaks the cycle is
+ * left with a win condition, so Pokémon must be read as checks and preserved): every Pokémon of each side against every
+ * one of the other in a one-on-one table (best damage both ways with HP, Speed and priority: who wins). From it:
+ * <ul>
+ * <li>a Pokémon that is the only answer to an opposing threat is worth more, so it is kept healthy and switched out
+ * rather than sacrificed;</li>
+ * <li>a Pokémon that beats every opponent left is a win condition: once the opposing checks are gone, it closes the
+ * game; the same is read on the opponent's side, whose checks and win condition become targets;</li>
+ * <li>the board is scored by HP weighted by that importance, whether each opposing threat is still checked, win
+ * conditions, hazards, statuses, boosts and the matchup on the field.</li>
+ * </ul>
+ *
+ * <p><b>How it chooses</b>: two turns ahead, both sides choosing at once. Its options are every usable move (with Mega
+ * Evolution, Terastallization or its Z-move when it can) and every switch; the opponent's are its likely moves
+ * (weighted by usage) and switches to its seen Pokémon, more or less likely as they are good for it. Each pair is played
+ * out — switches first with Stealth Rock damage, then moves by priority and Speed (a KO stops the slower move), boosts,
+ * recovery, status, protection, residual damage, the replacement after a KO — and the board scored; the best expected
+ * option is played. Tera and Z cost a little (used once), Mega Evolution is always taken. Battle thread only.
  */
 public final class ExpertBattleAI implements BattleAI {
 
 	private static final Logger LOG = LoggerFactory.getLogger(ExpertBattleAI.class);
 	/** How sharply the opponent is expected to prefer its best options (lower: more predictable). */
-	private static final double OPPONENT_TEMPERATURE = 0.15;
-	/** What keeping Tera / a Z-move for later is worth. */
-	private static final double TERA_RESERVE = 0.25;
-	private static final double Z_RESERVE = 0.3;
-	private static final double POSITION_WEIGHT = 0.25;
+	private static final double OPPONENT_TEMPERATURE = 0.12;
+	private static final double TERA_RESERVE = 0.2;
+	private static final double Z_RESERVE = 0.25;
+	/** A later turn counts this much (less certain). */
+	private static final double LATER = 0.9;
 
 	private static Map<String, JsonObject> sets;
 
-	/** Opponent's Pokémon seen on the field so far (they can be expected to switch back in). */
 	private final Set<UUID> seenFoes = new HashSet<>();
-	/** Hazards this AI already laid on the opponent's side, and how many times (Spikes: 3, Toxic Spikes: 2). */
-	private final Map<String, Integer> hazardsLaid = new HashMap<>();
-	/** Its own Pokémon terastallized, and into what. */
 	private final Map<UUID, String> terastallized = new HashMap<>();
 	private boolean zUsed;
 
@@ -94,332 +95,895 @@ public final class ExpertBattleAI implements BattleAI {
 	@Override
 	public ShowdownActionResponse choose(ActiveBattlePokemon active, PokemonBattle battle, BattleSide side,
 			ShowdownMoveset moveset, boolean forceSwitch) {
+		try {
+			return decide(active, side, moveset, forceSwitch);
+		} catch (RuntimeException ex) {
+			LOG.warn("Expert AI failed, the random AI plays this turn", ex);
+			return forceSwitch ? null : new RandomBattleAI().choose(active, battle, side, moveset, forceSwitch);
+		}
+	}
+
+	private ShowdownActionResponse decide(ActiveBattlePokemon active, BattleSide side, ShowdownMoveset moveset, boolean forceSwitch) {
 		ActiveBattlePokemon foeSlot = side.getOppositeSide().getActivePokemon().get(0);
-		BattlePokemon foeBattler = foeSlot.getBattlePokemon();
-		if (foeBattler != null) {
-			seenFoes.add(foeBattler.getUuid());
+		BattlePokemon foeActive = foeSlot.getBattlePokemon();
+		if (foeActive != null) {
+			seenFoes.add(foeActive.getUuid());
 		}
-		Mon foe = foeBattler == null ? null : belief(foeBattler);
-		BattlePokemon meBattler = active.getBattlePokemon();
-		if (forceSwitch || meBattler == null || meBattler.getHealth() <= 0) {
-			BattlePokemon next = bestReplacement(active, foe);
-			return next == null ? null : new SwitchActionResponse(next.getUuid());
+		Board board = board(active.getActor().getPokemonList(), active.getBattlePokemon(),
+				foeActive == null ? List.of() : foeActive.getActor().getPokemonList(), foeActive, moveset);
+		if (board.foeActive < 0) {
+			BattlePokemon next = forceSwitch ? healthiest(active) : null;
+			return forceSwitch ? (next == null ? null : new SwitchActionResponse(next.getUuid())) : null;
 		}
-		if (foe == null || moveset == null) {
-			return new RandomBattleAI().choose(active, battle, side, moveset, forceSwitch);
-		}
-		Mon me = own(meBattler);
-		List<Mine> mine = myOptions(active, me, moveset);
-		List<Theirs> theirs = foeOptions(foe, foeBattler);
-		if (mine.isEmpty()) {
-			return new RandomBattleAI().choose(active, battle, side, moveset, forceSwitch);
-		}
-		// The opponent's guess of what we do: our most obvious attack, no gimmick.
-		Mine obvious = null;
-		double obviousDamage = -1;
-		for (Mine option : mine) {
-			if (option.move != null && option.gimmick == null) {
-				double damage = damage(me, foe, option.move, null, 0);
-				if (damage > obviousDamage) {
-					obviousDamage = damage;
-					obvious = option;
+		State root = board.start();
+		if (forceSwitch || active.getBattlePokemon() == null || active.getBattlePokemon().getHealth() <= 0) {
+			int best = -1;
+			double bestValue = Double.NEGATIVE_INFINITY;
+			for (int i = 0; i < board.mine.size(); i++) {
+				if (root.myHp[i] <= 0 || i == board.myActive) {
+					continue;
+				}
+				State in = root.copy();
+				board.enter(in, true, i);
+				double value = board.value(in, 1);
+				if (value > bestValue) {
+					bestValue = value;
+					best = i;
 				}
 			}
-		}
-		double[] weights = new double[theirs.size()];
-		double total = 0;
-		for (int i = 0; i < theirs.size(); i++) {
-			double good = obvious == null ? 0 : -play(obvious, theirs.get(i), me, foe);
-			weights[i] = theirs.get(i).prior * Math.exp(good / OPPONENT_TEMPERATURE);
-			total += weights[i];
-		}
-		Mine best = null;
-		double bestValue = Double.NEGATIVE_INFINITY;
-		for (Mine option : mine) {
-			double value = 0;
-			for (int i = 0; i < theirs.size(); i++) {
-				value += weights[i] / total * play(option, theirs.get(i), me, foe);
+			if (best < 0) {
+				return null;
 			}
-			value -= option.cost;
+			LOG.debug("Expert AI sends in {} ({})", board.mine.get(best).name, String.format(Locale.ROOT, "%.2f", bestValue));
+			return new SwitchActionResponse(board.mine.get(best).battler.getUuid());
+		}
+		List<Action> mine = board.rootOptions(moveset, zUsed);
+		List<Action> theirs = board.foeOptions(root);
+		double[] p = board.foePolicy(root, theirs);
+		Action best = null;
+		double bestValue = Double.NEGATIVE_INFINITY;
+		for (Action a : mine) {
+			double value = -a.cost;
+			for (int k = 0; k < theirs.size(); k++) {
+				if (p[k] < 0.01) {
+					continue;
+				}
+				State next = board.turn(root, a, theirs.get(k));
+				value += p[k] * board.value(next, 1);
+			}
 			if (value > bestValue) {
 				bestValue = value;
-				best = option;
+				best = a;
 			}
 		}
-		LOG.debug("Expert AI: {} ({})", best.label, String.format(Locale.ROOT, "%.2f", bestValue));
-		if (best.switchTo != null) {
-			return new SwitchActionResponse(best.switchTo.battler.getUuid());
+		if (best == null) {
+			return null;
+		}
+		LOG.debug("Expert AI: {} ({})", board.label(best), String.format(Locale.ROOT, "%.2f", bestValue));
+		if (best.switchTo >= 0) {
+			return new SwitchActionResponse(board.mine.get(best.switchTo).battler.getUuid());
 		}
 		String gimmick = best.gimmick;
 		if (gimmick == null && moveset.getCanMegaEvo()) {
 			gimmick = ShowdownMoveset.Gimmick.MEGA_EVOLUTION.getId(); // no reason to wait
 		}
-		if (ShowdownMoveset.Gimmick.TERASTALLIZATION.getId().equals(best.gimmick)) {
-			terastallized.put(meBattler.getUuid(), moveset.getCanTerastallize().toLowerCase(Locale.ROOT));
+		if (best.tera) {
+			terastallized.put(active.getBattlePokemon().getUuid(), board.teraType);
 		}
-		if (ShowdownMoveset.Gimmick.Z_POWER.getId().equals(best.gimmick)) {
+		if (best.z) {
 			zUsed = true;
 		}
-		if (AIUtility.INSTANCE.getEntryHazards().contains(best.move.getName())) {
-			hazardsLaid.merge(best.move.getName(), 1, Integer::sum);
-		}
-		return new MoveActionResponse(best.moveId, foeSlot.getPNX(), gimmick);
+		// No target in a single battle: a spread move (Earthquake, Surf…) refuses one and the battle would wait forever
+		// (Adrien's test 2026-11-03: "You can't choose a target for Earthquake").
+		return new MoveActionResponse(best.moveId, null, gimmick);
 	}
 
-	/** One of our options: a move (with a gimmick or not), or a switch. */
-	private static final class Mine {
-		String label;
-		String moveId;
-		MoveTemplate move;
-		String gimmick;
-		/** Tera: the type taken; Z: the Z-move's power. */
-		String teraType;
-		double zPower;
-		Mon switchTo;
-		double cost;
-	}
-
-	/** One of the opponent's options, and how likely it is a priori. */
-	private record Theirs(MoveTemplate move, Mon switchTo, double prior) {
-	}
-
-	private List<Mine> myOptions(ActiveBattlePokemon active, Mon me, ShowdownMoveset moveset) {
-		List<Mine> options = new ArrayList<>();
-		String teraType = moveset.getCanTerastallize() == null ? null : moveset.getCanTerastallize().toLowerCase(Locale.ROOT);
-		List<InBattleGimmickMove> zMoves = moveset.getCanZMove();
-		for (int i = 0; i < moveset.getMoves().size(); i++) {
-			InBattleMove move = moveset.getMoves().get(i);
-			MoveTemplate template = move.canBeUsed() ? Moves.getByName(move.getId()) : null;
-			if (template == null) {
-				continue;
-			}
-			options.add(move(move.getId(), template, null));
-			if (teraType != null && !teraType.equals("stellar")) {
-				Mine tera = move(move.getId(), template, ShowdownMoveset.Gimmick.TERASTALLIZATION.getId());
-				tera.teraType = teraType;
-				tera.cost = TERA_RESERVE;
-				tera.label += " + tera " + teraType;
-				options.add(tera);
-			}
-			if (!zUsed && zMoves != null && i < zMoves.size() && zMoves.get(i) != null && !isStatus(template)) {
-				Mine z = move(move.getId(), template, ShowdownMoveset.Gimmick.Z_POWER.getId());
-				z.zPower = zPower(template.getPower());
-				z.cost = Z_RESERVE;
-				z.label += " (Z)";
-				options.add(z);
-			}
-		}
-		if (!moveset.getTrapped()) {
-			for (BattlePokemon candidate : active.getActor().getPokemonList()) {
-				if (canComeIn(candidate, me.battler)) {
-					Mine change = new Mine();
-					change.switchTo = own(candidate);
-					change.label = "switch to " + candidate.getEffectedPokemon().getSpecies().getName();
-					change.cost = 0.05; // tempo
-					options.add(change);
-				}
-			}
-		}
-		return options;
-	}
-
-	private static Mine move(String id, MoveTemplate template, String gimmick) {
-		Mine option = new Mine();
-		option.moveId = id;
-		option.move = template;
-		option.gimmick = gimmick;
-		option.label = id;
-		return option;
-	}
-
-	private List<Theirs> foeOptions(Mon foe, BattlePokemon foeBattler) {
-		List<Theirs> options = new ArrayList<>();
-		for (Map.Entry<MoveTemplate, Double> move : foe.moves.entrySet()) {
-			options.add(new Theirs(move.getKey(), null, move.getValue()));
-		}
-		for (BattlePokemon other : foeBattler.getActor().getPokemonList()) {
-			if (other != foeBattler && other.getHealth() > 0 && seenFoes.contains(other.getUuid())) {
-				options.add(new Theirs(null, belief(other), 0.3));
-			}
-		}
-		if (options.isEmpty()) {
-			options.add(new Theirs(null, null, 1)); // nothing known: it does nothing that counts
-		}
-		return options;
-	}
-
-	// ================================================================ one turn played out
-
-	/** Our score for this pair of choices, one turn ahead (higher is better for us). */
-	private double play(Mine a, Theirs b, Mon me, Mon foe) {
-		Mon mine = a.switchTo != null ? a.switchTo : me;
-		Mon theirs = b.switchTo != null ? b.switchTo : foe;
-		String myTera = a.teraType != null ? a.teraType : terastallized.get(mine.battler.getUuid());
-		double myHp = mine.hp;
-		double foeHp = theirs.hp;
-		double score = 0;
-		// Switches happen first: the move then hits the Pokémon coming in.
-		double dealt = a.move == null ? 0 : damage(mine, theirs, a.move, myTera, a.zPower);
-		double taken = b.move == null ? 0 : damage(theirs, mine, b.move, null, 0, myTera);
-		if (a.move != null && b.move != null) {
-			boolean meFirst = movesFirst(mine, a.move.getPriority(), theirs, b.move.getPriority());
-			if (meFirst && dealt >= foeHp) {
-				taken = 0;
-			} else if (!meFirst && taken >= myHp) {
-				dealt = 0;
-			}
-		}
-		dealt = Math.min(dealt, foeHp);
-		taken = Math.min(taken, myHp);
-		score += 1.2 * dealt / theirs.maxHp + (dealt >= foeHp ? 0.6 : 0);
-		score -= taken / mine.maxHp + (taken >= myHp ? 0.6 : 0);
-		if (a.move != null && isStatus(a.move) && taken < myHp) {
-			score += utility(mine, theirs, a.move, b.move == null ? 0 : taken);
-		}
-		if (b.move != null && isStatus(b.move) && dealt < foeHp) {
-			score -= utility(theirs, mine, b.move, dealt) * 0.8;
-		}
-		if (a.switchTo != null && b.move != null && AIUtility.INSTANCE.getPivotMoves().contains(b.move.getName())) {
-			score -= 0.05;
-		}
-		// The matchup left on the field.
-		if (taken < myHp && dealt < foeHp) {
-			score += POSITION_WEIGHT * matchup(mine, theirs, myHp - taken, foeHp - dealt, myTera);
-		}
-		return score;
-	}
-
-	/** What a status move is worth to its user: a boost when it is safe, a heal when hurt, hazards, status. */
-	private double utility(Mon user, Mon target, MoveTemplate move, double damageTaken) {
-		AIUtility ai = AIUtility.INSTANCE;
-		String name = move.getName();
-		Map<Stat, Integer> boosts = ai.getBoostFromMoves().get(name);
-		if (boosts != null) {
-			double threat = bestDamage(target, user, null);
-			if (threat * 2 >= user.hp - damageTaken) {
-				return -0.2; // not safe: it would be knocked out before it uses the boost
-			}
-			double value = 0;
-			boolean physical = user.stat(Stats.ATTACK) >= user.stat(Stats.SPECIAL_ATTACK);
-			for (Map.Entry<Stat, Integer> boost : boosts.entrySet()) {
-				int stage = user.stages.getOrDefault(boost.getKey(), 0);
-				if (stage >= 4 || boost.getValue() <= 0) {
-					continue;
-				}
-				Stat stat = boost.getKey();
-				double weight = stat == Stats.SPEED ? (speed(user) < speed(target) ? 0.35 : 0.1)
-						: stat == (physical ? Stats.ATTACK : Stats.SPECIAL_ATTACK) ? 0.35
-						: stat == Stats.DEFENCE || stat == Stats.SPECIAL_DEFENCE ? 0.15 : 0.05;
-				value += weight * boost.getValue() * (stage <= 0 ? 1 : 0.6);
-			}
-			return value;
-		}
-		if (ai.getSelfRecoveryMoves().contains(name)) {
-			double missing = user.maxHp - (user.hp - damageTaken);
-			return missing < user.maxHp * 0.3 ? -0.1 : Math.min(missing, user.maxHp * 0.5) / user.maxHp;
-		}
-		if (ai.getEntryHazards().contains(name)) {
-			if (!user.ours) {
-				return 0.2; // the opponent laying hazards on us
-			}
-			int max = name.equals("spikes") ? 3 : name.equals("toxicspikes") ? 2 : 1;
-			int alive = target.battler == null ? 0 : aliveBench(target.battler);
-			return hazardsLaid.getOrDefault(name, 0) >= max || alive < 1 ? -0.3 : (name.equals("stealthrock") ? 0.12 : 0.08) * alive;
-		}
-		String status = ai.getStatusMoves().get(name);
-		if (status != null) {
-			if (!target.status.isEmpty() || target.battler == null
-					|| !ai.canAffectWithStatus(status, target.battler.getEffectedPokemon().getTypes(), target.battler.getEffectedPokemon().getAbility())) {
-				return -0.3;
-			}
-			double value = switch (status) {
-				case "brn" -> target.stat(Stats.ATTACK) > target.stat(Stats.SPECIAL_ATTACK) ? 0.45 : 0.15;
-				case "par" -> speed(target) > speed(user) ? 0.4 : 0.2;
-				case "tox", "psn" -> 0.3;
-				case "slp" -> 0.5;
-				default -> 0.15;
-			};
-			return value * accuracy(move);
-		}
-		if (ai.getProtectMoves().contains(name)) {
-			return -0.1;
-		}
-		return -0.2; // other status moves: not understood yet
-	}
-
-	/** How {@code mine} fares one on one with these HP: best damage both ways, Speed, who knocks out whom first. */
-	private double matchup(Mon mine, Mon theirs, double myHp, double foeHp, String myTera) {
-		double dealt = 0;
-		int myPriority = 0;
-		for (MoveTemplate move : mine.moves.keySet()) {
-			double damage = damage(mine, theirs, move, myTera, 0);
-			if (damage > dealt) {
-				dealt = damage;
-				myPriority = move.getPriority();
-			}
-		}
-		double taken = 0;
-		int foePriority = 0;
-		for (MoveTemplate move : theirs.moves.keySet()) {
-			double damage = damage(theirs, mine, move, null, 0, myTera);
-			if (damage > taken) {
-				taken = damage;
-				foePriority = move.getPriority();
-			}
-		}
-		boolean first = movesFirst(mine, myPriority, theirs, foePriority);
-		double turnsToKo = dealt <= 0 ? 99 : Math.ceil(foeHp / dealt);
-		double turnsToDie = taken <= 0 ? 99 : Math.ceil(myHp / taken);
-		double score = 0.6 * Math.min(1, dealt / theirs.maxHp) - 0.5 * Math.min(1, taken / mine.maxHp);
-		if (turnsToKo < turnsToDie || turnsToKo == turnsToDie && first) {
-			score += 0.5;
-		} else {
-			score -= 0.5;
-		}
-		return score;
-	}
-
-	private double bestDamage(Mon attacker, Mon defender, String defenderTera) {
-		double best = 0;
-		for (MoveTemplate move : attacker.moves.keySet()) {
-			best = Math.max(best, damage(attacker, defender, move, null, 0, defenderTera));
-		}
-		return best;
-	}
-
-	// ================================================================ switches
-
-	private static boolean canComeIn(BattlePokemon candidate, BattlePokemon current) {
-		return candidate != current && candidate.getHealth() > 0 && !candidate.isSentOut() && candidate.canBeSentOut();
-	}
-
-	/** After a KO: the Pokémon with the best matchup against the one on the field (the healthiest if none). */
-	private BattlePokemon bestReplacement(ActiveBattlePokemon active, Mon foe) {
+	private static BattlePokemon healthiest(ActiveBattlePokemon active) {
 		BattlePokemon best = null;
-		double bestScore = Double.NEGATIVE_INFINITY;
 		for (BattlePokemon candidate : active.getActor().getPokemonList()) {
-			if (!canComeIn(candidate, active.getBattlePokemon())) {
-				continue;
-			}
-			Mon mine = own(candidate);
-			double score = foe == null ? mine.hp / mine.maxHp
-					: matchup(mine, foe, mine.hp, foe.hp, terastallized.get(candidate.getUuid())) + 0.1 * mine.hp / mine.maxHp;
-			if (score > bestScore) {
-				bestScore = score;
+			if (canComeIn(candidate, active.getBattlePokemon()) && (best == null || candidate.getHealth() > best.getHealth())) {
 				best = candidate;
 			}
 		}
 		return best;
 	}
 
-	private static int aliveBench(BattlePokemon pokemon) {
-		int alive = 0;
-		for (BattlePokemon other : pokemon.getActor().getPokemonList()) {
-			if (other != pokemon && other.getHealth() > 0) {
-				alive++;
+	private static boolean canComeIn(BattlePokemon candidate, BattlePokemon current) {
+		return candidate != current && candidate.getHealth() > 0 && !candidate.isSentOut() && candidate.canBeSentOut();
+	}
+
+	// ================================================================ lead
+
+	/**
+	 * Its team with the best lead first, against the opponent's team as team preview shows it (species: their sets are
+	 * believed from Smogon): the Pokémon whose one-on-ones are best on average and least bad at worst.
+	 */
+	public List<BattlePokemon> leadFirst(List<BattlePokemon> team, List<BattlePokemon> opponents) {
+		List<Mon> mine = new ArrayList<>();
+		team.forEach(pokemon -> mine.add(own(pokemon)));
+		List<Mon> theirs = new ArrayList<>();
+		opponents.forEach(pokemon -> theirs.add(belief(pokemon)));
+		Board board = new Board(mine, theirs, 0, 0, 0);
+		int best = 0;
+		double bestScore = Double.NEGATIVE_INFINITY;
+		for (int i = 0; i < mine.size(); i++) {
+			double sum = 0;
+			double worst = Double.POSITIVE_INFINITY;
+			for (int j = 0; j < theirs.size(); j++) {
+				double duel = board.duel(i, j, mine.get(i).hp, theirs.get(j).hp);
+				sum += duel;
+				worst = Math.min(worst, duel);
+			}
+			// A win condition is better kept in the back: leads that check much but matter less are preferred.
+			double score = 0.6 * sum / Math.max(1, theirs.size()) + 0.4 * worst;
+			if (score > bestScore) {
+				bestScore = score;
+				best = i;
 			}
 		}
-		return alive;
+		List<BattlePokemon> ordered = new ArrayList<>(team);
+		BattlePokemon lead = team.get(best);
+		ordered.remove(lead);
+		ordered.add(0, lead);
+		LOG.info("Expert AI leads with {}", lead.getEffectedPokemon().getSpecies().getName());
+		return ordered;
+	}
+
+	// ================================================================ the board
+
+	private Board board(List<BattlePokemon> myTeam, BattlePokemon myActive, List<BattlePokemon> foeTeam, BattlePokemon foeActive,
+			ShowdownMoveset moveset) {
+		List<Mon> mine = new ArrayList<>();
+		int myIndex = -1;
+		for (BattlePokemon pokemon : myTeam) {
+			if (pokemon == myActive) {
+				myIndex = mine.size();
+			}
+			Mon mon = own(pokemon);
+			if (pokemon != myActive) {
+				mon.stages = Map.of(); // stages go when it leaves the field
+			}
+			mine.add(mon);
+		}
+		List<Mon> theirs = new ArrayList<>();
+		int foeIndex = -1;
+		int unknown = 0;
+		for (BattlePokemon pokemon : foeTeam) {
+			if (pokemon == foeActive) {
+				foeIndex = theirs.size();
+			}
+			if (pokemon == foeActive || seenFoes.contains(pokemon.getUuid())) {
+				Mon mon = belief(pokemon);
+				if (pokemon != foeActive) {
+					mon.stages = Map.of();
+				}
+				theirs.add(mon);
+			} else if (pokemon.getHealth() > 0) {
+				unknown++;
+			}
+		}
+		Board board = new Board(mine, theirs, Math.max(0, myIndex), foeIndex, unknown);
+		if (moveset != null && moveset.getCanTerastallize() != null && myIndex >= 0) {
+			String type = moveset.getCanTerastallize().toLowerCase(Locale.ROOT);
+			if (!type.equals("stellar")) {
+				board.teraType = type;
+			}
+		}
+		for (int i = 0; i < mine.size(); i++) {
+			String tera = terastallized.get(mine.get(i).battler.getUuid());
+			if (tera != null) {
+				mine.get(i).teraType = tera;
+			}
+		}
+		board.prepare();
+		return board;
+	}
+
+	/** One option: a move of the active Pokémon (maybe with a gimmick), or a switch. */
+	private static final class Action {
+		int move = -1;
+		String moveId;
+		int switchTo = -1;
+		String gimmick;
+		boolean tera;
+		boolean z;
+		double cost;
+	}
+
+	/** The battle as the search plays it: HP, who is out, field boosts, statuses, hazards. */
+	private static final class State {
+		double[] myHp;
+		double[] foeHp;
+		String[] myStatus;
+		String[] foeStatus;
+		int myActive;
+		int foeActive;
+		double myAttack = 1;
+		double mySpeed = 1;
+		double myDefence = 1;
+		double foeAttack = 1;
+		double foeSpeed = 1;
+		double foeDefence = 1;
+		boolean myTera;
+		boolean rocksOnMe;
+		boolean rocksOnFoe;
+		int spikesOnMe;
+		int spikesOnFoe;
+
+		State copy() {
+			State s = new State();
+			s.myHp = myHp.clone();
+			s.foeHp = foeHp.clone();
+			s.myStatus = myStatus.clone();
+			s.foeStatus = foeStatus.clone();
+			s.myActive = myActive;
+			s.foeActive = foeActive;
+			s.myAttack = myAttack;
+			s.mySpeed = mySpeed;
+			s.myDefence = myDefence;
+			s.foeAttack = foeAttack;
+			s.foeSpeed = foeSpeed;
+			s.foeDefence = foeDefence;
+			s.myTera = myTera;
+			s.rocksOnMe = rocksOnMe;
+			s.rocksOnFoe = rocksOnFoe;
+			s.spikesOnMe = spikesOnMe;
+			s.spikesOnFoe = spikesOnFoe;
+			return s;
+		}
+	}
+
+	/** Both teams and their damage tables (computed once per decision), and the search over them. */
+	private static final class Board {
+		final List<Mon> mine;
+		final List<Mon> theirs;
+		final int myActive;
+		final int foeActive;
+		final int unknownFoes;
+		String teraType;
+		/** [my i][move m][foe j]: expected damage; the same with Tera (my active only) and as a Z-move. */
+		double[][][] myDamage;
+		double[][] myTeraDamage;
+		double[][] myZDamage;
+		/** [foe j][move m][my i]: expected damage; [foe j][move m]: on my active once it terastallized. */
+		double[][][] foeDamage;
+		double[][] foeOnTera;
+		double[] myBest;
+
+		Board(List<Mon> mine, List<Mon> theirs, int myActive, int foeActive, int unknownFoes) {
+			this.mine = mine;
+			this.theirs = theirs;
+			this.myActive = myActive;
+			this.foeActive = foeActive;
+			this.unknownFoes = unknownFoes;
+			prepare();
+		}
+
+		void prepare() {
+			myDamage = new double[mine.size()][][];
+			for (int i = 0; i < mine.size(); i++) {
+				Mon a = mine.get(i);
+				myDamage[i] = new double[a.moveList.size()][theirs.size()];
+				for (int m = 0; m < a.moveList.size(); m++) {
+					for (int j = 0; j < theirs.size(); j++) {
+						myDamage[i][m][j] = damage(a, theirs.get(j), a.moveList.get(m), a.teraType, 0, null);
+					}
+				}
+			}
+			foeDamage = new double[theirs.size()][][];
+			for (int j = 0; j < theirs.size(); j++) {
+				Mon a = theirs.get(j);
+				foeDamage[j] = new double[a.moveList.size()][mine.size()];
+				for (int m = 0; m < a.moveList.size(); m++) {
+					for (int i = 0; i < mine.size(); i++) {
+						foeDamage[j][m][i] = damage(a, mine.get(i), a.moveList.get(m), null, 0, mine.get(i).teraType);
+					}
+				}
+			}
+			if (mine.isEmpty() || theirs.isEmpty() || foeActive < 0) {
+				return;
+			}
+			Mon me = mine.get(myActive);
+			myTeraDamage = new double[me.moveList.size()][theirs.size()];
+			myZDamage = new double[me.moveList.size()][theirs.size()];
+			for (int m = 0; m < me.moveList.size(); m++) {
+				MoveTemplate move = me.moveList.get(m);
+				for (int j = 0; j < theirs.size(); j++) {
+					myTeraDamage[m][j] = teraType == null ? myDamage[myActive][m][j] : damage(me, theirs.get(j), move, teraType, 0, null);
+					myZDamage[m][j] = isStatus(move) ? 0 : damage(me, theirs.get(j), move, me.teraType, zPower(move.getPower()), null);
+				}
+			}
+			foeOnTera = new double[theirs.size()][];
+			for (int j = 0; j < theirs.size(); j++) {
+				Mon a = theirs.get(j);
+				foeOnTera[j] = new double[a.moveList.size()];
+				for (int m = 0; m < a.moveList.size(); m++) {
+					foeOnTera[j][m] = teraType == null ? foeDamage[j][m][myActive] : damage(a, me, a.moveList.get(m), null, 0, teraType);
+				}
+			}
+		}
+
+		State start() {
+			State s = new State();
+			s.myHp = new double[mine.size()];
+			s.myStatus = new String[mine.size()];
+			for (int i = 0; i < mine.size(); i++) {
+				s.myHp[i] = mine.get(i).hp;
+				s.myStatus[i] = mine.get(i).status;
+			}
+			s.foeHp = new double[theirs.size()];
+			s.foeStatus = new String[theirs.size()];
+			for (int j = 0; j < theirs.size(); j++) {
+				s.foeHp[j] = theirs.get(j).hp;
+				s.foeStatus[j] = theirs.get(j).status;
+			}
+			s.myActive = myActive;
+			s.foeActive = foeActive;
+			Mon me = mine.get(myActive);
+			s.myAttack = boost(me, me.stat(Stats.ATTACK) >= me.stat(Stats.SPECIAL_ATTACK) ? Stats.ATTACK : Stats.SPECIAL_ATTACK);
+			s.mySpeed = boost(me, Stats.SPEED);
+			s.myTera = me.teraType != null;
+			Mon foe = theirs.get(foeActive);
+			s.foeAttack = boost(foe, foe.stat(Stats.ATTACK) >= foe.stat(Stats.SPECIAL_ATTACK) ? Stats.ATTACK : Stats.SPECIAL_ATTACK);
+			s.foeSpeed = boost(foe, Stats.SPEED);
+			return s;
+		}
+
+		/** The table damage is computed without the active's stages: they are carried by the state's multipliers. */
+		private static double boost(Mon mon, Stat stat) {
+			int stage = mon.stages.getOrDefault(stat, 0);
+			return stage >= 0 ? (2.0 + stage) / 2 : 2.0 / (2 - stage);
+		}
+
+		// ------------------------------------------------ options
+
+		List<Action> rootOptions(ShowdownMoveset moveset, boolean zUsed) {
+			List<Action> options = new ArrayList<>();
+			Mon me = mine.get(myActive);
+			List<InBattleGimmickMove> zMoves = moveset.getCanZMove();
+			for (int index = 0; index < moveset.getMoves().size(); index++) {
+				InBattleMove slot = moveset.getMoves().get(index);
+				if (!slot.canBeUsed()) {
+					continue;
+				}
+				int m = me.moveIndex(slot.getId());
+				if (m < 0) {
+					continue;
+				}
+				options.add(moveAction(m, slot.getId(), null));
+				if (teraType != null && me.teraType == null) {
+					Action tera = moveAction(m, slot.getId(), ShowdownMoveset.Gimmick.TERASTALLIZATION.getId());
+					tera.tera = true;
+					tera.cost = TERA_RESERVE;
+					options.add(tera);
+				}
+				if (!zUsed && zMoves != null && index < zMoves.size() && zMoves.get(index) != null && !isStatus(me.moveList.get(m))) {
+					Action z = moveAction(m, slot.getId(), ShowdownMoveset.Gimmick.Z_POWER.getId());
+					z.z = true;
+					z.cost = Z_RESERVE;
+					options.add(z);
+				}
+			}
+			if (!moveset.getTrapped()) {
+				for (int i = 0; i < mine.size(); i++) {
+					if (i != myActive && mine.get(i).hp > 0 && canComeIn(mine.get(i).battler, mine.get(myActive).battler)) {
+						Action change = new Action();
+						change.switchTo = i;
+						options.add(change);
+					}
+				}
+			}
+			return options;
+		}
+
+		private static Action moveAction(int m, String id, String gimmick) {
+			Action action = new Action();
+			action.move = m;
+			action.moveId = id;
+			action.gimmick = gimmick;
+			return action;
+		}
+
+		/** Our options in a later turn: the active's moves and switches (no gimmick). */
+		List<Action> laterOptions(State s) {
+			List<Action> options = new ArrayList<>();
+			Mon me = mine.get(s.myActive);
+			for (int m = 0; m < me.moveList.size(); m++) {
+				options.add(moveAction(m, me.moveList.get(m).getName(), null));
+			}
+			for (int i = 0; i < mine.size(); i++) {
+				if (i != s.myActive && s.myHp[i] > 0) {
+					Action change = new Action();
+					change.switchTo = i;
+					options.add(change);
+				}
+			}
+			return options;
+		}
+
+		List<Action> foeOptions(State s) {
+			List<Action> options = new ArrayList<>();
+			Mon foe = theirs.get(s.foeActive);
+			for (int m = 0; m < foe.moveList.size(); m++) {
+				Action move = moveAction(m, foe.moveList.get(m).getName(), null);
+				move.cost = foe.movePrior.get(m); // the prior, for the policy
+				options.add(move);
+			}
+			for (int j = 0; j < theirs.size(); j++) {
+				if (j != s.foeActive && s.foeHp[j] > 0) {
+					Action change = new Action();
+					change.switchTo = j;
+					change.cost = 0.35;
+					options.add(change);
+				}
+			}
+			return options;
+		}
+
+		/**
+		 * How likely each opponent option is: its prior (usage), sharpened by how good it is for the opponent against
+		 * our most obvious answer (our hardest-hitting move).
+		 */
+		double[] foePolicy(State s, List<Action> theirs) {
+			Action obvious = obvious(s);
+			double[] weights = new double[theirs.size()];
+			double total = 0;
+			double[] goods = new double[theirs.size()];
+			double top = Double.NEGATIVE_INFINITY;
+			for (int k = 0; k < theirs.size(); k++) {
+				goods[k] = -evaluate(turn(s, obvious, theirs.get(k)));
+				top = Math.max(top, goods[k]);
+			}
+			for (int k = 0; k < theirs.size(); k++) {
+				weights[k] = Math.max(0.02, theirs.get(k).cost) * Math.exp((goods[k] - top) / OPPONENT_TEMPERATURE);
+				total += weights[k];
+			}
+			for (int k = 0; k < weights.length; k++) {
+				weights[k] /= total;
+			}
+			return weights;
+		}
+
+		private Action obvious(State s) {
+			Mon me = mine.get(s.myActive);
+			int best = -1;
+			double bestDamage = -1;
+			for (int m = 0; m < me.moveList.size(); m++) {
+				double damage = myDamage[s.myActive][m][s.foeActive];
+				if (damage > bestDamage) {
+					bestDamage = damage;
+					best = m;
+				}
+			}
+			return best < 0 ? new Action() : moveAction(best, me.moveList.get(best).getName(), null);
+		}
+
+		/** The value of a state, {@code depth} more turns searched (both choosing at once, the opponent as predicted). */
+		double value(State s, int depth) {
+			if (depth <= 0 || over(s)) {
+				return evaluate(s);
+			}
+			List<Action> theirs = foeOptions(s);
+			double[] p = foePolicy(s, theirs);
+			double best = Double.NEGATIVE_INFINITY;
+			for (Action a : laterOptions(s)) {
+				double value = 0;
+				for (int k = 0; k < theirs.size(); k++) {
+					if (p[k] >= 0.02) {
+						value += p[k] * evaluate(turn(s, a, theirs.get(k)));
+					}
+				}
+				best = Math.max(best, value);
+			}
+			return LATER * best + (1 - LATER) * evaluate(s);
+		}
+
+		private boolean over(State s) {
+			boolean meAlive = false;
+			for (double hp : s.myHp) {
+				meAlive |= hp > 0;
+			}
+			boolean foeAlive = unknownFoes > 0;
+			for (double hp : s.foeHp) {
+				foeAlive |= hp > 0;
+			}
+			return !meAlive || !foeAlive;
+		}
+
+		// ------------------------------------------------ one turn
+
+		/** One turn: switches first, then the moves by priority and Speed, residual damage, replacements after KOs. */
+		State turn(State from, Action a, Action b) {
+			State s = from.copy();
+			if (a.switchTo >= 0) {
+				enter(s, true, a.switchTo);
+			}
+			if (b.switchTo >= 0) {
+				enter(s, false, b.switchTo);
+			}
+			if (a.tera) {
+				s.myTera = true;
+			}
+			boolean myMove = a.move >= 0 && s.myHp[s.myActive] > 0;
+			boolean foeMove = b.move >= 0 && s.foeHp[s.foeActive] > 0;
+			if (myMove && foeMove) {
+				MoveTemplate mine = this.mine.get(s.myActive).moveList.get(a.move);
+				MoveTemplate theirs = this.theirs.get(s.foeActive).moveList.get(b.move);
+				boolean first = mine.getPriority() != theirs.getPriority() ? mine.getPriority() > theirs.getPriority()
+						: speed(s, true) >= speed(s, false);
+				boolean myProtect = AIUtility.INSTANCE.getProtectMoves().contains(mine.getName());
+				boolean foeProtect = AIUtility.INSTANCE.getProtectMoves().contains(theirs.getName());
+				if (first) {
+					use(s, true, a, foeProtect);
+					if (s.foeHp[s.foeActive] > 0) {
+						use(s, false, b, myProtect);
+					}
+				} else {
+					use(s, false, b, myProtect);
+					if (s.myHp[s.myActive] > 0) {
+						use(s, true, a, foeProtect);
+					}
+				}
+			} else if (myMove) {
+				use(s, true, a, false);
+			} else if (foeMove) {
+				use(s, false, b, false);
+			}
+			residual(s, true);
+			residual(s, false);
+			if (s.myHp[s.myActive] <= 0) {
+				replace(s, true);
+			}
+			if (s.foeHp[s.foeActive] <= 0) {
+				replace(s, false);
+			}
+			return s;
+		}
+
+		/** A Pokémon comes in: the field boosts go, hazards hit it. */
+		void enter(State s, boolean ours, int index) {
+			Mon mon = ours ? mine.get(index) : theirs.get(index);
+			if (ours) {
+				s.myActive = index;
+				s.myAttack = 1;
+				s.mySpeed = 1;
+				s.myDefence = 1;
+				s.myTera = mon.teraType != null;
+			} else {
+				s.foeActive = index;
+				s.foeAttack = 1;
+				s.foeSpeed = 1;
+				s.foeDefence = 1;
+			}
+			double[] hp = ours ? s.myHp : s.foeHp;
+			boolean rocks = ours ? s.rocksOnMe : s.rocksOnFoe;
+			int spikes = ours ? s.spikesOnMe : s.spikesOnFoe;
+			if (mon.item.equals("heavydutyboots")) {
+				return;
+			}
+			if (rocks) {
+				hp[index] -= mon.maxHp * 0.125 * effectiveness(ElementalTypes.get("rock"), mon, null);
+			}
+			if (spikes > 0 && !mon.types.contains("flying") && !mon.ability.equals("levitate") && !mon.item.equals("airballoon")) {
+				hp[index] -= mon.maxHp * (spikes == 1 ? 0.125 : spikes == 2 ? 1.0 / 6 : 0.25);
+			}
+		}
+
+		/** After a KO, the side brings in what scores best for it (greedy). */
+		private void replace(State s, boolean ours) {
+			double[] hp = ours ? s.myHp : s.foeHp;
+			int best = -1;
+			double bestScore = Double.NEGATIVE_INFINITY;
+			for (int i = 0; i < hp.length; i++) {
+				if (hp[i] <= 0) {
+					continue;
+				}
+				double score = ours ? duel(i, s.foeActive, hp[i], s.foeHp[s.foeActive]) : -duel(s.myActive, i, s.myHp[s.myActive], hp[i]);
+				if (score > bestScore) {
+					bestScore = score;
+					best = i;
+				}
+			}
+			if (best >= 0) {
+				enter(s, ours, best);
+			}
+		}
+
+		private double speed(State s, boolean ours) {
+			Mon mon = ours ? mine.get(s.myActive) : theirs.get(s.foeActive);
+			String status = ours ? s.myStatus[s.myActive] : s.foeStatus[s.foeActive];
+			double speed = mon.stat(Stats.SPEED) * (ours ? s.mySpeed : s.foeSpeed);
+			if ("par".equals(status)) {
+				speed *= 0.5;
+			}
+			if (mon.item.equals("choicescarf")) {
+				speed *= 1.5;
+			}
+			return speed;
+		}
+
+		/** One side's move, its effects on the state. */
+		private void use(State s, boolean ours, Action action, boolean targetProtects) {
+			Mon user = ours ? mine.get(s.myActive) : theirs.get(s.foeActive);
+			Mon target = ours ? theirs.get(s.foeActive) : mine.get(s.myActive);
+			MoveTemplate move = user.moveList.get(action.move);
+			String name = move.getName();
+			String status = ours ? s.myStatus[s.myActive] : s.foeStatus[s.foeActive];
+			double acts = "slp".equals(status) ? 0.33 : "par".equals(status) ? 0.75 : 1;
+			AIUtility ai = AIUtility.INSTANCE;
+			if (!isStatus(move)) {
+				if (targetProtects) {
+					return;
+				}
+				double damage;
+				if (ours) {
+					damage = action.z ? myZDamage[action.move][s.foeActive]
+							: action.tera || s.myTera && s.myActive == myActive && teraType != null && user.teraType == null
+							? myTeraDamage[action.move][s.foeActive] : myDamage[s.myActive][action.move][s.foeActive];
+					damage *= s.myAttack / s.foeDefence;
+				} else {
+					damage = s.myTera && s.myActive == myActive && foeOnTera != null && mine.get(myActive).teraType == null
+							? foeOnTera[s.foeActive][action.move] : foeDamage[s.foeActive][action.move][s.myActive];
+					damage *= s.foeAttack / s.myDefence;
+				}
+				if ("brn".equals(status) && "physical".equals(move.getDamageCategory().getName()) && !user.ability.equals("guts")) {
+					damage *= 0.5;
+				}
+				damage *= acts;
+				double[] hp = ours ? s.foeHp : s.myHp;
+				int index = ours ? s.foeActive : s.myActive;
+				hp[index] -= damage;
+				if (user.item.equals("lifeorb")) {
+					(ours ? s.myHp : s.foeHp)[ours ? s.myActive : s.foeActive] -= user.maxHp * 0.1 * acts;
+				}
+				if (ai.getSelfRecoveryMoves().contains(name)) {
+					(ours ? s.myHp : s.foeHp)[ours ? s.myActive : s.foeActive] += damage * 0.5; // a draining hit
+				}
+				return;
+			}
+			Map<Stat, Integer> boosts = ai.getBoostFromMoves().get(name);
+			if (boosts != null) {
+				boolean physical = user.stat(Stats.ATTACK) >= user.stat(Stats.SPECIAL_ATTACK);
+				for (Map.Entry<Stat, Integer> boost : boosts.entrySet()) {
+					double factor = 1 + 0.5 * boost.getValue() * acts;
+					Stat stat = boost.getKey();
+					if (stat == (physical ? Stats.ATTACK : Stats.SPECIAL_ATTACK)) {
+						if (ours) {
+							s.myAttack = Math.min(4, s.myAttack * factor);
+						} else {
+							s.foeAttack = Math.min(4, s.foeAttack * factor);
+						}
+					} else if (stat == Stats.SPEED) {
+						if (ours) {
+							s.mySpeed = Math.min(4, s.mySpeed * factor);
+						} else {
+							s.foeSpeed = Math.min(4, s.foeSpeed * factor);
+						}
+					} else if (stat == Stats.DEFENCE || stat == Stats.SPECIAL_DEFENCE) {
+						if (ours) {
+							s.myDefence = Math.min(4, s.myDefence * (1 + 0.25 * boost.getValue() * acts));
+						} else {
+							s.foeDefence = Math.min(4, s.foeDefence * (1 + 0.25 * boost.getValue() * acts));
+						}
+					}
+				}
+				return;
+			}
+			if (ai.getSelfRecoveryMoves().contains(name)) {
+				double[] hp = ours ? s.myHp : s.foeHp;
+				int index = ours ? s.myActive : s.foeActive;
+				hp[index] = Math.min(user.maxHp, hp[index] + user.maxHp * 0.5 * acts);
+				return;
+			}
+			if (ai.getEntryHazards().contains(name)) {
+				if (name.equals("stealthrock")) {
+					if (ours) {
+						s.rocksOnFoe = true;
+					} else {
+						s.rocksOnMe = true;
+					}
+				} else if (name.equals("spikes")) {
+					if (ours) {
+						s.spikesOnFoe = Math.min(3, s.spikesOnFoe + 1);
+					} else {
+						s.spikesOnMe = Math.min(3, s.spikesOnMe + 1);
+					}
+				}
+				return;
+			}
+			if (ai.getAntiHazardsMoves().contains(name)) {
+				if (ours) {
+					s.rocksOnMe = false;
+					s.spikesOnMe = 0;
+				} else {
+					s.rocksOnFoe = false;
+					s.spikesOnFoe = 0;
+				}
+				return;
+			}
+			String inflicted = ai.getStatusMoves().get(name);
+			if (inflicted != null && !targetProtects) {
+				String[] statuses = ours ? s.foeStatus : s.myStatus;
+				int index = ours ? s.foeActive : s.myActive;
+				if (statuses[index].isEmpty() && target.battler != null
+						&& ai.canAffectWithStatus(inflicted, target.battler.getEffectedPokemon().getTypes(), target.battler.getEffectedPokemon().getAbility())
+						&& accuracy(move) * acts >= 0.5) {
+					statuses[index] = inflicted;
+				}
+			}
+		}
+
+		/** End of turn: poison, burn, Leftovers. */
+		private void residual(State s, boolean ours) {
+			double[] hp = ours ? s.myHp : s.foeHp;
+			String[] statuses = ours ? s.myStatus : s.foeStatus;
+			int index = ours ? s.myActive : s.foeActive;
+			Mon mon = ours ? mine.get(index) : theirs.get(index);
+			if (hp[index] <= 0) {
+				return;
+			}
+			switch (statuses[index]) {
+				case "tox", "psn" -> hp[index] -= mon.maxHp * (mon.ability.equals("poisonheal") ? -0.125 : 0.125);
+				case "brn" -> hp[index] -= mon.maxHp / 16;
+				default -> {
+				}
+			}
+			if (mon.item.equals("leftovers") || mon.item.equals("blacksludge") && mon.types.contains("poison")) {
+				hp[index] = Math.min(mon.maxHp, hp[index] + mon.maxHp / 16);
+			}
+		}
+
+		// ------------------------------------------------ scoring the board
+
+		/**
+		 * One on one, from my {@code i}'s side with these HP: which of the two knocks the other out first (best damage,
+		 * priority, Speed), and how hard each hits. In [-1, 1].
+		 */
+		double duel(int i, int j, double myHp, double foeHp) {
+			if (myHp <= 0) {
+				return -1;
+			}
+			if (foeHp <= 0) {
+				return 1;
+			}
+			Mon a = mine.get(i);
+			Mon b = theirs.get(j);
+			double dealt = 0;
+			int myPriority = 0;
+			for (int m = 0; m < a.moveList.size(); m++) {
+				if (myDamage[i][m][j] > dealt) {
+					dealt = myDamage[i][m][j];
+					myPriority = a.moveList.get(m).getPriority();
+				}
+			}
+			double taken = 0;
+			int foePriority = 0;
+			for (int m = 0; m < b.moveList.size(); m++) {
+				if (foeDamage[j][m][i] > taken) {
+					taken = foeDamage[j][m][i];
+					foePriority = b.moveList.get(m).getPriority();
+				}
+			}
+			boolean first = myPriority != foePriority ? myPriority > foePriority : ExpertBattleAI.speed(a) >= ExpertBattleAI.speed(b);
+			double toKo = dealt <= 0 ? 99 : Math.ceil(foeHp / dealt);
+			double toDie = taken <= 0 ? 99 : Math.ceil(myHp / taken);
+			double wins = toKo < toDie || toKo == toDie && first ? 0.6 : -0.6;
+			return wins + 0.2 * Math.min(1, dealt / b.maxHp) - 0.2 * Math.min(1, taken / a.maxHp);
+		}
+
+		/**
+		 * The board for us: HP weighted by each Pokémon's importance (the only check to a threat, a win condition), every
+		 * opposing threat still checked, win conditions, the matchup on the field, boosts, hazards and statuses.
+		 */
+		double evaluate(State s) {
+			int n = mine.size();
+			int f = theirs.size();
+			double[][] table = new double[n][f];
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < f; j++) {
+					table[i][j] = s.myHp[i] > 0 && s.foeHp[j] > 0 ? duel(i, j, s.myHp[i], s.foeHp[j]) : 0;
+				}
+			}
+			int[] checksOfFoe = new int[f];
+			int[] checksOfMine = new int[n];
+			for (int i = 0; i < n; i++) {
+				for (int j = 0; j < f; j++) {
+					if (s.myHp[i] > 0 && s.foeHp[j] > 0) {
+						if (table[i][j] > 0) {
+							checksOfFoe[j]++;
+						} else {
+							checksOfMine[i]++;
+						}
+					}
+				}
+			}
+			double score = 0;
+			int foeAlive = unknownFoes;
+			for (int j = 0; j < f; j++) {
+				foeAlive += s.foeHp[j] > 0 ? 1 : 0;
+			}
+			boolean myWinCondition = false;
+			for (int i = 0; i < n; i++) {
+				if (s.myHp[i] <= 0) {
+					score -= 1.0;
+					continue;
+				}
+				double importance = 1;
+				int beaten = 0;
+				for (int j = 0; j < f; j++) {
+					if (s.foeHp[j] > 0 && table[i][j] > 0) {
+						beaten++;
+						if (checksOfFoe[j] == 1) {
+							importance += 0.5; // the only answer to that threat
+						}
+					}
+				}
+				if (beaten > 0 && beaten == foeAlive) {
+					myWinCondition = true;
+					importance += 0.6;
+				}
+				score += importance * s.myHp[i] / mine.get(i).maxHp;
+			}
+			boolean foeWinCondition = false;
+			for (int j = 0; j < f; j++) {
+				if (s.foeHp[j] <= 0) {
+					score += 1.0;
+					continue;
+				}
+				double importance = 1;
+				int beaten = 0;
+				int myAlive = 0;
+				for (int i = 0; i < n; i++) {
+					if (s.myHp[i] > 0) {
+						myAlive++;
+						if (table[i][j] <= 0) {
+							beaten++;
+							if (checksOfMine[i] == 1) {
+								importance += 0.5;
+							}
+						}
+					}
+				}
+				if (beaten > 0 && beaten == myAlive) {
+					foeWinCondition = true;
+					importance += 0.6;
+				}
+				score -= importance * s.foeHp[j] / theirs.get(j).maxHp;
+				// A threat with no answer left on our side.
+				if (checksOfFoe[j] == 0) {
+					score -= 0.35;
+				}
+			}
+			score -= unknownFoes;
+			score += myWinCondition ? 0.5 : 0;
+			score -= foeWinCondition ? 0.5 : 0;
+			if (s.myHp[s.myActive] > 0 && s.foeHp[s.foeActive] > 0) {
+				score += 0.3 * table[s.myActive][s.foeActive];
+			}
+			score += 0.25 * (Math.min(s.myAttack, 3) - 1) + 0.1 * (Math.min(s.mySpeed, 2) - 1) + 0.1 * (s.myDefence - 1);
+			score -= 0.25 * (Math.min(s.foeAttack, 3) - 1) + 0.1 * (Math.min(s.foeSpeed, 2) - 1) + 0.1 * (s.foeDefence - 1);
+			score += (s.rocksOnFoe ? 0.05 : 0) * (foeAlive - 1) + 0.03 * s.spikesOnFoe * (foeAlive - 1);
+			score -= (s.rocksOnMe ? 0.05 : 0) * (n - 1) + 0.03 * s.spikesOnMe * (n - 1);
+			for (int j = 0; j < f; j++) {
+				if (s.foeHp[j] > 0 && !s.foeStatus[j].isEmpty() && !s.foeStatus[j].equals(theirs.get(j).status)) {
+					score += s.foeStatus[j].equals("brn") && theirs.get(j).stat(Stats.ATTACK) > theirs.get(j).stat(Stats.SPECIAL_ATTACK) ? 0.3
+							: s.foeStatus[j].equals("slp") ? 0.35 : 0.15;
+				}
+			}
+			for (int i = 0; i < n; i++) {
+				if (s.myHp[i] > 0 && !s.myStatus[i].isEmpty() && !s.myStatus[i].equals(mine.get(i).status)) {
+					score -= 0.2;
+				}
+			}
+			return score;
+		}
+
+		String label(Action a) {
+			if (a.switchTo >= 0) {
+				return "switch to " + mine.get(a.switchTo).name;
+			}
+			return a.moveId + (a.tera ? " + tera " + teraType : "") + (a.z ? " (Z)" : "");
+		}
 	}
 
 	// ================================================================ what is known of a Pokémon
@@ -427,7 +991,7 @@ public final class ExpertBattleAI implements BattleAI {
 	/** A Pokémon as the AI sees it: exact for its own, believed (revealed + Smogon) for the opponent's. */
 	private static final class Mon {
 		BattlePokemon battler;
-		boolean ours;
+		String name = "?";
 		int level;
 		double hp;
 		double maxHp;
@@ -437,13 +1001,31 @@ public final class ExpertBattleAI implements BattleAI {
 		String ability = "";
 		String item = "";
 		String status = "";
-		/** Moves it has or is believed to have, with how likely each is. */
-		final Map<MoveTemplate, Double> moves = new LinkedHashMap<>();
+		/** Terastallized into this type, or null. */
+		String teraType;
+		final List<MoveTemplate> moveList = new ArrayList<>();
+		/** How likely each move is (1 for a known one). */
+		final List<Double> movePrior = new ArrayList<>();
 
+		/** The stat without its stage (the search carries the stages). */
 		double stat(Stat stat) {
-			double value = stats.getOrDefault(stat, 100.0);
-			int stage = stages.getOrDefault(stat, 0);
-			return value * (stage >= 0 ? (2.0 + stage) / 2 : 2.0 / (2 - stage));
+			return stats.getOrDefault(stat, 100.0);
+		}
+
+		int moveIndex(String id) {
+			for (int m = 0; m < moveList.size(); m++) {
+				if (moveList.get(m).getName().equals(id)) {
+					return m;
+				}
+			}
+			return -1;
+		}
+
+		void addMove(MoveTemplate move, double prior) {
+			if (move != null && moveIndex(move.getName()) < 0) {
+				moveList.add(move);
+				movePrior.add(prior);
+			}
 		}
 	}
 
@@ -451,6 +1033,7 @@ public final class ExpertBattleAI implements BattleAI {
 		Pokemon pokemon = battler.getEffectedPokemon();
 		Mon mon = new Mon();
 		mon.battler = battler;
+		mon.name = pokemon.getSpecies().getName();
 		mon.level = pokemon.getLevel();
 		mon.hp = battler.getHealth();
 		mon.maxHp = Math.max(1, battler.getMaxHealth());
@@ -467,7 +1050,6 @@ public final class ExpertBattleAI implements BattleAI {
 	private static Mon own(BattlePokemon battler) {
 		Mon mon = common(battler);
 		Pokemon pokemon = battler.getEffectedPokemon();
-		mon.ours = true;
 		for (Stat stat : List.of(Stats.ATTACK, Stats.DEFENCE, Stats.SPECIAL_ATTACK, Stats.SPECIAL_DEFENCE, Stats.SPEED)) {
 			mon.stats.put(stat, (double) pokemon.getStat(stat));
 		}
@@ -476,7 +1058,7 @@ public final class ExpertBattleAI implements BattleAI {
 		mon.item = stack == null || stack.isEmpty() ? "" : id(BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath());
 		for (Move move : battler.getMoveSet().getMoves()) {
 			if (move.getCurrentPp() > 0) {
-				mon.moves.put(move.getTemplate(), 1.0);
+				mon.addMove(move.getTemplate(), 1.0);
 			}
 		}
 		return mon;
@@ -494,9 +1076,7 @@ public final class ExpertBattleAI implements BattleAI {
 			set = sets().get(id(pokemon.getSpecies().getName()));
 		}
 		if (set == null) {
-			Mon real = own(battler);
-			real.ours = false;
-			return real;
+			return own(battler);
 		}
 		Mon mon = common(battler);
 		Map<Stat, Integer> base = pokemon.getForm().getBaseStats();
@@ -516,20 +1096,16 @@ public final class ExpertBattleAI implements BattleAI {
 		}
 		mon.ability = set.has("ability") ? id(set.get("ability").getAsString()) : "";
 		mon.item = set.has("item") ? id(set.get("item").getAsString()) : "";
-		// Revealed moves for sure, then the most run ones until four.
 		for (Move move : battler.getMoveSet().getMoves()) {
 			if (move.getCurrentPp() < move.getMaxPp()) {
-				mon.moves.put(move.getTemplate(), 1.0);
+				mon.addMove(move.getTemplate(), 1.0);
 			}
 		}
 		for (JsonElement element : set.getAsJsonArray("moves")) {
-			if (mon.moves.size() >= 4) {
+			if (mon.moveList.size() >= 4) {
 				break;
 			}
-			MoveTemplate template = Moves.getByName(element.getAsJsonArray().get(0).getAsString());
-			if (template != null && !mon.moves.containsKey(template)) {
-				mon.moves.put(template, element.getAsJsonArray().get(1).getAsDouble());
-			}
+			mon.addMove(Moves.getByName(element.getAsJsonArray().get(0).getAsString()), element.getAsJsonArray().get(1).getAsDouble());
 		}
 		return mon;
 	}
@@ -549,7 +1125,6 @@ public final class ExpertBattleAI implements BattleAI {
 		return sets;
 	}
 
-	/** A Showdown-style id: lowercase letters and digits. */
 	private static String id(String name) {
 		return name == null ? "" : name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
 	}
@@ -562,13 +1137,10 @@ public final class ExpertBattleAI implements BattleAI {
 		return "status".equals(move.getDamageCategory().getName()) || move.getPower() <= 0 && !FIXED_DAMAGE.contains(move.getName());
 	}
 
-	private static double damage(Mon attacker, Mon defender, MoveTemplate move, String attackerTera, double zPower) {
-		return damage(attacker, defender, move, attackerTera, zPower, null);
-	}
-
 	/**
-	 * Expected damage in HP points, accuracy included; 0 for a status move or an immune target. {@code attackerTera}:
-	 * the attacker's Tera type (STAB), {@code defenderTera}: the defender's (its only type), {@code zPower}: a Z-move's.
+	 * Expected damage in HP points without stat stages (the search carries them), accuracy included; 0 for a status
+	 * move or an immune target. {@code attackerTera}: its Tera type (STAB), {@code defenderTera}: the defender's (its
+	 * only type), {@code zPower}: a Z-move's power.
 	 */
 	private static double damage(Mon attacker, Mon defender, MoveTemplate move, String attackerTera, double zPower, String defenderTera) {
 		String name = move.getName();
@@ -612,9 +1184,6 @@ public final class ExpertBattleAI implements BattleAI {
 			stab = original ? 2 : 1.5;
 		}
 		double modifier = 0.925 * stab * effectiveness;
-		if (physical && attacker.status.equals("brn") && !attacker.ability.equals("guts")) {
-			modifier *= 0.5;
-		}
 		if (physical && attacker.ability.equals("guts") && !attacker.status.isEmpty()) {
 			modifier *= 1.5;
 		}
@@ -630,8 +1199,11 @@ public final class ExpertBattleAI implements BattleAI {
 		return base * modifier * count * (zPower > 0 ? 1 : accuracy(move));
 	}
 
-	/** Type effectiveness on a Pokémon (its Tera type alone if terastallized), immunity abilities included. */
+	/** Type effectiveness on a Pokémon (its Tera type alone if terastallized), immunity abilities and Air Balloon included. */
 	private static double effectiveness(ElementalType moveType, Mon defender, String defenderTera) {
+		if (moveType == null) {
+			return 1;
+		}
 		ElementalType immune = AIUtility.INSTANCE.getTypeImmuneAbilities().get(defender.ability);
 		if (immune != null && immune.getName().equalsIgnoreCase(moveType.getName())) {
 			return 0;
@@ -639,10 +1211,11 @@ public final class ExpertBattleAI implements BattleAI {
 		if (defender.item.equals("airballoon") && moveType.getName().equalsIgnoreCase("ground")) {
 			return 0;
 		}
-		List<String> types = defenderTera != null && !defenderTera.equals("stellar") ? List.of(defenderTera) : defender.types;
+		String tera = defenderTera != null ? defenderTera : defender.teraType;
+		List<String> types = tera != null && !tera.equals("stellar") ? List.of(tera) : defender.types;
 		double multiplier = 1;
 		for (String type : types) {
-			ElementalType defending = com.cobblemon.mod.common.api.types.ElementalTypes.get(type);
+			ElementalType defending = ElementalTypes.get(type);
 			if (defending != null) {
 				multiplier *= AIUtility.INSTANCE.getDamageMultiplier(moveType, defending);
 			}
@@ -679,8 +1252,10 @@ public final class ExpertBattleAI implements BattleAI {
 		return accuracy <= 0 || accuracy > 100 ? 1 : accuracy / 100;
 	}
 
+	/** Speed with its stage, paralysis and Choice Scarf (for the one-on-one table). */
 	private static double speed(Mon mon) {
-		double speed = mon.stat(Stats.SPEED);
+		int stage = mon.stages.getOrDefault(Stats.SPEED, 0);
+		double speed = mon.stat(Stats.SPEED) * (stage >= 0 ? (2.0 + stage) / 2 : 2.0 / (2 - stage));
 		if (mon.status.equals("par")) {
 			speed *= 0.5;
 		}
@@ -688,12 +1263,5 @@ public final class ExpertBattleAI implements BattleAI {
 			speed *= 1.5;
 		}
 		return speed;
-	}
-
-	private static boolean movesFirst(Mon me, int myPriority, Mon foe, int foePriority) {
-		if (myPriority != foePriority) {
-			return myPriority > foePriority;
-		}
-		return speed(me) >= speed(foe);
 	}
 }

@@ -285,6 +285,10 @@ public final class GhostBattles {
 				BattleThread.get().ensureShowdown();
 				List<BattlePokemon> hostPokemon = battleTeam(hostTeam);
 				List<BattlePokemon> guestPokemon = battleTeam(guestTeam);
+				if (ai instanceof ExpertBattleAI expert && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
+					// The expert AI picks its lead against the player's team, as at team preview (Adrien 2026-11-03).
+					guestPokemon = expert.leadFirst(guestPokemon, hostPokemon);
+				}
 				if (hostPokemon.isEmpty() || guestPokemon.isEmpty()) {
 					callbacks.failed();
 					return;
