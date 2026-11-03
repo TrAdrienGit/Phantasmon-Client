@@ -474,7 +474,25 @@ public final class GhostBattles {
 				&& response.isValid(active, moveset, false)) {
 			return response;
 		}
-		return new com.cobblemon.mod.common.battles.ai.RandomBattleAI().choose(active, battle, actor.getSide(), moveset, false);
+		com.cobblemon.mod.common.battles.ShowdownActionResponse fallback = new com.cobblemon.mod.common.battles.ai.RandomBattleAI()
+				.choose(active, battle, actor.getSide(), moveset, false);
+		// Adrien 2026-11-03: the AI debug announced a move the NPC then did not play — Cobblemon refused it and the
+		// random AI played. Say so, so the debug never shows a choice that was not played.
+		LOG.info("Battle AI choice {} refused by Cobblemon: random AI plays {}", describe(response), describe(fallback));
+		if (ai instanceof ExpertBattleAI || ai instanceof RebornBattleAI) {
+			ExpertBattleAI.say("§c[IA] Choix refusé par Cobblemon (" + describe(response) + ") : joué au hasard → " + describe(fallback));
+		}
+		return fallback;
+	}
+
+	private static String describe(com.cobblemon.mod.common.battles.ShowdownActionResponse response) {
+		if (response instanceof com.cobblemon.mod.common.battles.MoveActionResponse move) {
+			return move.getMoveName() + (move.getGimmickID() == null ? "" : " + " + move.getGimmickID());
+		}
+		if (response instanceof com.cobblemon.mod.common.battles.SwitchActionResponse change) {
+			return "switch " + change.getNewPokemonId();
+		}
+		return response == null ? "aucun" : response.getClass().getSimpleName();
 	}
 
 	/** The actor's Pokémon with {@code uuid} if it can come in: healthy, not on the field, not already chosen. */
