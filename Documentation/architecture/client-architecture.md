@@ -14,7 +14,7 @@
 | Fabric API | 0.116.17+1.21.1 | `gradle.properties` |
 | Cobblemon | 1.8.1 Fabric, résolu par l'**identifiant de version Modrinth** `gBW3vLC7` | `gradle.properties` |
 | Kotlin stdlib | 2.0.21 en `compileOnly` (nécessaire pour compiler contre l'API Kotlin de Cobblemon) | `build.gradle` |
-| Cobblemon Spectacle | 0.1.x, **obligatoire**, jar séparé (D-37) : caméra de combat, intros, Méga / Z / Téra, musiques de combat. Compilé depuis le Maven local (`../Cobblemon-Spectacle`, `publishToMavenLocal`) | `gradle.properties`, `fabric.mod.json` |
+| Cobblemon Battle Showtime | 0.1.x, **obligatoire**, jar séparé (D-37) : caméra de combat, intros, Méga / Z / Téra, musiques de combat. Compilé depuis le Maven local (`../Cobblemon-Battle-Showtime`, `publishToMavenLocal`) | `gradle.properties`, `fabric.mod.json` |
 | Langage | Java 21 (bytecode) ; Gradle / Loom 1.18 exige un **JDK 25** pour s'exécuter | `build.gradle` |
 | Environnement | `"environment": "client"` : le mod ne se charge jamais sur un serveur | `fabric.mod.json` |
 | Tests | JUnit 5 (logique pure uniquement) | `build.gradle` |
@@ -38,7 +38,7 @@ Racine : `com.mystaria.phantasmon.client`.
 | `ghost` | Session WebSocket de présence, entités Ghost locales | `GhostSession`, `GhostEntityManager` |
 | `gui` | Écrans PC, éditeur, échange et leur socle commun | `PhantasmonCanvasScreen`, `PhantasmonPcScreen`, `PhantasmonPcEditScreen`, `PhantasmonTradeScreen`, `PokemonGuiRendering` |
 | `trade` | Échange en direct (état + contrôleur) et échange asynchrone (commandes) | `LiveTradeController`, `LiveTradeState`, `TradeCommandHandler`, `TradeClient` |
-| `battle` | Combat Ghost : moteur sur l'hôte, relais, visuels, animations d'attaque ; branchement sur Cobblemon Spectacle, qui filme le combat (D-37 : `BattleVisuals` lui fournit sa scène, `SpectacleBridge` ses avatars, halos et boutons) | `LiveBattleController`, `GhostBattles`, `BattleThread`, `GhostBattleActor`, `GhostBattlePokemonFactory`, `CobblemonPackets`, `BattleVisuals`, `GhostActionEffects`, `ActionEffectPlayer`, `ClientActionEffects`, `SpectacleBridge` |
+| `battle` | Combat Ghost : moteur sur l'hôte, relais, visuels, animations d'attaque ; branchement sur Cobblemon Battle Showtime, qui filme le combat (D-37 : `BattleVisuals` lui fournit sa scène, `ShowtimeBridge` ses avatars, halos et boutons) | `LiveBattleController`, `GhostBattles`, `BattleThread`, `GhostBattleActor`, `GhostBattlePokemonFactory`, `CobblemonPackets`, `BattleVisuals`, `GhostActionEffects`, `ActionEffectPlayer`, `ClientActionEffects`, `ShowtimeBridge` |
 | `wheel` | Entrées Phantasmon dans la roue d'interaction Cobblemon | `GhostWheelOptions` |
 | `hub` | Phantasmon Network : Anchors du serveur (REST, partagés par ses joueurs, D-30), détection d'entrée, invitation, `HubMove`, chat du Hub, rendu du cube, avatars des joueurs distants (entités client) ; conversion de coordonnées (logique pure) | `HubController`, `HubCommands`, `HubClient`, `HubCoordinates`, `HubAvatars`, `HubAvatarEntity` |
 | `mixin` | 16 Mixins (voir [`mixins.md`](mixins.md)) | |

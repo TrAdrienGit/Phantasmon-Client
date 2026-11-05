@@ -8,8 +8,8 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 
-import com.mystaria.spectacle.audio.MusicSettings;
-import com.mystaria.spectacle.audio.BattleMusic;
+import com.mystaria.showtime.audio.MusicSettings;
+import com.mystaria.showtime.audio.BattleMusic;
 
 /**
  * Picks which music files of the resource pack may play (Adrien 2026-10-05): one tab per folder (lobby, intro,

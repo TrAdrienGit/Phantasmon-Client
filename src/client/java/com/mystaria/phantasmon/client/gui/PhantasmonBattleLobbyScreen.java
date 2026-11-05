@@ -52,7 +52,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static final int FORMAT_X = 27;
 	private static final int FORMAT_W = 360;
 	private static final int FORMAT_ROW_H = 30;
-	// ---- Battle ambiance drop-down (Spectacle A3), beside the format's; its list opens upward too ----
+	// ---- Battle ambiance drop-down (Showtime A3), beside the format's; its list opens upward too ----
 	private static final int AMBIANCE_X = FORMAT_X + FORMAT_W + 10;
 	private static final int AMBIANCE_W = 320;
 	private static final int STATUS_X = AMBIANCE_X + AMBIANCE_W + 14;
@@ -515,17 +515,17 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		return "free".equals(format.id()) ? Component.translatable("phantasmon.battle.lobby.format.free").getString() : format.name();
 	}
 
-	/** "" (each player's own), then Spectacle's ambiances and those resource packs add. */
+	/** "" (each player's own), then Showtime's ambiances and those resource packs add. */
 	private static List<String> ambiances() {
 		List<String> list = new java.util.ArrayList<>();
 		list.add("");
-		list.addAll(com.mystaria.spectacle.ambiance.Ambiances.ids());
+		list.addAll(com.mystaria.showtime.ambiance.Ambiances.ids());
 		return list;
 	}
 
 	private static String ambianceName(String id) {
 		return id == null || id.isEmpty() ? Component.translatable("phantasmon.battle.lobby.ambiance.each").getString()
-				: com.mystaria.spectacle.ambiance.Ambiances.displayName(id).getString();
+				: com.mystaria.showtime.ambiance.Ambiances.displayName(id).getString();
 	}
 
 	/** The ambiance list, like the format's: above everything, on the canvas transform. */

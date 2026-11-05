@@ -8,8 +8,8 @@ import net.minecraft.client.KeyMapping;
 import com.mystaria.phantasmon.client.pokemon.PcOpener;
 
 /**
- * The mod's keybind: opening the PC screen (P, Adrien: 2026-09-29). The music menu's key (N) is Cobblemon Spectacle's
- * since 2026-10-29: it opens Phantasmon's music screen, given to Spectacle ({@code SpectacleBridge}). Everything else
+ * The mod's keybind: opening the PC screen (P, Adrien: 2026-09-29). The music menu's key (N) is Cobblemon Battle Showtime's
+ * since 2026-10-29: it opens Phantasmon's music screen, given to Showtime ({@code ShowtimeBridge}). Everything else
  * has moved off keys: trades and battles start from Cobblemon's interaction wheel (TODO-22), Ghosts go out and back
  * with Cobblemon's party keys on the Ghost overlay (TODO-23), and the battle camera / music / timer are on Cobblemon's
  * battle screen.

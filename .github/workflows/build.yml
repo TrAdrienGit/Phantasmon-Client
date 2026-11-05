@@ -21,14 +21,14 @@ jobs:
           distribution: 'microsoft'
       - name: make gradle wrapper executable
         run: chmod +x ./gradlew
-      # Cobblemon Spectacle (D-37): Phantasmon compiles against it from Maven local.
-      - name: checkout Cobblemon Spectacle
+      # Cobblemon Battle Showtime (D-37): Phantasmon compiles against it from Maven local.
+      - name: checkout Cobblemon Battle Showtime
         uses: actions/checkout@v6
         with:
-          repository: ${{ github.repository_owner }}/Cobblemon-Spectacle
-          path: Cobblemon-Spectacle
-      - name: publish Cobblemon Spectacle to Maven local
-        working-directory: Cobblemon-Spectacle
+          repository: ${{ github.repository_owner }}/Cobblemon-Battle-Showtime
+          path: Cobblemon-Battle-Showtime
+      - name: publish Cobblemon Battle Showtime to Maven local
+        working-directory: Cobblemon-Battle-Showtime
         run: chmod +x ./gradlew && ./gradlew publishToMavenLocal
       - name: build
         run: ./gradlew build

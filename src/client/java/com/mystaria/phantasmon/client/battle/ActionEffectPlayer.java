@@ -63,7 +63,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 
-import com.mystaria.spectacle.battle.BattleCameraDirector;
+import com.mystaria.showtime.battle.BattleCameraDirector;
 
 /**
  * Client-side reader of Cobblemon's action effect timelines (Phase 9 — "same animations as Cobblemon").

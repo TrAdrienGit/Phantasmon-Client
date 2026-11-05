@@ -16,13 +16,13 @@ import org.slf4j.LoggerFactory;
 import net.minecraft.client.Minecraft;
 
 import com.mystaria.phantasmon.client.api.PhantasmonApi;
-import com.mystaria.spectacle.api.SpectacleHooks;
+import com.mystaria.showtime.api.ShowtimeHooks;
 
 /**
- * The trainers' animation profiles shared through the backend (Cobblemon Spectacle phase E3, Adrien 2026-10-30): this
- * player's own, chosen in Spectacle's profile screen, is sent on login and on every change ({@code POST
+ * The trainers' animation profiles shared through the backend (Cobblemon Battle Showtime phase E3, Adrien 2026-10-30): this
+ * player's own, chosen in Showtime's profile screen, is sent on login and on every change ({@code POST
  * /trainer-profile}); the other trainers' are fetched ({@code GET /trainer-profiles}) as a battle starts and whenever
- * Spectacle asks for one it doesn't know, kept a minute. Until fetched, a trainer acts the default animations.
+ * Showtime asks for one it doesn't know, kept a minute. Until fetched, a trainer acts the default animations.
  * Client thread.
  */
 public final class TrainerProfiles {
@@ -43,9 +43,9 @@ public final class TrainerProfiles {
 	}
 
 	public static void register() {
-		SpectacleHooks.setTrainerProfiles(TrainerProfiles::animation);
-		SpectacleHooks.setTrainersListener(TrainerProfiles::fetch);
-		SpectacleHooks.setLocalProfileListener(profile -> {
+		ShowtimeHooks.setTrainerProfiles(TrainerProfiles::animation);
+		ShowtimeHooks.setTrainersListener(TrainerProfiles::fetch);
+		ShowtimeHooks.setLocalProfileListener(profile -> {
 			sendOwn = true;
 			send();
 		});
@@ -68,7 +68,7 @@ public final class TrainerProfiles {
 			return; // sent once logged in
 		}
 		sendOwn = false;
-		PhantasmonApi.post("/trainer-profile", SpectacleHooks.localTrainerProfile(), Map.class)
+		PhantasmonApi.post("/trainer-profile", ShowtimeHooks.localTrainerProfile(), Map.class)
 				.exceptionally(ex -> {
 					LOG.warn("Could not send the trainer animation profile", ex);
 					Minecraft.getInstance().execute(() -> sendOwn = true);
@@ -76,7 +76,7 @@ public final class TrainerProfiles {
 				});
 	}
 
-	/** Spectacle asks: {@code trainer}'s animation for {@code moment}, or null (default) until known. */
+	/** Showtime asks: {@code trainer}'s animation for {@code moment}, or null (default) until known. */
 	private static String animation(UUID trainer, String moment) {
 		Known known = KNOWN.get(trainer);
 		if (known == null || System.currentTimeMillis() - known.at() > KEEP_MILLIS) {

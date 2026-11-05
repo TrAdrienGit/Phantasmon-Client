@@ -14,7 +14,7 @@ import com.mystaria.phantasmon.client.network.BackendConfig;
 import com.mystaria.phantasmon.client.network.BackendJsonClient;
 
 /**
- * What Phantasmon's add-ons (Phantasmon Events) may use of it, like Cobblemon Spectacle's {@code api} package (D-37):
+ * What Phantasmon's add-ons (Phantasmon Events) may use of it, like Cobblemon Battle Showtime's {@code api} package (D-37):
  * nothing else of Phantasmon is meant for them. Set once Phantasmon's client is initialized.
  */
 public final class PhantasmonApi {

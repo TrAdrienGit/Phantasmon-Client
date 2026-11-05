@@ -6,9 +6,9 @@
 
 `scripts/deploy-to-prod-server.sh` (Bash, Git Bash sous Windows) :
 
-1. compile Spectacle, Phantasmon et Events ;
+1. compile Showtime, Phantasmon et Events ;
 2. copie leurs jars dans chaque instance CurseForge locale dont le dossier `mods/` contient déjà Phantasmon ou
-   Spectacle (aujourd'hui « Cobblemon Academy 2.0 - MystAria_ » et « Cobblemon Academy 2.0 - TheMashen »), en
+   Showtime (aujourd'hui « Cobblemon Academy 2.0 - MystAria_ » et « Cobblemon Academy 2.0 - TheMashen »), en
    supprimant seulement leurs anciens jars.
 
 ```bash

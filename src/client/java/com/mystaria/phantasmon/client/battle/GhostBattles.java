@@ -27,7 +27,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 import net.minecraft.client.Minecraft;
 
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
-import com.mystaria.spectacle.battle.BattleSpectacle;
+import com.mystaria.showtime.battle.BattleShowtime;
 
 /**
  * Registry of the Ghost battles this client hosts (Phase 9), and the bridge
@@ -100,7 +100,7 @@ public final class GhostBattles {
 			route.accept(new FormeChangeVisual(pnx, pokemon.getUuid().toString(),
 					effected.getSpecies().getResourceIdentifier().getPath(), aspect));
 			// The battle waits for the set piece (both players: the guest gets the host's packets as they come).
-			battle.dispatchWaitingToFront(BattleSpectacle.pauseSeconds(aspect), () -> kotlin.Unit.INSTANCE);
+			battle.dispatchWaitingToFront(BattleShowtime.pauseSeconds(aspect), () -> kotlin.Unit.INSTANCE);
 		}
 	}
 

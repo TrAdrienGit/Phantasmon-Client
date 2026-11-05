@@ -77,7 +77,7 @@ public final class CobblemonPackets {
 		}
 		Minecraft client = Minecraft.getInstance();
 		client.execute(() -> {
-			// A Ghost battle's packet: Cobblemon Spectacle's own staging of Cobblemon battles must not take it (D-37).
+			// A Ghost battle's packet: Cobblemon Battle Showtime's own staging of Cobblemon battles must not take it (D-37).
 			dispatching = true;
 			try {
 				handler.handle((NetworkPacket) packet, client);

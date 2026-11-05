@@ -47,7 +47,7 @@ public final class BattleLobbyState {
 
 	private List<FormatOption> formats = List.of();
 	private String formatId = "free";
-	/** The battle ambiance both see (Spectacle A3): an ambiance id, or "" for each player's own. */
+	/** The battle ambiance both see (Showtime A3): an ambiance id, or "" for each player's own. */
 	private String ambiance = "";
 	private List<List<Issue>> ownIssues = List.of();
 	private List<Boolean> opponentFlags = List.of();

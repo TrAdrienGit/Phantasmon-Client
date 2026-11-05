@@ -34,10 +34,10 @@
 | `PokemonBattleSpectatorMixin` | `com.cobblemon.mod.common.api.battles.model.PokemonBattle.sendSpectatorUpdate` (Cobblemon 1.8.1) | `@Inject` HEAD | Sur l'hôte d'un combat Ghost, transmet chaque mise à jour que le moteur destine à ses spectateurs (aucun joueur serveur ici) au relais vers les spectateurs Phantasmon (D-31) | `GhostBattles.onSpectatorUpdate` |
 
 Depuis le découpage (D-37, 2026-10-29), Phantasmon déclare **16** Mixins. Les cinq de la mise en scène des
-combats (`CameraMixin`, `GameRendererSpectacleMixin`, `BattleGuiSpectacleMixin`, `EntityGlowMixin`,
+combats (`CameraMixin`, `GameRendererShowtimeMixin`, `BattleGuiShowtimeMixin`, `EntityGlowMixin`,
 `MusicManagerMixin` : caméra, champ de vision et calque des spectacles, écran de combat masqué, halo Téra, musique
-de Minecraft coupée pendant la musique de combat) sont partis dans Cobblemon Spectacle
-(`../Cobblemon-Spectacle`, `cobblemon_spectacle.mixins.json`), à revalider aussi à chaque mise à jour.
+de Minecraft coupée pendant la musique de combat) sont partis dans Cobblemon Battle Showtime
+(`../Cobblemon-Battle-Showtime`, `cobblemon_battle_showtime.mixins.json`), à revalider aussi à chaque mise à jour.
 
 ## 3. Après une mise à jour de Cobblemon ou de Minecraft
 

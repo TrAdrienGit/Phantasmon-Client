@@ -65,7 +65,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			hub.reset();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
-			com.mystaria.spectacle.audio.BattleMusic.stop();
+			com.mystaria.showtime.audio.BattleMusic.stop();
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
 			com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
 			authSession.clear();
@@ -91,7 +91,7 @@ public class PhantasmonClient implements ClientModInitializer {
 				com.mystaria.phantasmon.client.hub.HubDebugBorders.render(context, hub::anchorsHere));
 		HudRenderCallback.EVENT.register((graphics, tickCounter) -> ghostPartyHud.render(graphics));
 
-		com.mystaria.phantasmon.client.battle.SpectacleBridge.register(liveBattle);
+		com.mystaria.phantasmon.client.battle.ShowtimeBridge.register(liveBattle);
 		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();

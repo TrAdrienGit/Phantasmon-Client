@@ -37,7 +37,7 @@ import com.mystaria.phantasmon.client.pokemon.PcOpener;
  *   (TODO-31): a timed mute ({@code 30m}, {@code 2h}, {@code 7d}; a bare number is minutes), the global chat lock
  *   (toggled; admins still write). An admin's hub message starting with {@code !!} is an announcement.</li>
  * </ul>
- * The intro and set piece previews are Cobblemon Spectacle's ({@code /spectacle preview}, D-37).
+ * The intro and set piece previews are Cobblemon Battle Showtime's ({@code /showtime preview}, D-37).
  */
 public final class AdminCommands {
 

@@ -2252,13 +2252,13 @@ Demande d'Adrien, avec une vidéo de la Méga-Évolution de X/Y : refaire ces an
 avec particules et effets de caméra ; Méga comme dans le jeu, Téra avec un halo et des particules de la couleur du
 type, Z au choix. TODO-17 (disque USB) retiré de la liste à sa demande.
 
-- `BattleSpectacle` (monde : particules, sons, caméra, halo Téra) et `SpectacleOverlay` (calque 2D en triangles
+- `BattleShowtime` (monde : particules, sons, caméra, halo Téra) et `ShowtimeOverlay` (calque 2D en triangles
   colorés, mélange additif pour la lumière ; le Pokémon reste au centre de l'écran, les effets sont dessinés autour).
   Méga 5,2 s, Primo 5,2 s, Z 3,8 s, Téra 4 s (déroulé dans `architecture/battle-engine.md`).
 - Caméra : plans propres à chaque effet (orbite, plongée / contre-plongée, tremblement aux moments forts, travelling
-  compensé pour le Z), fondus depuis et vers le plan du réalisateur de combat ; `GameRendererSpectacleMixin` pour le
+  compensé pour le Z), fondus depuis et vers le plan du réalisateur de combat ; `GameRendererShowtimeMixin` pour le
   champ de vision (vertigo, « coups » au moment de l'éclatement) et pour dessiner le calque après tout le reste.
-- `BattleGuiSpectacleMixin` cache l'écran de combat de Cobblemon (et nos boutons) pendant l'effet ; le HUD aussi.
+- `BattleGuiShowtimeMixin` cache l'écran de combat de Cobblemon (et nos boutons) pendant l'effet ; le HUD aussi.
 - Téra : nouvel événement `TERASTALLIZATION` côté hôte, relayé comme les autres (`tera:<type>`) ; halo via le contour
   lumineux de Minecraft (`EntityGlowMixin` : `isCurrentlyGlowing` / `getTeamColor`), couleur du type qui scintille ;
   particules (poussière colorée, éclats de verre teinté, étincelles) ; gardé par Pokémon de combat, réappliqué à
@@ -2515,7 +2515,7 @@ les spectateurs, alors que dans Cobblemon tout joueur proche voit le terrain. Ad
   avatar (`HubAvatars.playerOrAvatar`), à 7 blocs devant l'autre dresseur si l'un manque, sorties en attente si aucun
   n'est chargé. Sortie et rappel factorisés dans `BattleVisuals.sendOutEntity` / `recallEntity` ;
   `ActionEffectPlayer.Scene` laisse jouer les animations d'attaque contre ces entités sans toucher à la caméra ;
-  `BattleSpectacle.playInWorld` joue l'apogée des Méga / Z / Téra sans caméra, son positionnel, lueur Téra conservée
+  `BattleShowtime.playInWorld` joue l'apogée des Méga / Z / Téra sans caméra, son positionnel, lueur Téra conservée
   au retour du Pokémon. Devenir spectateur efface la scène de loin sans rappel.
 
 Client compilé et déployé ; backend 208 tests. À valider en jeu.
@@ -2602,35 +2602,35 @@ dev migrée), publié en HTTPS par Tailscale Funnel : `https://server-linux.tail
 14 jours + hebdomadaires 92 jours). Côté client : `BackendUrlFile.DEFAULT_URL` pointe sur cette adresse, et le
 `config/phantasmon.json` des instances de test a été mis à jour. Client compilé et déployé.
 
-### 4.107 Découpage : Cobblemon Spectacle (2026-10-29, D-37)
+### 4.107 Découpage : Cobblemon Battle Showtime (2026-10-29, D-37)
 
 Adrien veut découper Phantasmon en mods. Premier découpage : la mise en scène des combats devient le mod client
-**Cobblemon Spectacle** (`../Cobblemon-Spectacle`), qui ne dépend que de Cobblemon. Y partent la cinématique de
+**Cobblemon Battle Showtime** (`../Cobblemon-Battle-Showtime`), qui ne dépend que de Cobblemon. Y partent la cinématique de
 lancement et ses 5 intros, la caméra de combat, les spectacles Méga / Primo / Z / Téra, les boutons de l'écran de
 combat et 4 mixins. Phantasmon lui fournit sa scène (`BattleStage`), ses avatars de hub, ses halos et ses boutons
-(`SpectacleBridge`), et démarre lui-même la musique de l'intro. Deux jars séparés, Spectacle obligatoire ; Phantasmon
-se compile contre le Maven local. Les aperçus passent à `/spectacle preview`. Combat Phantasmon à valider en jeu
+(`ShowtimeBridge`), et démarre lui-même la musique de l'intro. Deux jars séparés, Showtime obligatoire ; Phantasmon
+se compile contre le Maven local. Les aperçus passent à `/showtime preview`. Combat Phantasmon à valider en jeu
 (identique à avant) avant la phase S2 (combats Cobblemon classiques).
 
-Le même jour, deux compléments d'Adrien. **Musiques** : elles passent dans Spectacle (`BattleMusic`, réglages,
-mixin de la musique de Minecraft, bouton « musique suivante », modèle de pack « Cobblemon Spectacle Music ») ;
-Spectacle joue l'intro puis le combat, Phantasmon pilote toujours lobby, victoire, défaite et garde son écran N.
+Le même jour, deux compléments d'Adrien. **Musiques** : elles passent dans Showtime (`BattleMusic`, réglages,
+mixin de la musique de Minecraft, bouton « musique suivante », modèle de pack « Cobblemon Battle Showtime Music ») ;
+Showtime joue l'intro puis le combat, Phantasmon pilote toujours lobby, victoire, défaite et garde son écran N.
 **Déploiement** : plus de machine distante ; le script installe les deux jars dans chaque instance CurseForge locale
 qui contient déjà l'un des deux mods (instances « … - MystAria_ » et « … - TheMashen »). Le backend reste sur le
 serveur Ubuntu.
 
-**Phase S2 de Spectacle (même jour)** : les combats Cobblemon classiques sont mis en scène, sans mod serveur. Spectacle
+**Phase S2 de Showtime (même jour)** : les combats Cobblemon classiques sont mis en scène, sans mod serveur. Showtime
 écoute, après Cobblemon, ses gestionnaires de paquets de combat (début, choix, entrée, K.O., messages, fin) et retrouve
 les Pokémon du serveur par l'identifiant que le paquet d'apparition donne à l'entité client. PvP : intro tirée au
 hasard (le combat démarre derrière, l'écran de combat revient à la fin) puis musique ; dresseur PNJ : caméra et
 musique ; sauvage : rien. Attaques filmées depuis les messages `cobblemon.battle.used_move(_on)`, Méga / Z / Téra
 depuis `cobblemon.battle.mega|zpower|terastallize` (sans pause : le serveur n'attend pas). Phantasmon marque les
-paquets de ses combats Ghost (`CobblemonPackets.dispatching`, `SpectacleHooks.setForeignPacketCheck`) pour ne pas être
+paquets de ses combats Ghost (`CobblemonPackets.dispatching`, `ShowtimeHooks.setForeignPacketCheck`) pour ne pas être
 filmé deux fois.
 
 Test d'Adrien : intros, caméra, combats sauvages intacts OK ; seule la musique manquait en classique. Cause : le serveur envoie sa musique de combat (`BattleMusicPacket`) et Cobblemon bloque tout autre son « Musique » tant qu'elle joue. Correctif : dans un combat mis en scène, la musique de Cobblemon cède la place quand le pack de ressources fournit la nôtre (`ClassicBattleMusicHandlerMixin`) ; sans pack, celle de Cobblemon reste.
 
-**Phase S3 de Spectacle (même jour)** : réglages par type de combat (`config/cobblemon_spectacle.json`, écran Mod Menu),
-volume propre des musiques, menu des musiques de Spectacle (touche N, qui passe de Phantasmon à Spectacle ; Phantasmon y
-branche son propre écran par `SpectacleHooks.setMusicScreen`), et un petit lecteur dans l'écran de combat à la place
+**Phase S3 de Showtime (même jour)** : réglages par type de combat (`config/cobblemon_battle_showtime.json`, écran Mod Menu),
+volume propre des musiques, menu des musiques de Showtime (touche N, qui passe de Phantasmon à Showtime ; Phantasmon y
+branche son propre écran par `ShowtimeHooks.setMusicScreen`), et un petit lecteur dans l'écran de combat à la place
 du bouton « musique suivante » : titre qui ouvre la liste des morceaux, volume − / barre / +, morceau suivant.

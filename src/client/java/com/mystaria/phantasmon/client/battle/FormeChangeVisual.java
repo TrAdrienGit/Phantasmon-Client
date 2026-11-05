@@ -4,11 +4,11 @@ import java.nio.charset.StandardCharsets;
 
 import com.google.gson.Gson;
 
-import com.mystaria.spectacle.api.Transformation;
+import com.mystaria.showtime.api.Transformation;
 
 /**
  * A Mega Evolution, Primal Reversion, Z-Move or Terastallization in a Ghost battle, for both clients' world scene
- * (Adrien 2026-10-05/06; played by Cobblemon Spectacle as a {@link Transformation}).
+ * (Adrien 2026-10-05/06; played by Cobblemon Battle Showtime as a {@link Transformation}).
  * Cobblemon's engine only announces it ({@code MEGA_EVOLUTION} / {@code FORME_CHANGE} events) — on a Cobblemon Delta
  * server, Delta's server mod then gives the Pokémon its aspect; here the host does it ({@link GhostBattles}) and
  * relays this to the guest. {@code aspect} is what the model resolvers of the pack's resource pack (CCC) key on:
@@ -53,7 +53,7 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 		return Transformation.changesModel(aspect);
 	}
 
-	/** What Cobblemon Spectacle plays. */
+	/** What Cobblemon Battle Showtime plays. */
 	public Transformation transformation() {
 		return new Transformation(pnx, uuid, species, aspect);
 	}

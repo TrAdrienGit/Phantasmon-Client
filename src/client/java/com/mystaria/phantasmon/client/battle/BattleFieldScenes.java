@@ -24,7 +24,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import com.mystaria.phantasmon.client.hub.HubAvatars;
-import com.mystaria.spectacle.battle.BattleSpectacle;
+import com.mystaria.showtime.battle.BattleShowtime;
 
 /**
  * Ghost battles seen from afar (Adrien 2026-10-07): like in Cobblemon, where a battle's Pokémon are real entities that
@@ -49,11 +49,11 @@ public final class BattleFieldScenes {
 	private static final Map<UUID, Scene> scenes = new HashMap<>();
 	/** Backend battle uuid → its ambiance ({@code BattleFieldAmbiance}; "" = this player's own). */
 	private static final Map<UUID, String> ambiances = new HashMap<>();
-	/** The battle whose ambiance plays here, restricted to its field (Spectacle's distant mode), or null. */
+	/** The battle whose ambiance plays here, restricted to its field (Showtime's distant mode), or null. */
 	private static UUID ambianceOf;
 
 	/**
-	 * {@code BattleFieldAmbiance}: the ambiance of a battle seen from afar. Spectacle plays it around its field only —
+	 * {@code BattleFieldAmbiance}: the ambiance of a battle seen from afar. Showtime plays it around its field only —
 	 * what changes the whole world only while this player stands in the field (Adrien 2026-11-02). One at a time.
 	 */
 	public static void onAmbiance(UUID battleUuid, String ambiance) {
@@ -71,7 +71,7 @@ public final class BattleFieldScenes {
 			return;
 		}
 		ambianceOf = battleUuid;
-		com.mystaria.spectacle.ambiance.BattleAmbiance.startDistant(ambiances.get(battleUuid), () -> {
+		com.mystaria.showtime.ambiance.BattleAmbiance.startDistant(ambiances.get(battleUuid), () -> {
 			Scene scene = scenes.get(battleUuid);
 			java.util.List<net.minecraft.world.phys.Vec3> spots = new java.util.ArrayList<>();
 			if (scene != null) {
@@ -85,7 +85,7 @@ public final class BattleFieldScenes {
 		ambiances.remove(battleUuid);
 		if (battleUuid.equals(ambianceOf)) {
 			ambianceOf = null;
-			com.mystaria.spectacle.ambiance.BattleAmbiance.endDistant();
+			com.mystaria.showtime.ambiance.BattleAmbiance.endDistant();
 			// Another battle seen from afar takes over.
 			for (UUID other : scenes.keySet()) {
 				if (ambiances.containsKey(other)) {
@@ -173,7 +173,7 @@ public final class BattleFieldScenes {
 		ambiances.clear();
 		if (ambianceOf != null) {
 			ambianceOf = null;
-			com.mystaria.spectacle.ambiance.BattleAmbiance.endDistant();
+			com.mystaria.showtime.ambiance.BattleAmbiance.endDistant();
 		}
 	}
 
@@ -273,7 +273,7 @@ public final class BattleFieldScenes {
 			if (change.aspect() != null && change.aspect().startsWith(FormeChangeVisual.TERA_PREFIX)) {
 				tera.put(change.uuid(), change.teraType());
 			}
-			BattleSpectacle.playInWorld(change.transformation(), entityAt(change.pnx()));
+			BattleShowtime.playInWorld(change.transformation(), entityAt(change.pnx()));
 		}
 
 		void retryPending() {
@@ -314,7 +314,7 @@ public final class BattleFieldScenes {
 			pending.remove(pnx);
 			PokemonEntity entity = BattleVisuals.sendOutEntity(level, dto, at, BattleVisuals.yawOf(facing), trainer, this::later);
 			entities.put(pnx, entity);
-			BattleSpectacle.glow(entity, tera.get(dto.getUuid().toString()));
+			BattleShowtime.glow(entity, tera.get(dto.getUuid().toString()));
 		}
 
 		/** Recall beam, then removal; whether there was something to recall. */

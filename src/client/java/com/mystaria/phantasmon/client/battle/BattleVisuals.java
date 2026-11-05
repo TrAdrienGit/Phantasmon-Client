@@ -36,10 +36,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
 import com.mystaria.phantasmon.client.ghost.PhantasmonEntities;
-import com.mystaria.spectacle.api.BattleStage;
-import com.mystaria.spectacle.battle.BattleCameraDirector;
-import com.mystaria.spectacle.battle.BattleCinematic;
-import com.mystaria.spectacle.battle.BattleSpectacle;
+import com.mystaria.showtime.api.BattleStage;
+import com.mystaria.showtime.battle.BattleCameraDirector;
+import com.mystaria.showtime.battle.BattleCinematic;
+import com.mystaria.showtime.battle.BattleShowtime;
 
 /**
  * Puts each side's active Pokémon in the world in front of its trainer during a Ghost battle, with Cobblemon's
@@ -87,7 +87,7 @@ public final class BattleVisuals {
 	/** Bumped by {@link #clear}, so timers scheduled for a previous battle do nothing. */
 	private static int generation;
 
-	/** This scene, as Cobblemon Spectacle's camera films it. */
+	/** This scene, as Cobblemon Battle Showtime's camera films it. */
 	private static final BattleStage STAGE = new BattleStage() {
 		@Override
 		public Entity pokemonAt(String pnx) {
@@ -158,7 +158,7 @@ public final class BattleVisuals {
 				recall(faint.getPnx());
 			} else if (packet instanceof BattleEndPacket) {
 				BattleCameraDirector.stop();
-				BattleSpectacle.clear();
+				BattleShowtime.clear();
 				new HashSet<>(entities.keySet()).forEach(BattleVisuals::recall);
 				trainers.clear();
 			}
@@ -197,7 +197,7 @@ public final class BattleVisuals {
 		return entity == null || entity.isRemoved() ? null : entity;
 	}
 
-	/** Whether Cobblemon Spectacle is filming this scene (a Ghost battle), not a Cobblemon battle of its own. */
+	/** Whether Cobblemon Battle Showtime is filming this scene (a Ghost battle), not a Cobblemon battle of its own. */
 	public static boolean filmed() {
 		return BattleCameraDirector.stage() == STAGE;
 	}
@@ -246,7 +246,7 @@ public final class BattleVisuals {
 	public static void clear() {
 		generation++;
 		BattleCameraDirector.stop();
-		BattleSpectacle.clear();
+		BattleShowtime.clear();
 		ClientLevel level = Minecraft.getInstance().level;
 		Set<PokemonEntity> all = new HashSet<>(entities.values());
 		all.addAll(leaving);
@@ -271,7 +271,7 @@ public final class BattleVisuals {
 
 		PokemonEntity entity = sendOutEntity(level, dto, placement.position(), placement.yaw(), placement.trainer(), BattleVisuals::later);
 		entities.put(pnx, entity);
-		BattleSpectacle.onSentOut(entity, dto.getUuid());
+		BattleShowtime.onSentOut(entity, dto.getUuid());
 	}
 
 	/** Runs {@code task} on the client thread after {@code seconds}, unless the caller's scene was cleared meanwhile. */
@@ -363,9 +363,9 @@ public final class BattleVisuals {
 
 	// ---- Mega Evolution / Primal Reversion / Z-Move / Terastallization ----
 
-	/** A battle gimmick announced (here, or relayed by the host): played as a set piece ({@link BattleSpectacle}). */
+	/** A battle gimmick announced (here, or relayed by the host): played as a set piece ({@link BattleShowtime}). */
 	public static void transform(FormeChangeVisual change) {
-		BattleSpectacle.play(change.transformation());
+		BattleShowtime.play(change.transformation());
 	}
 
 	/** Recall beam back to the trainer, then removal. Returns whether there was something to recall. */

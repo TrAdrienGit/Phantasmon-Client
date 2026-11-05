@@ -11,7 +11,7 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
-| `key.cobblemon_spectacle.music_menu` (touche de Cobblemon Spectacle depuis D-37) | **N** | Ouvre le menu des musiques de Phantasmon (cocher les morceaux du pack à jouer, les écouter) |
+| `key.cobblemon_battle_showtime.music_menu` (touche de Cobblemon Battle Showtime depuis D-37) | **N** | Ouvre le menu des musiques de Phantasmon (cocher les morceaux du pack à jouer, les écouter) |
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
@@ -122,9 +122,9 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 | `/hc !!<message>` | **Admin** : annonce, en surbrillance dans le chat et en grand à l'écran de chaque membre, avec un son |
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
 
-Les aperçus de mise en scène appartiennent désormais à Cobblemon Spectacle (D-37), ouverts à tous les joueurs :
+Les aperçus de mise en scène appartiennent désormais à Cobblemon Battle Showtime (D-37), ouverts à tous les joueurs :
 
 | Commande | Effet |
 |---|---|
-| `/spectacle preview <mega\|primal\|zmove\|tera> [type]` | Joue la mise en scène de Méga-Évolution, Retour primal, capacité Z ou Téracristallisation (type : fire, water…, stellar) sur le Pokémon le plus proche, sans le modifier (ancien `/phantasmon admin debug spectacle`) |
-| `/spectacle preview intro <xy\|sword_shield\|diamond_pearl\|emerald\|black_white>` | Joue une des intros de combat seule, contre le joueur le plus proche (ou soi-même), sans combat ni musique derrière (ancien `/phantasmon admin debug intro`) |
+| `/showtime preview <mega\|primal\|zmove\|tera> [type]` | Joue la mise en scène de Méga-Évolution, Retour primal, capacité Z ou Téracristallisation (type : fire, water…, stellar) sur le Pokémon le plus proche, sans le modifier (ancien `/phantasmon admin debug spectacle`) |
+| `/showtime preview intro <xy\|sword_shield\|diamond_pearl\|emerald\|black_white>` | Joue une des intros de combat seule, contre le joueur le plus proche (ou soi-même), sans combat ni musique derrière (ancien `/phantasmon admin debug intro`) |
