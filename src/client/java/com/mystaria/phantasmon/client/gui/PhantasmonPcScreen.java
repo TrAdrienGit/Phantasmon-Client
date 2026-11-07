@@ -334,9 +334,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			return;
 		}
 
-		List<CompletableFuture<PokemonDto>> creations = new ArrayList<>();
+		List<PokemonCreateRequestDto> requests = new ArrayList<>();
 		String bearerToken = session.accessToken();
-		for (ShowdownPokemon set : parsed) {
+		for (ShowdownPokemon set : parsed.subList(0, Math.min(parsed.size(), 6))) { // a full team at most
 			PokemonCreateRequestDto request;
 			try {
 				request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local());
@@ -344,27 +344,37 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				setStatus(Component.translatable("phantasmon.pokemon.import.parse_error_for", set.speciesToken(), ex.getMessage()).getString(), true);
 				continue;
 			}
-			creations.add(someoneElses() ? pokemonClient.createFor(bearerToken, request, ownerUuid)
-					: pokemonClient.create(bearerToken, request));
+			requests.add(request);
 		}
-		if (creations.isEmpty()) {
+		if (requests.isEmpty()) {
 			return;
 		}
 
 		loading = true;
-		int count = creations.size();
-		CompletableFuture.allOf(creations.toArray(new CompletableFuture[0]))
-				.thenRun(() -> Minecraft.getInstance().execute(() -> {
-					setStatus(Component.translatable("phantasmon.pc.screen.imported", count).getString(), false);
-					refresh();
-				}))
-				.exceptionally(ex -> {
-					Minecraft.getInstance().execute(() -> {
-						loading = false;
-						setStatus(errorMessage(ex), true);
-					});
-					return null;
-				});
+		// One after the other: the backend gives each the first free PC slot, so created together they would all want
+		// the same one and only one would be kept. A refused Pokémon doesn't stop the next ones.
+		java.util.concurrent.atomic.AtomicReference<Throwable> firstError = new java.util.concurrent.atomic.AtomicReference<>();
+		CompletableFuture<Integer> chain = CompletableFuture.completedFuture(0);
+		for (PokemonCreateRequestDto request : requests) {
+			chain = chain.thenCompose(done -> (someoneElses() ? pokemonClient.createFor(bearerToken, request, ownerUuid)
+					: pokemonClient.create(bearerToken, request))
+					.handle((created, ex) -> {
+						if (ex != null) {
+							firstError.compareAndSet(null, ex);
+							return done;
+						}
+						return done + 1;
+					}));
+		}
+		chain.thenAccept(count -> Minecraft.getInstance().execute(() -> {
+			Throwable error = firstError.get();
+			if (error != null) {
+				setStatus(errorMessage(error), true);
+			} else {
+				setStatus(Component.translatable("phantasmon.pc.screen.imported", count).getString(), false);
+			}
+			refresh();
+		}));
 	}
 
 	private void handleDelete() {

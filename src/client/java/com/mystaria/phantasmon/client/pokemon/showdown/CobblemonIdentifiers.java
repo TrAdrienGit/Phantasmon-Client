@@ -39,7 +39,8 @@ import java.util.Set;
 public final class CobblemonIdentifiers {
 
 	private static final Set<String> NO_SPLIT_HYPHENATED_SPECIES = Set.of(
-			"ho-oh", "porygon-z", "jangmo-o", "hakamo-o", "kommo-o", "type-null", "nidoran-m", "nidoran-f");
+			"ho-oh", "porygon-z", "jangmo-o", "hakamo-o", "kommo-o", "type-null", "nidoran-m", "nidoran-f",
+			"wo-chien", "chien-pao", "ting-lu", "chi-yu");
 
 	private CobblemonIdentifiers() {
 	}
@@ -49,19 +50,26 @@ public final class CobblemonIdentifiers {
 
 	public static SpeciesForm splitSpeciesForm(String showdownSpeciesToken) {
 		String trimmed = showdownSpeciesToken.trim();
-		int lastHyphen = trimmed.lastIndexOf('-');
-		if (lastHyphen <= 0 || NO_SPLIT_HYPHENATED_SPECIES.contains(trimmed.toLowerCase(Locale.ROOT))) {
+		String lower = trimmed.toLowerCase(Locale.ROOT);
+		// The species is what comes before the first hyphen, unless a hyphen is part of its name; all the rest is the
+		// form, which can hold hyphens itself (Urshifu-Rapid-Strike, Tauros-Paldea-Aqua).
+		int split = trimmed.indexOf('-');
+		for (String species : NO_SPLIT_HYPHENATED_SPECIES) {
+			if (lower.equals(species) || lower.startsWith(species + "-")) {
+				split = species.length();
+			}
+		}
+		if (split <= 0 || split >= trimmed.length()) {
 			return new SpeciesForm(slugConcat(trimmed), null);
 		}
-		String base = trimmed.substring(0, lastHyphen);
-		String suffix = trimmed.substring(lastHyphen + 1);
-		return new SpeciesForm(slugConcat(base), slugConcat(suffix));
+		return new SpeciesForm(slugConcat(trimmed.substring(0, split)), slugConcat(trimmed.substring(split + 1)));
 	}
 
 	/** Species/form/move identifier convention: lowercase, every non-alphanumeric character stripped. */
 	public static String slugConcat(String displayName) {
 		StringBuilder result = new StringBuilder();
-		for (char c : displayName.toLowerCase(Locale.ROOT).toCharArray()) {
+		String plain = java.text.Normalizer.normalize(displayName, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", ""); // Flabébé
+		for (char c : plain.toLowerCase(Locale.ROOT).toCharArray()) {
 			if (Character.isLetterOrDigit(c)) {
 				result.append(c);
 			}

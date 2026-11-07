@@ -402,7 +402,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		ShowdownPokemon parsed;
 		try {
-			parsed = ShowdownParser.parseSingle(clipboard);
+			parsed = ShowdownParser.parseTeam(clipboard).get(0); // a whole team pasted here: its first Pokémon
 		} catch (ShowdownParseException ex) {
 			setStatus(Component.translatable("phantasmon.pokemon.import.parse_error", ex.getMessage()).getString(), true);
 			return;

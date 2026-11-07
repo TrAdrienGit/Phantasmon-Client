@@ -59,6 +59,7 @@ import com.mystaria.showtime.battle.BattleShowtime;
  * player each build the same scene, with no extra network traffic.
  */
 public final class BattleVisuals {
+	private static final java.util.concurrent.atomic.AtomicInteger VISUAL_IDS = new java.util.concurrent.atomic.AtomicInteger(-5000000);
 
 	private static final Logger LOG = LoggerFactory.getLogger(BattleVisuals.class);
 	/** Cobblemon's {@code SendOutPokemonHandler} timings, in seconds. */
@@ -297,6 +298,7 @@ public final class BattleVisuals {
 		pokemon.setForcedAspects(new HashSet<>(dto.getAspects()));
 		pokemon.updateAspects();
 		PokemonEntity entity = new PokemonEntity(level, pokemon, CobblemonEntities.POKEMON);
+		entity.setId(VISUAL_IDS.getAndDecrement()); // client-only: far from the server's ids, which it could remove
 		// The renderer reads the entity's synched ASPECTS, normally filled by Cobblemon's server delegate; a
 		// client-only entity has none, so special forms rendered as the base model (TODO-12). Same as the Ghosts.
 		entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), new HashSet<>(dto.getAspects()));

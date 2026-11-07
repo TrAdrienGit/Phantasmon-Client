@@ -79,6 +79,7 @@ import com.mystaria.phantasmon.client.gui.PokemonGuiRendering;
  * level) carries the indicator — same look and behaviour as a normal Pokémon's label otherwise.
  */
 public final class GhostEntityManager {
+	private static final java.util.concurrent.atomic.AtomicInteger GHOST_IDS = new java.util.concurrent.atomic.AtomicInteger(-4000000);
 
 	private static final Logger LOG = LoggerFactory.getLogger(GhostEntityManager.class);
 
@@ -216,6 +217,7 @@ public final class GhostEntityManager {
 		Player owner = clientLevel.getPlayerByUUID(ownerUuid);
 		float anchorYaw = owner != null ? owner.getYRot() : 0f;
 		PokemonEntity entity = new PokemonEntity(clientLevel, pokemon, CobblemonEntities.POKEMON);
+		entity.setId(GHOST_IDS.getAndDecrement()); // client-only: far from the server's ids, which it could remove
 		entity.setNoAi(true);
 		entity.setInvulnerable(true);
 		// Never pushes nor gets pushed (Entity.push does nothing if either side has noPhysics) — a big Ghost
