@@ -168,6 +168,18 @@ public final class RebornBattleAI implements BattleAI {
 	private String mySide;
 	private boolean zUsed;
 
+	/** Reborn-Tweak: picks its lead against the opponent's team (the expert AI's choice) instead of its first Pokémon. */
+	private boolean picksLead;
+
+	public RebornBattleAI(boolean debug, boolean picksLead) {
+		this(debug);
+		this.picksLead = picksLead;
+	}
+
+	public boolean picksLead() {
+		return picksLead;
+	}
+
 	public RebornBattleAI(boolean debug) {
 		this.debug = debug;
 	}

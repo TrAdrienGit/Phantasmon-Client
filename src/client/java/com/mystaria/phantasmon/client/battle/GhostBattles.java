@@ -288,6 +288,10 @@ public final class GhostBattles {
 				if (ai instanceof ExpertBattleAI expert && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
 					// The expert AI picks its lead against the player's team, as at team preview (Adrien 2026-11-03).
 					guestPokemon = expert.leadFirst(guestPokemon, hostPokemon);
+				} else if (ai instanceof RebornBattleAI reborn && reborn.picksLead() && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
+					// Reborn-Tweak (Adrien 2026-11-07): Reborn's AI with the expert's choice of lead; plain Reborn, as in
+					// the game, leads with the first of its team.
+					guestPokemon = new ExpertBattleAI(false).leadFirst(guestPokemon, hostPokemon);
 				}
 				if (hostPokemon.isEmpty() || guestPokemon.isEmpty()) {
 					callbacks.failed();
@@ -384,7 +388,8 @@ public final class GhostBattles {
 	 * An AI level (Phantasmon Events' NPCs): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal},
 	 * {@code hard}, {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out,
 	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}); {@code reborn} Pokémon
-	 * Reborn's, translated ({@link RebornBattleAI}). Unknown: {@code normal}.
+	 * Reborn's, translated ({@link RebornBattleAI}), leading with its first Pokémon as in the game; {@code reborn_tweak} the
+	 * same with the expert's choice of lead. Unknown: {@code normal}.
 	 */
 	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
 		// "<level>:debug": the NPC's AI debug, its reasoning in the chat (the Expert AI only, Adrien 2026-11-03).
@@ -397,6 +402,9 @@ public final class GhostBattles {
 		}
 		if ("reborn".equals(level)) {
 			return new RebornBattleAI(debug);
+		}
+		if ("reborn_tweak".equals(level)) {
+			return new RebornBattleAI(debug, true);
 		}
 		return switch (level == null ? "normal" : level) {
 			case "random" -> new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
@@ -422,6 +430,37 @@ public final class GhostBattles {
 		actor.setActionResponses(actor.getRequest().iterate(actor.getActivePokemon(),
 				(active, moveset, forceSwitch) -> safeChoice(ai, battle, actor, active, moveset, forceSwitch, switchedIn)));
 		return true;
+	}
+
+	/**
+	 * A move aimed at one Pokémon must name its target, or Cobblemon refuses the choice: the AIs named none, so every
+	 * Fire Punch, Ice Beam or Taunt fell to the random AI (Adrien 2026-11-07). The first foe it can reach, else the
+	 * first possible target (an ally for an ally-only move).
+	 */
+	private static void withTarget(com.cobblemon.mod.common.battles.ShowdownActionResponse response, com.cobblemon.mod.common.battles.ActiveBattlePokemon active, com.cobblemon.mod.common.battles.ShowdownMoveset moveset) {
+		if (!(response instanceof com.cobblemon.mod.common.battles.MoveActionResponse move) || move.getTargetPnx() != null || moveset == null) {
+			return;
+		}
+		for (com.cobblemon.mod.common.battles.InBattleMove known : moveset.getMoves()) {
+			if (!known.getId().equals(move.getMoveName())) {
+				continue;
+			}
+			com.cobblemon.mod.common.battles.InBattleGimmickMove gimmick = known.getGimmickMove();
+			com.cobblemon.mod.common.battles.MoveTarget aim = move.getGimmickID() != null && gimmick != null && !gimmick.getDisabled() ? gimmick.getTarget() : known.getTarget();
+			java.util.List<com.cobblemon.mod.common.battles.Targetable> targets = aim.getTargetList().invoke(active);
+			if (targets == null || targets.isEmpty()) {
+				return;
+			}
+			com.cobblemon.mod.common.battles.Targetable chosen = targets.get(0);
+			for (com.cobblemon.mod.common.battles.Targetable target : targets) {
+				if (!target.isAllied(active)) {
+					chosen = target;
+					break;
+				}
+			}
+			move.setTargetPnx(chosen.getPNX());
+			return;
+		}
 	}
 
 	/**
@@ -471,6 +510,7 @@ public final class GhostBattles {
 			LOG.info("Battle AI switch to {} refused (not a Pokémon able to come in): falling back", change.getNewPokemonId());
 			response = null;
 		}
+		withTarget(response, active, moveset);
 		if (response != null && !(response instanceof com.cobblemon.mod.common.battles.PassActionResponse)
 				&& response.isValid(active, moveset, false)) {
 			return response;
