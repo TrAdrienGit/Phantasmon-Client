@@ -27,7 +27,7 @@ class ShowdownMegaImportTest {
 
 	@Test
 	void abilityTheBaseAlsoHasIsKept() {
-		assertEquals("sheer_force", map("Mawile-Mega", "Sheer Force", List.of("hypercutter", "sheerforce")).ability());
+		assertEquals("sheerforce", map("Mawile-Mega", "Sheer Force", List.of("hypercutter", "sheerforce")).ability());
 	}
 
 	@Test

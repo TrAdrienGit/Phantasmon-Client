@@ -64,9 +64,11 @@ public final class GhostBattlePokemonFactory {
 		if (nature != null) {
 			pokemon.setNature(nature);
 		}
-		AbilityTemplate ability = dto.ability() == null ? null : Abilities.get(dto.ability().toLowerCase(Locale.ROOT));
+		AbilityTemplate ability = dto.ability() == null ? null : Abilities.get(com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(dto.ability()));  // Cobblemon's ids are "roughskin"; imports used to store "rough_skin"
 		if (ability != null) {
 			pokemon.updateAbility(ability.create(true, Priority.NORMAL));
+		} else if (dto.ability() != null) {
+			org.slf4j.LoggerFactory.getLogger(GhostBattlePokemonFactory.class).warn("Ability '{}' of {} unknown: battles with its default one", dto.ability(), dto.species());
 		}
 
 		Map<String, Object> ivs = asMap(data.get("ivs"));
@@ -96,8 +98,13 @@ public final class GhostBattlePokemonFactory {
 			} else if (com.mystaria.phantasmon.client.pokemon.VirtualItems.isVirtual(item.toString())) {
 				// No Minecraft item: held virtually, given to the engine by GhostVirtualItems.
 				GhostVirtualItems.hold(pokemon, com.mystaria.phantasmon.client.pokemon.VirtualItems.showdownId(item.toString()));
+			} else {
+				org.slf4j.LoggerFactory.getLogger(GhostBattlePokemonFactory.class).warn("Held item '{}' of {} unknown: battles without it", item, dto.species());
 			}
 		}
+		// Showdown's own default when a set gives none (Return, Frustration): 255.
+		Object friendship = data.get("friendship");
+		pokemon.setFriendship(friendship instanceof Number n ? n.intValue() : 255, true);
 		Object gender = data.get("gender");
 		if ("M".equalsIgnoreCase(String.valueOf(gender))) {
 			pokemon.setGender(Gender.MALE);

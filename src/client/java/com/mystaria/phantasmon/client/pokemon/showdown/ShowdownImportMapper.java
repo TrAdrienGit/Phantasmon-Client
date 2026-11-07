@@ -46,7 +46,7 @@ public final class ShowdownImportMapper {
 		}
 
 		SpeciesForm speciesForm = CobblemonIdentifiers.splitSpeciesForm(parsed.speciesToken());
-		String ability = CobblemonIdentifiers.slugUnderscore(parsed.ability());
+		String ability = CobblemonIdentifiers.slugConcat(parsed.ability()); // Cobblemon's ability ids: "roughskin"
 		if (speciesForm.form() != null && BATTLE_FORM.matcher(speciesForm.form()).matches()) {
 			List<String> abilities = baseAbilities.apply(speciesForm.species());
 			if (!abilities.isEmpty() && !abilities.contains(CobblemonIdentifiers.slugConcat(parsed.ability()))) {

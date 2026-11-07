@@ -328,6 +328,7 @@ public final class GhostBattles {
 				FORME_ROUTES.put(battle.getBattleId(), callbacks::formeChange);
 				SPECTATOR_ROUTES.put(battle.getBattleId(), callbacks::spectator);
 				battle.getOnEndHandlers().add(ended -> {
+					GhostBattleLog.write(ended);
 					unroute(ended.getBattleId());
 					EFFECT_ROUTES.remove(ended.getBattleId());
 					FORME_ROUTES.remove(ended.getBattleId());

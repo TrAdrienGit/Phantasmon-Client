@@ -951,7 +951,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		if (abilityId == null) {
 			return "?";
 		}
-		AbilityTemplate template = Abilities.get(abilityId);
+		AbilityTemplate template = Abilities.get(com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(abilityId));
 		return template != null ? Component.translatable(template.getDisplayName()).getString() : abilityId;
 	}
 

@@ -93,6 +93,7 @@ public final class BattleThread {
 		service.openConnection();
 		service.sendRegistryData(jarScripts("data/cobblemon/bag_items"), "bagItem");
 		service.sendRegistryData(jarScripts("data/cobblemon/held_items"), "heldItem");
+		loadHeldItems(service);
 		service.sendRegistryData(showdownSpecies(), "species");
 		service.indicateSpeciesInitialized();
 		// Move animations, boosts, statuses: server datapack data the engine needs too (BoostInstruction).
@@ -123,6 +124,31 @@ public final class BattleThread {
 			}, 50, 50, TimeUnit.MILLISECONDS);
 		}
 		return own;
+	}
+
+	/**
+	 * Cobblemon learns which of its items the engine knows (Rocky Helmet, Leftovers...) only when it loads a server's
+	 * data, which a client joined to a dedicated server never does: every real held item then reached the engine as
+	 * none (Adrien 2026-11-07, a Rocky Helmet that never hurt). Done here, as {@code HeldItems.reload} would.
+	 */
+	private static void loadHeldItems(ShowdownService service) {
+		com.google.gson.JsonArray items = service.getRegistryData("heldItem");
+		for (int i = 0; i < items.size(); i++) {
+			com.cobblemon.mod.common.api.item.HeldItems.INSTANCE.getShowdownItems().add(items.get(i).getAsJsonObject().get("id").getAsString());
+		}
+		for (Method method : com.cobblemon.mod.common.pokemon.helditem.CobblemonHeldItemManager.class.getDeclaredMethods()) {
+			if (method.getName().startsWith("load") && method.getParameterCount() == 0) {
+				try {
+					method.setAccessible(true);
+					method.invoke(com.cobblemon.mod.common.pokemon.helditem.CobblemonHeldItemManager.INSTANCE);
+					LOG.info("{} held items known to the battle engine", items.size());
+					return;
+				} catch (ReflectiveOperationException ex) {
+					throw new IllegalStateException("Cannot load Cobblemon's held items", ex);
+				}
+			}
+		}
+		throw new IllegalStateException("CobblemonHeldItemManager.load not found (Cobblemon API changed?)");
 	}
 
 	/** {@code PokemonSpecies.allShowdownSpecies()} is Kotlin-{@code internal} (JVM name mangled), hence reflection. */

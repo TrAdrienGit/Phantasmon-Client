@@ -208,7 +208,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		natureIndex = Math.max(0, indexOf(NATURES, original.nature()));
 		Object teraRaw = data.get("tera_type");
 		teraType = teraRaw != null ? Look.safeType(teraRaw.toString()) : null;
-		abilityId = original.ability();
+		abilityId = original.ability() == null ? null : com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(original.ability());
 		heldItemId = stringOf(data.get("held_item"));
 		List<Object> initialMoves = asList(data.get("moves"));
 		for (int i = 0; i < 4; i++) {
@@ -411,7 +411,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 				com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames::baseAbilities);
 		fields[F_NICKNAME] = stringOf(request.data().get("nickname"));
 		heldItemId = stringOf(request.data().get("held_item"));
-		abilityId = request.ability();
+		abilityId = request.ability();  // Cobblemon's id, as the list offers it
 		if (!abilityOptions.contains(abilityId)) {
 			abilityOptions.add(abilityId);
 		}
