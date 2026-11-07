@@ -339,7 +339,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		for (ShowdownPokemon set : parsed.subList(0, Math.min(parsed.size(), 6))) { // a full team at most
 			PokemonCreateRequestDto request;
 			try {
-				request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local());
+				request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local(),
+						com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames::baseAbilities);
 			} catch (ShowdownParseException ex) {
 				setStatus(Component.translatable("phantasmon.pokemon.import.parse_error_for", set.speciesToken(), ex.getMessage()).getString(), true);
 				continue;

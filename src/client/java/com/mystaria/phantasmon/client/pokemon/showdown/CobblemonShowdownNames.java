@@ -20,6 +20,17 @@ import com.mystaria.phantasmon.client.gui.PokemonGuiRendering;
  */
 public final class CobblemonShowdownNames implements ShowdownNames {
 
+	/** A species' ability ids in Cobblemon's data, for a Mega set imported as its base form. */
+	public static java.util.List<String> baseAbilities(String speciesId) {
+		Species species = PokemonSpecies.INSTANCE.getByName(speciesId);
+		java.util.List<String> ids = new java.util.ArrayList<>();
+		if (species != null) {
+			species.getAbilities().forEach(potential -> ids.add(potential.getTemplate().getName()));
+		}
+		return ids;
+	}
+
+
 	public static final CobblemonShowdownNames INSTANCE = new CobblemonShowdownNames();
 
 	private ResourceManager loadedFrom;

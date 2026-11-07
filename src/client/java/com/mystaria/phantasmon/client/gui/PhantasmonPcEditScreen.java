@@ -407,7 +407,8 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			setStatus(Component.translatable("phantasmon.pokemon.import.parse_error", ex.getMessage()).getString(), true);
 			return;
 		}
-		var request = ShowdownImportMapper.toCreateRequest(parsed, original.cobblemonDataVersion());
+		var request = ShowdownImportMapper.toCreateRequest(parsed, original.cobblemonDataVersion(),
+				com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames::baseAbilities);
 		fields[F_NICKNAME] = stringOf(request.data().get("nickname"));
 		heldItemId = stringOf(request.data().get("held_item"));
 		abilityId = request.ability();

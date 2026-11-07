@@ -4,6 +4,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.Pattern;
 
 import com.mystaria.phantasmon.client.pokemon.PokemonCreateRequestDto;
 import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.SpeciesForm;
@@ -19,6 +21,8 @@ import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.Spec
  */
 public final class ShowdownImportMapper {
 
+	/** Forms only taken during a battle: Mega, Mega-X, Mega-Y, Primal. */
+	private static final Pattern BATTLE_FORM = Pattern.compile("mega[xy]?|primal");
 	private static final int DEFAULT_IV = 31;
 	private static final int DEFAULT_EV = 0;
 	private static final List<String> STATS = List.of("hp", "atk", "def", "spa", "spd", "spe");
@@ -27,11 +31,29 @@ public final class ShowdownImportMapper {
 	}
 
 	public static PokemonCreateRequestDto toCreateRequest(ShowdownPokemon parsed, String cobblemonDataVersion) {
+		return toCreateRequest(parsed, cobblemonDataVersion, species -> List.of());
+	}
+
+	/**
+	 * A Mega or Primal set is imported as its base form, since it transforms during the battle (Adrien 2026-11-07).
+	 * Its ability is usually the transformed form's: unless the base form also has it, it becomes the base form's
+	 * first one. {@code baseAbilities}: a species' ability ids, from Cobblemon's data.
+	 */
+	public static PokemonCreateRequestDto toCreateRequest(ShowdownPokemon parsed, String cobblemonDataVersion,
+			Function<String, List<String>> baseAbilities) {
 		if (parsed.ability() == null || parsed.ability().isBlank()) {
 			throw new ShowdownParseException("missing_ability");
 		}
 
 		SpeciesForm speciesForm = CobblemonIdentifiers.splitSpeciesForm(parsed.speciesToken());
+		String ability = CobblemonIdentifiers.slugUnderscore(parsed.ability());
+		if (speciesForm.form() != null && BATTLE_FORM.matcher(speciesForm.form()).matches()) {
+			List<String> abilities = baseAbilities.apply(speciesForm.species());
+			if (!abilities.isEmpty() && !abilities.contains(CobblemonIdentifiers.slugConcat(parsed.ability()))) {
+				ability = abilities.get(0);
+			}
+			speciesForm = new SpeciesForm(speciesForm.species(), null);
+		}
 
 		Map<String, Object> data = new HashMap<>();
 		data.put("ivs", filledStatMap(parsed.ivs(), DEFAULT_IV));
@@ -59,7 +81,7 @@ public final class ShowdownImportMapper {
 				speciesForm.form(),
 				parsed.level(),
 				CobblemonIdentifiers.slugUnderscore(parsed.nature()),
-				CobblemonIdentifiers.slugUnderscore(parsed.ability()),
+				ability,
 				parsed.shiny(),
 				null, null, null,
 				cobblemonDataVersion,
