@@ -132,13 +132,52 @@ public final class BattleThread {
 			if (method.getName().startsWith("allShowdownSpecies") && method.getParameterCount() == 0) {
 				try {
 					method.setAccessible(true);
-					return (Map<String, String>) method.invoke(PokemonSpecies.INSTANCE);
+					return withFirstAbilities((Map<String, String>) method.invoke(PokemonSpecies.INSTANCE));
 				} catch (ReflectiveOperationException ex) {
 					throw new IllegalStateException("Cannot export Cobblemon species to Showdown", ex);
 				}
 			}
 		}
 		throw new IllegalStateException("PokemonSpecies.allShowdownSpecies not found (Cobblemon API changed?)");
+	}
+
+	/**
+	 * Cobblemon exports every species with "No Ability", but the engine gives a Pokémon that changes forme for good
+	 * (Mega Evolution, Primal Reversion...) the ability in its new forme's slot 0: a Mega Mawile lost Huge Power and did
+	 * half its damage. Slot 0 is filled in from Cobblemon's own data.
+	 */
+	private static Map<String, String> withFirstAbilities(Map<String, String> exported) {
+		Map<String, String> result = new HashMap<>(exported);
+		exported.forEach((key, json) -> {
+			com.google.gson.JsonObject species = com.google.gson.JsonParser.parseString(json).getAsJsonObject();
+			String ability = firstAbility(species);
+			if (ability != null && species.has("abilities")) {
+				species.getAsJsonObject("abilities").addProperty("0", ability);
+				result.put(key, species.toString());
+			}
+		});
+		return result;
+	}
+
+	private static String firstAbility(com.google.gson.JsonObject exported) {
+		com.cobblemon.mod.common.pokemon.Species species = PokemonSpecies.INSTANCE.getByName(
+				com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(exported.get("baseSpecies").getAsString()));
+		if (species == null) {
+			return null;
+		}
+		Iterable<com.cobblemon.mod.common.api.abilities.PotentialAbility> abilities = species.getAbilities();
+		if (exported.has("forme") && !exported.get("forme").isJsonNull()) {
+			String forme = exported.get("forme").getAsString();
+			for (com.cobblemon.mod.common.pokemon.FormData form : species.getForms()) {
+				if (form.getName().equalsIgnoreCase(forme)) {
+					abilities = form.getAbilities();
+				}
+			}
+		}
+		for (com.cobblemon.mod.common.api.abilities.PotentialAbility ability : abilities) {
+			return ability.getTemplate().getName();
+		}
+		return null;
 	}
 
 	/** The JS scripts a server would load from Cobblemon's datapack folder, read straight from Cobblemon's jar. */
