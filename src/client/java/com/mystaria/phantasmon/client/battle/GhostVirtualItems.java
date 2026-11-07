@@ -14,31 +14,31 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 
 import net.minecraft.network.chat.Component;
 
-import com.mystaria.phantasmon.client.pokemon.ZCrystals;
+import com.mystaria.phantasmon.client.pokemon.VirtualItems;
 
 /**
- * Z-Crystals held "virtually" by Ghost battle Pokémon (TODO-28): there is no Minecraft item for them in the pack, so
- * {@link GhostBattlePokemonFactory} records the crystal here and this manager — first in Cobblemon's
- * {@link HeldItemProvider} — tells the battle engine the Pokémon holds it. Showdown then offers the Z-Move, and
- * Cobblemon's battle screen shows its Z button. Every other Pokémon is left to Cobblemon's own managers (null).
+ * Items held "virtually" by Ghost battle Pokémon ({@link VirtualItems}): there is no Minecraft item for them, so
+ * {@link GhostBattlePokemonFactory} records the item here and this manager — first in Cobblemon's
+ * {@link HeldItemProvider} — tells the battle engine the Pokémon holds it. Showdown then offers the Z-Move or the
+ * Mega Evolution. Every other Pokémon is left to Cobblemon's own managers (null).
  */
-public final class GhostZCrystals implements HeldItemManager {
+public final class GhostVirtualItems implements HeldItemManager {
 
 	private static final Map<Pokemon, String> HELD = Collections.synchronizedMap(new WeakHashMap<>());
 	private static boolean registered;
 
-	private GhostZCrystals() {
+	private GhostVirtualItems() {
 	}
 
 	/** Once, at client start. */
 	public static synchronized void register() {
 		if (!registered) {
 			registered = true;
-			HeldItemProvider.register(new GhostZCrystals(), Priority.HIGHEST);
+			HeldItemProvider.register(new GhostVirtualItems(), Priority.HIGHEST);
 		}
 	}
 
-	/** A battle copy built from a Ghost holding the Z-Crystal {@code showdownId}. */
+	/** A battle copy built from a Ghost holding the item {@code showdownId}. */
 	static void hold(Pokemon pokemon, String showdownId) {
 		HELD.put(pokemon, showdownId);
 	}
@@ -51,7 +51,7 @@ public final class GhostZCrystals implements HeldItemManager {
 
 	@Override
 	public Component nameOf(String showdownId) {
-		String name = ZCrystals.name(showdownId);
+		String name = VirtualItems.name(showdownId);
 		return Component.literal(name != null ? name : showdownId);
 	}
 
@@ -69,6 +69,6 @@ public final class GhostZCrystals implements HeldItemManager {
 
 	@Override
 	public void take(BattlePokemon pokemon, String showdownId) {
-		// Z-Crystals can't be knocked off or stolen in Showdown; nothing to do.
+		// The engine keeps track of the item during the battle; the Ghost itself never changes.
 	}
 }

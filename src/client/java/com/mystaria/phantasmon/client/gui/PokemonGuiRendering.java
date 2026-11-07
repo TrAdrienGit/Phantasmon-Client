@@ -190,11 +190,8 @@ public final class PokemonGuiRendering {
 	}
 
 	/** Vanilla item icons always render at a fixed 16×16 — scaled here via pose to the requested size. */
-	private static final net.minecraft.resources.ResourceLocation Z_ICON =
-			net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("cobblemon", "textures/gui/battle/battle_gimmick_zmove.png");
-
 	/**
-	 * A held item's icon: its Minecraft item, or Cobblemon's Z symbol for a Z-Crystal (no item in the pack, TODO-28).
+	 * A held item's icon: its Minecraft item, or Phantasmon's own icon for an item Cobblemon doesn't have.
 	 * Returns whether something was drawn.
 	 */
 	public static boolean renderHeldItem(GuiGraphics graphics, String heldItemId, float x, float y, float size) {
@@ -203,19 +200,21 @@ public final class PokemonGuiRendering {
 			renderItemIcon(graphics, stack, x, y, size);
 			return true;
 		}
-		if (com.mystaria.phantasmon.client.pokemon.ZCrystals.isZCrystal(heldItemId)) {
+		net.minecraft.resources.ResourceLocation icon = com.mystaria.phantasmon.client.pokemon.VirtualItems.icon(heldItemId);
+		if (icon != null) {
 			PoseStack pose = graphics.pose();
 			pose.pushPose();
 			pose.translate(x, y, 0);
-			pose.scale(size / 34f, size / 34f, 1f);
-			graphics.blit(Z_ICON, 0, 0, 1, 0, 34, 34, 36, 68);
+			pose.scale(size / 32f, size / 32f, 1f);
+			com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+			graphics.blit(icon, 0, 0, 0, 0, 32, 32, 32, 32);
 			pose.popPose();
 			return true;
 		}
 		return false;
 	}
 
-	/** A held item's display name: its Minecraft item's, a Z-Crystal's, else the raw id; null if none. */
+	/** A held item's display name: its Minecraft item's, a virtual item's, else the raw id; null if none. */
 	public static String heldItemName(String heldItemId) {
 		if (heldItemId == null || heldItemId.isBlank()) {
 			return null;
@@ -224,7 +223,7 @@ public final class PokemonGuiRendering {
 		if (!stack.isEmpty()) {
 			return stack.getHoverName().getString();
 		}
-		String z = com.mystaria.phantasmon.client.pokemon.ZCrystals.name(heldItemId);
+		String z = com.mystaria.phantasmon.client.pokemon.VirtualItems.name(heldItemId);
 		return z != null ? z : heldItemId;
 	}
 

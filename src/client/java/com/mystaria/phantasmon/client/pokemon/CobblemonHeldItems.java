@@ -35,12 +35,11 @@ public final class CobblemonHeldItems {
 	private static final TagKey<Item> IS_HELD_ITEM = TagKey.create(Registries.ITEM,
 			ResourceLocation.fromNamespaceAndPath("cobblemon", "held/is_held_item"));
 
-	/**
-	 * Mega Stones come from another mod of the pack (Cobblemon Delta's client, items in the {@code cobblemon:}
-	 * namespace such as {@code cobblemon:charizarditex}), outside Cobblemon's held-item tag; recognised by their item
-	 * class name, so there is no compile-time dependency on that mod (Adrien 2026-10-05).
-	 */
-	private static final String MEGA_STONE_CLASS = "MegaStoneItem";
+	/** Showdown ids whose Cobblemon item goes by another name. */
+	private static final Map<String, ResourceLocation> ALIASES = Map.of(
+			"charcoal", ResourceLocation.fromNamespaceAndPath("cobblemon", "charcoal_stick"),
+			"leek", ResourceLocation.fromNamespaceAndPath("cobblemon", "medicinal_leek"),
+			"thickclub", ResourceLocation.withDefaultNamespace("bone"));
 
 	private static Map<String, Item> byId;
 	private static Map<String, Item> byShowdownId;
@@ -49,7 +48,7 @@ public final class CobblemonHeldItems {
 	}
 
 	/**
-	 * The items the editor offers: Cobblemon's held items, then the pack's Mega Stones. Scanned once per game
+	 * The items the editor offers: Cobblemon's held items. Scanned once per game
 	 * session (tags are loaded well before this screen can open) and cached.
 	 */
 	public static Map<String, Item> byId() {
@@ -59,11 +58,6 @@ public final class CobblemonHeldItems {
 				Item item = holder.value();
 				ResourceLocation id = BuiltInRegistries.ITEM.getKey(item);
 				map.put(id.getPath(), item);
-			}
-			for (Item item : BuiltInRegistries.ITEM) {
-				if (MEGA_STONE_CLASS.equals(item.getClass().getSimpleName())) {
-					map.putIfAbsent(BuiltInRegistries.ITEM.getKey(item).getPath(), item);
-				}
 			}
 			byId = map;
 		}
@@ -77,7 +71,8 @@ public final class CobblemonHeldItems {
 	 * {@code cobblemon:charizarditex}.
 	 */
 	public static Item resolve(String heldItemId) {
-		if (heldItemId == null || heldItemId.isBlank()) {
+		// Ours even when another mod of the pack registers an item of that name: the same behaviour everywhere.
+		if (heldItemId == null || heldItemId.isBlank() || VirtualItems.isVirtual(heldItemId)) {
 			return null;
 		}
 		String id = heldItemId.trim().toLowerCase(Locale.ROOT);
@@ -100,6 +95,11 @@ public final class CobblemonHeldItems {
 			}
 			byShowdownId = map;
 		}
-		return byShowdownId.get(CobblemonIdentifiers.slugConcat(id));
+		String showdown = CobblemonIdentifiers.slugConcat(id);
+		ResourceLocation alias = ALIASES.get(showdown);
+		if (alias != null) {
+			return BuiltInRegistries.ITEM.get(alias);
+		}
+		return byShowdownId.get(showdown);
 	}
 }

@@ -92,7 +92,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		HudRenderCallback.EVENT.register((graphics, tickCounter) -> ghostPartyHud.render(graphics));
 
 		com.mystaria.phantasmon.client.battle.ShowtimeBridge.register(liveBattle);
-		com.mystaria.phantasmon.client.battle.GhostZCrystals.register();
+		com.mystaria.phantasmon.client.battle.GhostVirtualItems.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);

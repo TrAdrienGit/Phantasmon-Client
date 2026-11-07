@@ -563,7 +563,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private static List<String> allHeldItemIds() {
 		if (allHeldItemIds == null) {
 			List<String> ids = new ArrayList<>(CobblemonHeldItems.byId().keySet());
-			ids.addAll(com.mystaria.phantasmon.client.pokemon.ZCrystals.ids()); // held virtually (TODO-28)
+			ids.addAll(com.mystaria.phantasmon.client.pokemon.VirtualItems.ids()); // held virtually
 			ids.sort(String::compareTo);
 			allHeldItemIds = ids;
 		}
@@ -584,7 +584,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			return Component.translatable("phantasmon.trade.screen.no_item").getString();
 		}
 		Item item = CobblemonHeldItems.resolve(id);
-		String z = com.mystaria.phantasmon.client.pokemon.ZCrystals.name(id);
+		String z = com.mystaria.phantasmon.client.pokemon.VirtualItems.name(id);
 		return item != null ? item.getDescription().getString() : z != null ? z : capitalize(id);
 	}
 

@@ -91,6 +91,10 @@ public final class CobblemonShowdownNames implements ShowdownNames {
 
 	@Override
 	public String item(String itemId) {
+		String virtual = com.mystaria.phantasmon.client.pokemon.VirtualItems.name(itemId);
+		if (virtual != null) {
+			return virtual;
+		}
 		String id = bare(itemId);
 		return lookup(FALLBACK.item(itemId), "item.cobblemon." + id, "item.minecraft." + id);
 	}
