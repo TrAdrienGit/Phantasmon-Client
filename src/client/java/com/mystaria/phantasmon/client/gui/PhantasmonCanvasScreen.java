@@ -72,53 +72,107 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	protected static final ResourceLocation SPRITE_STAR = ResourceLocation.fromNamespaceAndPath("phantasmon", "pc/star");
 
 	// ---- Colors (trade spec §4, ARGB) ----
-	protected static final int CYAN = 0xFF50E6FF;
-	protected static final int CYAN2 = 0xFF2FB7C9;
-	protected static final int WHITE = 0xFFFFFFFF;
-	protected static final int MUTED = 0xFF9FD9E6;
-	protected static final int DIM = 0xFF999999;
-	protected static final int TITLE = 0xFF5FE6F2;
-	protected static final int TEXT2 = 0xFFCCCCCC;
-	protected static final int IV_COLOR = 0xFF88CCFF;
-	protected static final int EV_COLOR = 0xFFFFCC88;
-	protected static final int STAT_HEAD = 0xFF6C8C96;
-	protected static final int SLOT_TOP = 0xFFCBEAF0;
-	protected static final int MALE = 0xFF50BFFF;
-	protected static final int FEMALE = 0xFFFF7594;
-	protected static final int STAR = 0xFFFFDD33;
-	protected static final int ACCENT_LEFT = 0xFF50BFFF;
-	protected static final int ACCENT_RIGHT = 0xFFFF6688;
-	protected static final int READY_BORDER = 0xFF76FFB0;
-	protected static final int READY_TEXT = 0xFFBAFFD2;
-	protected static final int DANGER_BORDER = 0xFFFF5078;
-	protected static final int ERROR_TEXT = 0xFFFFAA66;
+	protected static int CYAN;
+	protected static int CYAN2;
+	protected static int WHITE;
+	protected static int MUTED;
+	protected static int DIM;
+	protected static int TITLE;
+	protected static int TEXT2;
+	protected static int IV_COLOR;
+	protected static int EV_COLOR;
+	protected static int STAT_HEAD;
+	protected static int SLOT_TOP;
+	protected static int MALE;
+	protected static int FEMALE;
+	protected static int STAR;
+	protected static int ACCENT_LEFT;
+	protected static int ACCENT_RIGHT;
+	protected static int READY_BORDER;
+	protected static int READY_TEXT;
+	protected static int DANGER_BORDER;
+	protected static int ERROR_TEXT;
 
-	protected static final int PANEL_FILL = 0x69081422;
-	protected static final int PANEL_BORDER = 0xBF50E6FF;
-	protected static final int PANEL_INNER = 0x1F50E6FF;
-	protected static final int RAIL_BORDER = 0x7A50E6FF;
-	protected static final int LINE_12 = 0x1F50E6FF;
-	protected static final int LINE_20 = 0x3350E6FF;
-	protected static final int LINE_25 = 0x4050E6FF;
-	protected static final int LINE_28 = 0x4750E6FF;
-	protected static final int LINE_30 = 0x4D50E6FF;
-	protected static final int RAIL_FOOT_BG = 0x33000000;
-	protected static final int CARD_HEAD_BG = 0x6B02080F;
-	protected static final int INFO_BOX_BG = 0x6100080F;
-	protected static final int MOVE_BG = 0xFF07131F;
-	protected static final int STAT_EVEN_BG = 0x08FFFFFF;
-	protected static final int FOOTER_BG = 0xD1030A14;
-	protected static final int SLOT_BG = 0x820E3C4E;
-	protected static final int SLOT_BORDER = 0x5950E6FF;
-	protected static final int SLOT_HOVER_BG = 0x5950E6FF;
-	protected static final int SLOT_SELECTED_BG = 0x7350E6FF;
-	protected static final int VEIL = 0xD100050A;
-	protected static final int BADGE_BORDER = 0x54000000;
+	protected static int PANEL_FILL;
+	protected static int PANEL_BORDER;
+	protected static int PANEL_INNER;
+	protected static int RAIL_BORDER;
+	protected static int LINE_12;
+	protected static int LINE_20;
+	protected static int LINE_25;
+	protected static int LINE_28;
+	protected static int LINE_30;
+	protected static int RAIL_FOOT_BG;
+	protected static int CARD_HEAD_BG;
+	protected static int INFO_BOX_BG;
+	protected static int MOVE_BG;
+	protected static int STAT_EVEN_BG;
+	protected static int FOOTER_BG;
+	protected static int SLOT_BG;
+	protected static int SLOT_BORDER;
+	protected static int SLOT_HOVER_BG;
+	protected static int SLOT_SELECTED_BG;
+	protected static int VEIL;
+	protected static int BADGE_BORDER;
 
-	protected static final int[] STD_BUTTON = { 0xFF18466B, 0xFF0D2A42 };
-	protected static final int[] STD_BUTTON_HOVER = { 0xFF205C8D, 0xFF123859 };
-	protected static final int[] DANGER_BUTTON = { 0xFF6B182A, 0xFF420D18 };
-	protected static final int[] DANGER_BUTTON_HOVER = { 0xFF8D2038, 0xFF591222 };
+	protected static int[] STD_BUTTON;
+	protected static int[] STD_BUTTON_HOVER;
+	protected static int[] DANGER_BUTTON;
+	protected static int[] DANGER_BUTTON_HOVER;
+
+	/** Sets the colours above to the current {@link PhantasmonTheme}: V1 keeps the first look, Cobblemon its greys and teal. */
+	static void applyTheme() {
+		boolean c = PhantasmonTheme.cobblemon();
+		CYAN = c ? 0xFF38C4BC : 0xFF50E6FF;
+		CYAN2 = c ? 0xFF1F7F7A : 0xFF2FB7C9;
+		WHITE = 0xFFFFFFFF;
+		MUTED = c ? 0xFFC6C6C6 : 0xFF9FD9E6;
+		DIM = c ? 0xFF8D8D8D : 0xFF999999;
+		TITLE = c ? 0xFFFFFFFF : 0xFF5FE6F2;
+		TEXT2 = c ? 0xFFC6C6C6 : 0xFFCCCCCC;
+		IV_COLOR = 0xFF88CCFF;
+		EV_COLOR = 0xFFFFCC88;
+		STAT_HEAD = c ? 0xFF8D8D8D : 0xFF6C8C96;
+		SLOT_TOP = c ? 0xFFE6E6E6 : 0xFFCBEAF0;
+		MALE = 0xFF50BFFF;
+		FEMALE = 0xFFFF7594;
+		STAR = 0xFFFFDD33;
+		ACCENT_LEFT = 0xFF50BFFF;
+		ACCENT_RIGHT = 0xFFFF6688;
+		READY_BORDER = 0xFF76FFB0;
+		READY_TEXT = 0xFFBAFFD2;
+		DANGER_BORDER = 0xFFFF5078;
+		ERROR_TEXT = 0xFFFFAA66;
+		PANEL_FILL = c ? 0xE62F2F2F : 0x69081422;
+		PANEL_BORDER = c ? 0xFF676767 : 0xBF50E6FF;
+		PANEL_INNER = c ? 0x204B4B4B : 0x1F50E6FF;
+		RAIL_BORDER = c ? 0xFF676767 : 0x7A50E6FF;
+		LINE_12 = c ? 0x1FFFFFFF : 0x1F50E6FF;
+		LINE_20 = c ? 0x26FFFFFF : 0x3350E6FF;
+		LINE_25 = c ? 0x30FFFFFF : 0x4050E6FF;
+		LINE_28 = c ? 0x38FFFFFF : 0x4750E6FF;
+		LINE_30 = c ? 0x40FFFFFF : 0x4D50E6FF;
+		RAIL_FOOT_BG = c ? 0x40000000 : 0x33000000;
+		CARD_HEAD_BG = c ? 0xFF3D3D3D : 0x6B02080F;
+		INFO_BOX_BG = c ? 0xFF2A2A2A : 0x6100080F;
+		MOVE_BG = c ? 0xFF262626 : 0xFF07131F;
+		STAT_EVEN_BG = c ? 0x0CFFFFFF : 0x08FFFFFF;
+		FOOTER_BG = c ? 0xF0262626 : 0xD1030A14;
+		SLOT_BG = c ? 0xFF4B4B4B : 0x820E3C4E;
+		SLOT_BORDER = c ? 0xFF676767 : 0x5950E6FF;
+		SLOT_HOVER_BG = c ? 0x6038C4BC : 0x5950E6FF;
+		SLOT_SELECTED_BG = c ? 0x8538C4BC : 0x7350E6FF;
+		VEIL = c ? 0xD0101010 : 0xD100050A;
+		BADGE_BORDER = 0x54000000;
+		STD_BUTTON = c ? new int[] { 0xFF4B4B4B, 0xFF3D3D3D } : new int[] { 0xFF18466B, 0xFF0D2A42 };
+		STD_BUTTON_HOVER = c ? new int[] { 0xFF5A5A5A, 0xFF4B4B4B } : new int[] { 0xFF205C8D, 0xFF123859 };
+		DANGER_BUTTON = c ? new int[] { 0xFF6B2A2A, 0xFF4A1C1C } : new int[] { 0xFF6B182A, 0xFF420D18 };
+		DANGER_BUTTON_HOVER = c ? new int[] { 0xFF8A3434, 0xFF5E2424 } : new int[] { 0xFF8D2038, 0xFF591222 };
+	}
+
+	static {
+		applyTheme();
+	}
 
 	/** The whole canvas is drawn at 80% of the spec's size (Adrien 2026-10-02: full-screen was too big), still centered. */
 	protected static final float MENU_SCALE = 0.8f;
@@ -160,6 +214,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	@Override
 	protected void init() {
+		applyTheme();
 		float s = Math.min(1f, Math.min(this.width / 800f, this.height / 450f));
 		scale = s / 2f * MENU_SCALE;
 		originX = (this.width - CANVAS_W * scale) / 2f;
@@ -647,7 +702,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	protected record Texture(ResourceLocation location, int width, int height) {
 		Texture(String name, int width, int height) {
-			this(ResourceLocation.fromNamespaceAndPath("phantasmon", "textures/gui/trade/" + name + ".png"), width, height);
+			this(ResourceLocation.fromNamespaceAndPath("phantasmon", name), width, height);
 		}
 	}
 
@@ -656,7 +711,10 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		g.flush();
 		RenderSystem.enableBlend();
 		RenderSystem.defaultBlendFunc();
-		g.blit(texture.location(), x, y, w, h, 0f, 0f, texture.width(), texture.height(), texture.width(), texture.height());
+		// The texture of the current look (trade/ or trade_cobblemon/).
+		ResourceLocation location = ResourceLocation.fromNamespaceAndPath("phantasmon",
+				"textures/gui/" + PhantasmonTheme.current().textureFolder() + "/" + texture.location().getPath() + ".png");
+		g.blit(location, x, y, w, h, 0f, 0f, texture.width(), texture.height(), texture.width(), texture.height());
 		RenderSystem.disableBlend();
 	}
 

@@ -19,7 +19,10 @@
 		"ClientLevelHubBuildMixin",
 		"MultiPlayerGameModeHubBuildMixin",
 		"ClientPacketListenerCommandsMixin",
-		"ScreenChatActionMixin"
+		"ScreenChatActionMixin",
+		"BattleExtrasPartyMixin",
+		"BattleExtrasSlotsMixin",
+		"BattleExtrasOpponentSlotsMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

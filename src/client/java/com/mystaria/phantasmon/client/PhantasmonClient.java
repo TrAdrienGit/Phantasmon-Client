@@ -83,6 +83,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			com.mystaria.phantasmon.client.voice.HubVoice.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
+			com.mystaria.phantasmon.client.compat.BattleExtrasCompat.tick();
 			PhantasmonKeybinds.tick(pcOpener);
 		});
 

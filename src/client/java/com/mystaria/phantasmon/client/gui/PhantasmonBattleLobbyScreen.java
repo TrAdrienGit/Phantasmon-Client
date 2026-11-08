@@ -535,7 +535,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		double my = toCanvasY(mouseY);
 		List<String> ambiances = ambiances();
 		int top = formatListTop(ambiances.size());
-		g.fill(AMBIANCE_X - 4, top - 4, AMBIANCE_X + AMBIANCE_W + 4, 849, 0xF0081422);
+		g.fill(AMBIANCE_X - 4, top - 4, AMBIANCE_X + AMBIANCE_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
 		outline(g, AMBIANCE_X - 4, top - 4, AMBIANCE_W + 8, 849 - top + 4, CYAN);
 		for (int i = 0; i < ambiances.size(); i++) {
 			String id = ambiances.get(i);
@@ -558,7 +558,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		double my = toCanvasY(mouseY);
 		List<BattleLobbyState.FormatOption> formats = state.formats();
 		int top = formatListTop(formats.size());
-		g.fill(FORMAT_X - 4, top - 4, FORMAT_X + FORMAT_W + 4, 849, 0xF0081422);
+		g.fill(FORMAT_X - 4, top - 4, FORMAT_X + FORMAT_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
 		outline(g, FORMAT_X - 4, top - 4, FORMAT_W + 8, 849 - top + 4, CYAN);
 		for (int i = 0; i < formats.size(); i++) {
 			BattleLobbyState.FormatOption format = formats.get(i);

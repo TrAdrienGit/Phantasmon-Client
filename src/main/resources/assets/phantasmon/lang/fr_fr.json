@@ -395,5 +395,8 @@
   "phantasmon.hub.announcement.title": "Annonce",
   "phantasmon.battle.error.npc_not_found": "Ce dresseur n'est pas disponible (son événement est fermé).",
   "phantasmon.battle.error.npc_empty_team": "Ce dresseur n'a pas encore d'équipe.",
-  "phantasmon.battle.error.npc_busy": "Ce dresseur est déjà en plein combat. Attends qu'il ait fini."
+  "phantasmon.battle.error.npc_busy": "Ce dresseur est déjà en plein combat. Attends qu'il ait fini.",
+  "phantasmon.ui.theme": "DA : %s",
+  "phantasmon.ui.theme.v1": "V1",
+  "phantasmon.ui.theme.cobblemon": "Cobblemon"
 }

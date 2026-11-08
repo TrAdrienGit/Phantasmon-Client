@@ -301,11 +301,11 @@ public final class PhantasmonTradeScreen extends PhantasmonCanvasScreen {
 		int lineY = bandY + 44;
 		int lineStart = bandX + Math.round(bandW * 0.08f);
 		int lineEnd = bandX + Math.round(bandW * 0.92f);
-		g.fillGradient(lineStart, lineY - 8, lineEnd, lineY, 0x0050E6FF, withAlpha(0x4050E6FF, fade));
-		g.fillGradient(lineStart, lineY + 3, lineEnd, lineY + 11, withAlpha(0x4050E6FF, fade), 0x0050E6FF);
+		g.fillGradient(lineStart, lineY - 8, lineEnd, lineY, CYAN & 0x00FFFFFF, withAlpha(0x40000000 | (CYAN & 0x00FFFFFF), fade));
+		g.fillGradient(lineStart, lineY + 3, lineEnd, lineY + 11, withAlpha(0x40000000 | (CYAN & 0x00FFFFFF), fade), CYAN & 0x00FFFFFF);
 		for (int x = lineStart; x < lineEnd; x++) {
 			float t = (x - lineStart) / (float) (lineEnd - lineStart);
-			int color = t < 0.5f ? lerpColor(0x50E6FF, 0xFFFFFF, t * 2) : lerpColor(0xFFFFFF, 0xFF5078, (t - 0.5f) * 2);
+			int color = t < 0.5f ? lerpColor(CYAN & 0x00FFFFFF, 0xFFFFFF, t * 2) : lerpColor(0xFFFFFF, 0xFF5078, (t - 0.5f) * 2);
 			g.fill(x, lineY, x + 1, lineY + 3, withAlpha(0xFF000000 | color, fade));
 		}
 		bandLabel(g, controller.localPlayerName(), bandX + 30, lineY, false, fade);
@@ -344,7 +344,7 @@ public final class PhantasmonTradeScreen extends PhantasmonCanvasScreen {
 		float width = textWidth(label, labelScale, true, 0f);
 		float x = rightAligned ? anchorX - width : anchorX;
 		float y = lineY + 1.5f - 3.5f * labelScale;
-		g.fill(Math.round(x - 6), Math.round(y - 3), Math.round(x + width + 6), Math.round(y + 7 * labelScale + 3), withAlpha(BAND_LABEL_BG, fade));
+		g.fill(Math.round(x - 6), Math.round(y - 3), Math.round(x + width + 6), Math.round(y + 7 * labelScale + 3), withAlpha(PhantasmonTheme.cobblemon() ? 0xFF2F2F2F : BAND_LABEL_BG, fade));
 		drawText(g, label, x, y, labelScale, withAlpha(WHITE, fade), true, 0f);
 	}
 

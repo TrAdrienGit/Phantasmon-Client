@@ -114,6 +114,7 @@ public final class BattleVisuals {
 		try {
 			if (packet instanceof BattleInitializePacket init) {
 				clear();
+				com.mystaria.phantasmon.client.compat.BattleExtrasCompat.phantasmonBattleStarted();
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
 						trainers.put(actor.getShowdownId(), actor.getUuid());

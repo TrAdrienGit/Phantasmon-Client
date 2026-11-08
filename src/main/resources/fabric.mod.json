@@ -44,6 +44,7 @@
 		"cobblemon_battle_showtime": ">=1.0.0 <2.0.0"
 	},
 	"suggests": {
-		"voicechat": "*"
+		"voicechat": "*",
+		"cobblemon-battle-extras": ">=1.13"
 	}
 }

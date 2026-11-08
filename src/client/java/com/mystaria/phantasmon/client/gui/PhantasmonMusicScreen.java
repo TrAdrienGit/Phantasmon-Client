@@ -33,6 +33,9 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 	private static final int CLOSE_SIZE = 36;
 	private static final int CLOSE_X = 1585 - 6 - CLOSE_SIZE;
 	private static final int CLOSE_Y = 15 + (48 - CLOSE_SIZE) / 2;
+	/** Phantasmon's look (V1 / Cobblemon), in the header: this is Phantasmon's settings screen (Mod Menu). */
+	private static final int THEME_W = 330;
+	private static final int THEME_X = CLOSE_X - 16 - THEME_W;
 
 	private final Screen parent;
 	private int tab = BattleMusic.Track.BATTLE.ordinal();
@@ -64,6 +67,10 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 		}
 		double x = toCanvasX(mouseX);
 		double y = toCanvasY(mouseY);
+		if (inside(x, y, THEME_X, CLOSE_Y, THEME_W, CLOSE_SIZE)) {
+			PhantasmonTheme.toggle();
+			return true;
+		}
 		if (inside(x, y, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE) || inside(x, y, 1475, 849, 97, 28)) {
 			onClose();
 			return true;
@@ -116,6 +123,10 @@ public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 		renderHeaderPlates(g, 1500);
 		drawText(g, upper(Component.translatable("phantasmon.music.screen.title").getString()), 31, 32, 2f, WHITE, true, 1.5f);
 		renderCloseButton(g, CLOSE_X, CLOSE_Y, CLOSE_SIZE, inside(mx, my, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE));
+		renderPrimaryButtonFrame(g, THEME_X, CLOSE_Y, THEME_W, CLOSE_SIZE, inside(mx, my, THEME_X, CLOSE_Y, THEME_W, CLOSE_SIZE), false);
+		String theme = upper(Component.translatable("phantasmon.ui.theme",
+				Component.translatable("phantasmon.ui.theme." + PhantasmonTheme.current().id)).getString());
+		drawCentered(g, theme, THEME_X + THEME_W / 2f, CLOSE_Y + 11, 2f, CYAN, true, 1f);
 
 		for (int i = 0; i < TABS.length; i++) {
 			int tx = TAB_X + i * (TAB_W + TAB_GAP);

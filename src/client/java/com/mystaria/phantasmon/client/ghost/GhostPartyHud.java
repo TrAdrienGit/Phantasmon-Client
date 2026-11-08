@@ -62,6 +62,18 @@ public final class GhostPartyHud {
 	private static final int LEVEL_TEXT = 0xFFCBEAF0;
 	private static final int STAR = 0xFFFFDD33;
 
+	private static int barFull() {
+		return com.mystaria.phantasmon.client.gui.PhantasmonTheme.cobblemon() ? 0xFF38C4BC : BAR_FULL;
+	}
+
+	private static int barDim() {
+		return com.mystaria.phantasmon.client.gui.PhantasmonTheme.cobblemon() ? 0xFF1F7F7A : BAR_DIM;
+	}
+
+	private static int levelText() {
+		return com.mystaria.phantasmon.client.gui.PhantasmonTheme.cobblemon() ? 0xFFFFFFFF : LEVEL_TEXT;
+	}
+
 	/** Cobblemon grey level → Phantasmon colour (ARGB), per slot texture. */
 	private static final Map<Integer, Integer> NORMAL_PALETTE = Map.of(
 			47, 0xFF060E1A, 75, 0xFF0C2436, 89, 0xFF133650, 103, 0xFF10304A,
@@ -246,14 +258,14 @@ public final class GhostPartyHud {
 
 		// Small Phantasmon tag above the first slot: tells the two overlays apart.
 		String tag = Component.translatable("phantasmon.ghost.hud.title").getString().toUpperCase(java.util.Locale.ROOT);
-		drawText(g, font, tag, 2.5f, top - 5f, 0.5f, BAR_FULL, true);
+		drawText(g, font, tag, 2.5f, top - 5f, 0.5f, barFull(), true);
 
 		PokemonDto[] slots = team;
 		boolean empty = Arrays.stream(slots).allMatch(java.util.Objects::isNull);
 		if (!session.isAuthenticated() || !loaded || empty) {
 			String key = !session.isAuthenticated() ? "phantasmon.ghost.hud.offline"
 					: !loaded ? "phantasmon.ghost.hud.loading" : "phantasmon.ghost.hud.empty";
-			drawText(g, font, Component.translatable(key).getString(), 9f, top + 1f, 0.5f, LEVEL_TEXT, true);
+			drawText(g, font, Component.translatable(key).getString(), 9f, top + 1f, 0.5f, levelText(), true);
 		}
 		UUID active = ghostSession.activeGhostPokemonUuid();
 		for (int i = 0; i < SLOTS; i++) {
@@ -285,7 +297,7 @@ public final class GhostPartyHud {
 		blitSlot(g, active ? "party_slot_active" : "party_slot", active ? ACTIVE_PALETTE : NORMAL_PALETTE, slotX, y);
 
 		// Level, centred on the left column, two lines like Cobblemon's ("Nv." / number).
-		drawCentered(g, font, Component.translatable("phantasmon.ghost.hud.level").getString(), x + 6.5f, y + 13f, 0.5f, LEVEL_TEXT);
+		drawCentered(g, font, Component.translatable("phantasmon.ghost.hud.level").getString(), x + 6.5f, y + 13f, 0.5f, levelText());
 		drawCentered(g, font, String.valueOf(pokemon.level()), x + 6.5f, y + 18f, 0.5f, TEXT);
 
 		// Held item in its little box.
@@ -295,7 +307,7 @@ public final class GhostPartyHud {
 		}
 
 		// Ghosts have no HP outside a battle: the bar is always full, in Phantasmon cyan.
-		g.fillGradient(x + 46, y + 4, x + 48, y + 22, BAR_FULL, BAR_DIM);
+		g.fillGradient(x + 46, y + 4, x + 48, y + 22, barFull(), barDim());
 
 		// Name (★ if shiny) and gender, in the dark band.
 		float nameX = x + 2.5f;
@@ -315,7 +327,9 @@ public final class GhostPartyHud {
 	}
 
 	private void blitSlot(GuiGraphics g, String name, Map<Integer, Integer> palette, int x, int y) {
-		ResourceLocation texture = recoloured(name, palette);
+		// The Cobblemon look keeps Cobblemon's own slot, untouched; V1 recolours it cyan.
+		ResourceLocation texture = com.mystaria.phantasmon.client.gui.PhantasmonTheme.cobblemon()
+				? cobblemon("textures/gui/party/" + name + ".png") : recoloured(name, palette);
 		if (texture != null) {
 			g.blit(texture, x, y, 0, 0, SLOT_W, SLOT_H, SLOT_W, SLOT_H);
 		}

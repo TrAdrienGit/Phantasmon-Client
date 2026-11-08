@@ -39,6 +39,11 @@ public final class GhostVirtualItems implements HeldItemManager {
 	}
 
 	/** A battle copy built from a Ghost holding the item {@code showdownId}. */
+	/** The virtual item this battle copy holds (Showdown id), or null. */
+	public static String held(Pokemon pokemon) {
+		return pokemon == null ? null : HELD.get(pokemon);
+	}
+
 	static void hold(Pokemon pokemon, String showdownId) {
 		HELD.put(pokemon, showdownId);
 	}

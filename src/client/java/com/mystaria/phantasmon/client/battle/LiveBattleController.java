@@ -742,6 +742,18 @@ public final class LiveBattleController implements LiveBattleListener {
 		opponentUuid = uuid(data.get("opponent_uuid"));
 		opponentName = string(data.get("opponent_name"));
 		pendingInviteUuid = null;
+		if (lobby != null && opponentUuid != null) {
+			// Cobblemon Battle Extras shows the opponent's whole team from the start: both saw it in the lobby.
+			java.util.List<String[]> team = new java.util.ArrayList<>();
+			for (int i = 0; i < lobby.opponentTeamSize(); i++) {
+				com.mystaria.phantasmon.client.pokemon.PokemonDto mon = lobby.opponentSlot(i);
+				if (mon != null) {
+					team.add(new String[] { mon.species(), mon.form() == null ? "" : mon.form(), mon.isShiny() ? "shiny" : "" });
+				}
+			}
+			com.mystaria.phantasmon.client.compat.BattleExtrasCompat.opponentTeam(opponentUuid, team);
+		}
+		com.mystaria.phantasmon.client.compat.BattleExtrasCompat.ownTeam(team(data.get("own_team")));
 		lobby = null;
 		closeLobbyScreen();
 		timerEnabled = false;
