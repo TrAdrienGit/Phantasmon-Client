@@ -18,7 +18,7 @@ import com.mystaria.showtime.audio.BattleMusic;
  */
 public final class PhantasmonMusicScreen extends PhantasmonCanvasScreen {
 
-	private static final BattleMusic.Track[] TABS = BattleMusic.Track.values();
+	private static final BattleMusic.Track[] TABS = BattleMusic.Track.values(); // the lobby included: Phantasmon turns it on
 	private static final int TAB_X = 250;
 	private static final int TAB_W = 212;
 	private static final int TAB_GAP = 10;
