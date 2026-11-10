@@ -169,6 +169,18 @@ public final class PhantasmonApi {
 		com.mystaria.phantasmon.client.battle.GhostBattles.registerAi(level, factory);
 	}
 
+	private static final List<HubManagerTab> HUB_MANAGER_TABS = new CopyOnWriteArrayList<>();
+
+	/** Adds a tab to the admins' hub manager, after Phantasmon's own "Hubs" tab (Phantasmon Events: its event hubs). */
+	public static void registerHubManagerTab(HubManagerTab tab) {
+		HUB_MANAGER_TABS.add(tab);
+	}
+
+	/** The add-ons' hub manager tabs, in registration order. */
+	public static List<HubManagerTab> hubManagerTabs() {
+		return List.copyOf(HUB_MANAGER_TABS);
+	}
+
 	/** Phantasmon's WebSocket received an {@code Events*} message (client thread). */
 	public static void dispatchEvents(String type, Map<String, Object> data) {
 		EVENTS_LISTENERS.forEach(listener -> listener.accept(type, data));

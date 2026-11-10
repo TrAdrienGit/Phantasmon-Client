@@ -26,18 +26,24 @@ public final class PhantasmonKeybinds {
 	private static final String CATEGORY = "key.categories.phantasmon";
 
 	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc", GLFW.GLFW_KEY_P, CATEGORY);
+	/** The admins' hub manager (Adrien 2026-11-10): H; refused with a message to a player who is not an admin. */
+	private static final KeyMapping OPEN_HUB_MANAGER = new KeyMapping("key.phantasmon.hub_manager", GLFW.GLFW_KEY_H, CATEGORY);
 
 	private PhantasmonKeybinds() {
 	}
 
 	public static void register() {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
+		KeyBindingHelper.registerKeyBinding(OPEN_HUB_MANAGER);
 	}
 
 	/** Called every client tick (see {@link PhantasmonClient}) — {@code consumeClick()} is the standard vanilla pattern for a keybind's action firing once per press, queued click included, regardless of how long the key is held. */
-	public static void tick(PcOpener pcOpener) {
+	public static void tick(PcOpener pcOpener, Runnable openHubManager) {
 		while (OPEN_PC.consumeClick()) {
 			pcOpener.openPc();
+		}
+		while (OPEN_HUB_MANAGER.consumeClick()) {
+			openHubManager.run();
 		}
 	}
 }

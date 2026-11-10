@@ -94,7 +94,10 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_HUB_INVALID_NAME", "phantasmon.hub.error.invalid_name"),
 			Map.entry("ERROR_HUB_INVALID_SIZE", "phantasmon.hub.error.invalid_size"),
 			Map.entry("ERROR_HUB_SCHEMATIC_INVALID", "phantasmon.hub.error.schematic_invalid"),
-			Map.entry("ERROR_HUB_SCHEMATIC_NONE", "phantasmon.hub.error.schematic_none"));
+			Map.entry("ERROR_HUB_SCHEMATIC_NONE", "phantasmon.hub.error.schematic_none"),
+			Map.entry("ERROR_HUB_FOLDER_TAKEN", "phantasmon.hub.error.folder_taken"),
+			Map.entry("ERROR_HUB_FOLDER_MOVE", "phantasmon.hub.error.folder_move"),
+			Map.entry("ERROR_HUB_KIND_UNAVAILABLE", "phantasmon.hub.error.kind_unavailable"));
 
 	private BackendErrorMessages() {
 	}

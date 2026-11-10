@@ -1,6 +1,6 @@
 # Interfaces graphiques et « design system »
 
-> Classes : `gui/PhantasmonCanvasScreen` (socle), `gui/PhantasmonPcScreen`, `gui/PhantasmonPcEditScreen`,
+> Classes : `gui/PhantasmonCanvasScreen` (socle), `gui/PhantasmonPcScreen`, `gui/PhantasmonPcEditScreen`, `gui/PhantasmonHubManagerScreen`,
 > `gui/PhantasmonTradeScreen`, `gui/PokemonGuiRendering`. Maquettes : [`design/`](../design/README.md).
 > Vérifié le 2026-10-03.
 
@@ -89,3 +89,18 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   `nature`, `ability`, `is_shiny`.
 
 **Échange** : voir [`live-trade.md`](live-trade.md).
+
+**Gestionnaire des hubs** (`PhantasmonHubManagerScreen`, touche **H**, admins seulement, 2026-11-10)
+
+- Onglets : « Hubs » (hubs ordinaires), puis ceux des add-ons (`PhantasmonApi.registerHubManagerTab`, interface
+  `api/HubManagerTab` : quels hubs l'onglet montre, lignes de détail et boutons en plus, bouton de création), puis
+  « Autres » seulement s'il reste des hubs qu'aucun onglet ne montre (type d'un add-on non installé, D-41).
+- À gauche, liste défilante (molette) des hubs de l'onglet : nom, nombre d'ancres, taille, construction, date et
+  auteur de la création. À droite, le hub choisi : type, taille, schematic (format, poids, début du SHA-256),
+  création, boutons RENOMMER / RELIRE LA CONSTRUCTION (hubs ordinaires) / boutons de l'onglet / SUPPRIMER, puis la
+  liste défilante de ses ancres sur tous les serveurs (nom, rôle, propriétaire, « ce serveur » ou empreinte, dimension,
+  coordonnées, date), chacune avec un ✕.
+- Fenêtres : création (nom, largeur, hauteur, longueur ; le nom ne garde que minuscules, chiffres et `_`), renommage,
+  confirmations de suppression (hub, ancre). Clavier : Tab, Entrée = valider, Échap = annuler.
+- Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, plus les routes de
+  création, suppression et relecture déjà existantes (`rest-api.md` du backend).

@@ -53,6 +53,23 @@ public final class HubClient {
 				Map.of("name", name, "length", length, "width", width, "height", height), bearerToken, HubDto.class);
 	}
 
+	/** Admin, hub manager: every hub of every kind, with its creation and anchor count. */
+	public CompletableFuture<HubAdminDto[]> adminHubs(String bearerToken) {
+		return httpClient.get(BackendConfig.BASE_URL.resolve("/admin/hubs"), bearerToken, HubAdminDto[].class);
+	}
+
+	/** Admin, hub manager: the anchors leading to a hub, on every server. */
+	public CompletableFuture<HubAdminDto.Anchor[]> adminAnchors(String bearerToken, String hub) {
+		return httpClient.get(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(hub) + "/anchors"), bearerToken,
+				HubAdminDto.Anchor[].class);
+	}
+
+	/** Admin, hub manager: renames a hub (its schematic folder follows). */
+	public CompletableFuture<HubDto> renameHub(String bearerToken, String hub, String newName) {
+		return httpClient.post(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(hub) + "/rename"),
+				Map.of("name", newName), bearerToken, HubDto.class);
+	}
+
 	/** Admin: a mirror hub (D-38) of that radius. */
 	public CompletableFuture<HubDto> createMirrorHub(String bearerToken, String name, int radius) {
 		return httpClient.post(BackendConfig.BASE_URL.resolve("/admin/hubs"),
