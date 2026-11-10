@@ -16,7 +16,8 @@
 ./scripts/deploy-to-prod-server.sh
 ```
 
-Depuis le 2026-11-10, les tests se font **sans Events** (Adrien) : Phantasmon seul, sur notre serveur Minecraft, avec
+Le 2026-11-10 au soir, Events est réinstallé dans les deux instances (`--events`) pour tester son onglet du
+gestionnaire des hubs. Plus tôt le même jour, les tests se faisaient **sans Events** (Adrien) : Phantasmon seul, sur notre serveur Minecraft, avec
 le backend lancé par `deploy-ubuntu.sh --no-events`. Les instances « Phantasmon Test » ne servent plus.
 
 Les jeux déjà lancés doivent être redémarrés. **Ce script n'est pas versionné** (il est dans `.gitignore`, car il
@@ -31,7 +32,8 @@ contient des chemins propres aux machines d'Adrien) : il n'existe que sur la mac
 | Serveur Ubuntu (`100.101.1.79`) | — | — | Backend + PostgreSQL (`guides/deploying-ubuntu.md` du dépôt Backend), et notre serveur Minecraft Cobblemon Academy (port 25565) où jouent les deux clients |
 
 Les deux clients doivent viser **le même backend** (celui du serveur Ubuntu) : `backend_url` de
-`config/phantasmon.json` dans chaque instance.
+`config/phantasmon.json` dans chaque instance, modifiable dans les paramètres de Phantasmon (Mod Menu → Configurer),
+au prochain lancement.
 
 ### Rejoindre la même partie
 

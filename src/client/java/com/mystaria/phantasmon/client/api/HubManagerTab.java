@@ -38,14 +38,41 @@ public interface HubManagerTab {
 	}
 
 	/**
-	 * A button: {@code run} receives the selected hub (null for {@link #createAction}) and a {@code done} callback that
-	 * reloads the manager's lists (call it on the client thread once the backend answered).
+	 * A button. With {@code fields}, the manager first asks for them in a form (Phantasmon's look) and gives their
+	 * values, in order, to {@code form}; without, it runs at once. {@code form} receives the selected hub (null for
+	 * {@link #createAction}), the values, a {@code done} callback that reloads the manager's lists (call it once the
+	 * backend answered) and a {@code status} line for the manager's footer.
 	 */
-	record Action(Component label, boolean danger, Run run) {
+	record Action(Component label, boolean danger, List<Field> fields, FormRun form) {
+
+		/** A button without form. */
+		public Action(Component label, boolean danger, Run run) {
+			this(label, danger, List.of(), (hub, values, done, status) -> run.run(hub, done, status));
+		}
+	}
+
+	/** One input of an action's form. */
+	record Field(Component label, Kind kind) {
+
+		public enum Kind {
+			/** A hub name: lower-case letters, digits, _ (2 to 32). */
+			NAME,
+			/** A whole number from 0. */
+			NUMBER,
+			/** A whole number, possibly negative. */
+			SIGNED_NUMBER,
+			/** Any text (32 characters). */
+			TEXT
+		}
 	}
 
 	@FunctionalInterface
 	interface Run {
 		void run(HubAdminDto hub, Runnable done, Consumer<Component> status);
+	}
+
+	@FunctionalInterface
+	interface FormRun {
+		void run(HubAdminDto hub, List<String> values, Runnable done, Consumer<Component> status);
 	}
 }

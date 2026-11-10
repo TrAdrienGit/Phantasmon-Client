@@ -13,6 +13,6 @@ public final class PhantasmonModMenu implements ModMenuApi {
 
 	@Override
 	public ConfigScreenFactory<?> getModConfigScreenFactory() {
-		return PhantasmonMusicScreen::new;
+		return com.mystaria.phantasmon.client.gui.PhantasmonSettingsScreen::new;
 	}
 }

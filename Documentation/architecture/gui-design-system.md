@@ -90,6 +90,11 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 
 **Échange** : voir [`live-trade.md`](live-trade.md).
 
+**Paramètres** (`PhantasmonSettingsScreen`, bouton « Configurer » de Mod Menu, 2026-11-10) : adresse du backend
+(`config/phantasmon.json`, défaut `https://server-linux.tail192969.ts.net`) avec TESTER (`GET /health`), PAR DÉFAUT,
+ENREGISTRER (prise en compte au prochain lancement : l'adresse est lue une fois au démarrage) ; apparence (V1 /
+Cobblemon) ; bouton MUSIQUES vers l'écran des musiques.
+
 **Gestionnaire des hubs** (`PhantasmonHubManagerScreen`, touche **H**, 2026-11-10)
 
 - **Joueur** : l'onglet « Hubs » seul, les hubs classiques de Phantasmon (jamais ceux d'un add-on ni leurs ancres :
@@ -104,7 +109,9 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 - **Admin** : tout ce qui suit, plus PLACER UNE ANCRE pour lui-même sur les hubs ordinaires.
 
 - Onglets (admin) : « Hubs » (hubs ordinaires), puis ceux des add-ons, réservés aux admins (`PhantasmonApi.registerHubManagerTab`, interface
-  `api/HubManagerTab` : quels hubs l'onglet montre, lignes de détail et boutons en plus, bouton de création), puis
+  `api/HubManagerTab` : quels hubs l'onglet montre, lignes de détail et boutons en plus, bouton de création ; un
+  bouton peut déclarer des champs (`Field` : nom, nombre, nombre signé, texte), que le gestionnaire demande dans une
+  fenêtre avant d'appeler l'action ; Phantasmon Events y ajoute « Hubs Event »), puis
   « Autres » seulement s'il reste des hubs qu'aucun onglet ne montre (type d'un add-on non installé, D-41).
 - À gauche, liste défilante (molette) des hubs de l'onglet : nom, nombre d'ancres, taille, construction, date et
   auteur de la création. À droite, le hub choisi : type, taille, schematic (format, poids, début du SHA-256),

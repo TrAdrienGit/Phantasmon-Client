@@ -81,7 +81,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private static final int MODAL_BUTTON_W = 200;
 	private static final int MODAL_BUTTON_H = 36;
 
-	private enum Modal { NONE, CREATE, RENAME, PLACE, SCHEMATIC, DELETE_HUB, DELETE_ANCHOR }
+	private enum Modal { NONE, CREATE, RENAME, PLACE, SCHEMATIC, FORM, DELETE_HUB, DELETE_ANCHOR }
 
 	private final HubClient client;
 	private final AuthSession session;
@@ -310,6 +310,23 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 					reload();
 				})).exceptionally(this::fail);
 			}
+			case FORM -> {
+				List<HubManagerTab.Field> formFields = formAction.fields();
+				List<String> values = new ArrayList<>();
+				for (int i = 0; i < formFields.size(); i++) {
+					String value = fields[i].strip();
+					HubManagerTab.Field.Kind kind = formFields.get(i).kind();
+					boolean number = kind == HubManagerTab.Field.Kind.NUMBER || kind == HubManagerTab.Field.Kind.SIGNED_NUMBER;
+					if (value.isEmpty() || value.equals("-") || (number && number(value.replace("-", "")) == null)) {
+						setStatus(Component.translatable("phantasmon.hub_manager.form_fill"), ERROR_TEXT);
+						return;
+					}
+					values.add(value);
+				}
+				modal = Modal.NONE;
+				runForm(formAction, formHub, values);
+				return;
+			}
 			case SCHEMATIC -> {
 				if (hub != null) {
 					uploadSchematic(hub); // the picker closes once the backend accepted the file
@@ -535,8 +552,22 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		return currentTab().createAction();
 	}
 
+	/** An add-on's action waiting for its form ({@link Modal#FORM}), and its hub. */
+	private HubManagerTab.Action formAction;
+	private HubAdminDto formHub;
+
 	private void run(HubManagerTab.Action action, HubAdminDto hub) {
-		action.run().run(hub, () -> onMain(this::reload), message -> onMain(() -> setStatus(message, MUTED)));
+		if (!action.fields().isEmpty()) {
+			formAction = action;
+			formHub = hub;
+			openModal(Modal.FORM);
+			return;
+		}
+		runForm(action, hub, List.of());
+	}
+
+	private void runForm(HubManagerTab.Action action, HubAdminDto hub, List<String> values) {
+		action.form().run(hub, values, () -> onMain(this::reload), message -> onMain(() -> setStatus(message, MUTED)));
 	}
 
 	// =====================================================================
@@ -713,7 +744,20 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			return super.charTyped(chr, modifiers);
 		}
 		String value = fields[focusedField];
-		if (modal == Modal.PLACE) {
+		if (modal == Modal.FORM) {
+			HubManagerTab.Field.Kind kind = formAction.fields().get(focusedField).kind();
+			boolean ok = switch (kind) {
+				case NAME -> value.length() < 32 && (chr >= 'a' && chr <= 'z' || chr >= 'A' && chr <= 'Z' || chr >= '0' && chr <= '9'
+						|| chr == '_' || chr == ' ' || chr == '-');
+				case NUMBER -> Character.isDigit(chr) && value.length() < 6;
+				case SIGNED_NUMBER -> (Character.isDigit(chr) || chr == '-' && value.isEmpty()) && value.length() < 6;
+				case TEXT -> value.length() < 32 && chr >= 32 && chr != 127;
+			};
+			if (ok) {
+				char c = kind == HubManagerTab.Field.Kind.NAME ? (chr == ' ' || chr == '-' ? '_' : Character.toLowerCase(chr)) : chr;
+				fields[focusedField] = value + c;
+			}
+		} else if (modal == Modal.PLACE) {
 			// Anchor names: letters, digits, space, _ and -, up to 32 (the backend checks the rest).
 			if (value.length() < 32 && (Character.isLetterOrDigit(chr) || chr == ' ' || chr == '_' || chr == '-')) {
 				fields[0] = value + chr;
@@ -945,6 +989,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		return switch (modal) {
 			case CREATE -> 4;
 			case RENAME, PLACE -> 1;
+			case FORM -> formAction == null ? 0 : Math.min(fields.length, formAction.fields().size());
 			default -> 0;
 		};
 	}
@@ -955,6 +1000,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			case RENAME -> 240;
 			case PLACE -> 260;
 			case SCHEMATIC -> 600;
+			case FORM -> 76 + fieldCount() * (FIELD_H + 16) + 90;
 			default -> 190;
 		};
 	}
@@ -964,14 +1010,17 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private int fieldX(int field) {
-		return field == 0 ? MODAL_X + 30 : MODAL_X + 30 + (field - 1) * 216;
+		return field == 0 || modal == Modal.FORM ? MODAL_X + 30 : MODAL_X + 30 + (field - 1) * 216;
 	}
 
 	private int fieldW(int field) {
-		return field == 0 ? MODAL_W - 60 : 208;
+		return field == 0 || modal == Modal.FORM ? MODAL_W - 60 : 208;
 	}
 
 	private int fieldY(int field) {
+		if (modal == Modal.FORM) {
+			return modalY() + 76 + field * (FIELD_H + 16);
+		}
 		return modalY() + 76 + (field == 0 ? 0 : FIELD_H + 40);
 	}
 
@@ -987,6 +1036,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			case CREATE -> Component.translatable("phantasmon.hub_manager.create_title").getString();
 			case RENAME -> Component.translatable("phantasmon.hub_manager.rename_title", hub == null ? "?" : hub.name()).getString();
 			case PLACE -> Component.translatable("phantasmon.hub_manager.place_title", hub == null ? "?" : hub.name()).getString();
+			case FORM -> formAction == null ? "" : formAction.label().getString();
 			case SCHEMATIC -> Component.translatable("phantasmon.hub_manager.schematic_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_HUB -> Component.translatable("phantasmon.hub_manager.delete_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_ANCHOR -> Component.translatable("phantasmon.hub_manager.delete_anchor_title",
@@ -1004,6 +1054,11 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 						1f, DIM, false, 0f);
 			}
 			case RENAME -> renderField(g, 0, "phantasmon.hub_manager.field.name", mx, my);
+			case FORM -> {
+				for (int i = 0; i < fieldCount(); i++) {
+					renderField(g, i, formAction.fields().get(i).label(), mx, my);
+				}
+			}
 			case PLACE -> {
 				renderField(g, 0, "phantasmon.hub_manager.field.anchor_name", mx, my);
 				if (fields[0].isEmpty() && hub != null) {
@@ -1032,7 +1087,8 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		renderButton(g, 800 - MODAL_BUTTON_W - 10, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
 				inside(mx, my, 800 - MODAL_BUTTON_W - 10, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H), 2f);
 		renderButton(g, 810, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H, destructive ? "phantasmon.hub_manager.delete"
-				: modal == Modal.CREATE ? "phantasmon.hub_manager.create_confirm"
+				: modal == Modal.FORM ? "phantasmon.hub_manager.form_confirm"
+						: modal == Modal.CREATE ? "phantasmon.hub_manager.create_confirm"
 						: modal == Modal.PLACE ? "phantasmon.hub_manager.place_confirm" : "phantasmon.hub_manager.rename_confirm",
 				destructive, inside(mx, my, 810, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H), 2f);
 		endModalLayer(g);
@@ -1095,6 +1151,10 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void renderField(GuiGraphics g, int field, String labelKey, double mx, double my) {
+		renderField(g, field, Component.translatable(labelKey), mx, my);
+	}
+
+	private void renderField(GuiGraphics g, int field, Component label, double mx, double my) {
 		int x = fieldX(field);
 		int y = fieldY(field);
 		int w = fieldW(field);
@@ -1104,7 +1164,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			glowInside(g, x, y, w, FIELD_H, 0x50E6FF, 0.25f, 5);
 		}
 		outline(g, x, y, w, FIELD_H, focused ? CYAN : inside(mx, my, x, y, w, FIELD_H) ? CYAN2 : LINE_20);
-		drawText(g, upper(Component.translatable(labelKey).getString()), x + 9, y + 7, 1f, TITLE, true, 1.2f);
+		drawText(g, upper(label.getString()), x + 9, y + 7, 1f, TITLE, true, 1.2f);
 		String shown = fitText(fields[field], w - 30, 2f, false, 0f);
 		drawText(g, shown, x + 9, y + 24, 2f, WHITE, false, 0f);
 		if (focused && (System.currentTimeMillis() / 500) % 2 == 0) {

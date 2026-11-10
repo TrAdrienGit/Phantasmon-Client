@@ -24,7 +24,7 @@ public final class BackendUrlFile {
 	private static final Logger LOG = LoggerFactory.getLogger(BackendUrlFile.class);
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	static final String DEFAULT_URL = "https://server-linux.tail192969.ts.net";
+	public static final String DEFAULT_URL = "https://server-linux.tail192969.ts.net";
 	private static final String KEY = "backend_url";
 
 	private BackendUrlFile() {
@@ -55,7 +55,7 @@ public final class BackendUrlFile {
 	 * {@code http(s)://host[:port]}, or {@code null}. No path: every call resolves an absolute path
 	 * ({@code BASE_URL.resolve("/version")}) and the WebSocket keeps only the authority, so a path would be dropped.
 	 */
-	static URI parse(String value) {
+	public static URI parse(String value) {
 		if (value == null || value.isBlank()) {
 			return null;
 		}
@@ -82,5 +82,43 @@ public final class BackendUrlFile {
 		} catch (IOException ex) {
 			LOG.warn("Cannot create {} — using {}", file, DEFAULT_URL, ex);
 		}
+	}
+
+	/** Writes {@code url} as the backend URL (settings screen); read at the next launch. False if it could not. */
+	public static boolean save(Path file, URI url) {
+		JsonObject json = new JsonObject();
+		try {
+			if (Files.exists(file)) {
+				JsonObject existing = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
+				if (existing != null) {
+					json = existing; // other keys kept
+				}
+			}
+		} catch (IOException | JsonParseException | IllegalStateException ex) {
+			LOG.warn("Cannot read {} before saving: rewritten", file, ex);
+		}
+		json.addProperty(KEY, url.toString());
+		try {
+			Files.createDirectories(file.getParent());
+			Files.writeString(file, GSON.toJson(json) + System.lineSeparator(), StandardCharsets.UTF_8);
+			LOG.info("Backend URL saved in {}: {} (next launch)", file, url);
+			return true;
+		} catch (IOException ex) {
+			LOG.warn("Cannot write {}", file, ex);
+			return false;
+		}
+	}
+
+	/** The URL written in the file now (maybe not the one in use until the next launch); the default if none. */
+	public static String saved(Path file) {
+		try {
+			JsonObject json = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
+			if (json != null && json.has(KEY) && !json.get(KEY).isJsonNull()) {
+				return json.get(KEY).getAsString();
+			}
+		} catch (IOException | JsonParseException | IllegalStateException | UnsupportedOperationException ex) {
+			// default below
+		}
+		return DEFAULT_URL;
 	}
 }
