@@ -3,7 +3,6 @@ package com.mystaria.phantasmon.client.compat;
 import com.terraformersmc.modmenu.api.ConfigScreenFactory;
 import com.terraformersmc.modmenu.api.ModMenuApi;
 
-import com.mystaria.phantasmon.client.gui.PhantasmonMusicScreen;
 
 /**
  * Mod Menu's "Configure" button for Phantasmon opens the music screen (Adrien 2026-10-05). Only loaded when Mod Menu
@@ -13,6 +12,6 @@ public final class PhantasmonModMenu implements ModMenuApi {
 
 	@Override
 	public ConfigScreenFactory<?> getModConfigScreenFactory() {
-		return com.mystaria.phantasmon.client.gui.PhantasmonSettingsScreen::new;
+		return com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen::settings;
 	}
 }

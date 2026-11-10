@@ -100,13 +100,14 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostVirtualItems.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
+		com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.bindHubs(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.HubAccess(hubClient, authSession, hub));
 		com.mystaria.phantasmon.client.hub.HubPlacement.register();
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);
 		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
 		PhantasmonCommands.register(authService, ghostSession, liveTrade, liveBattle);
 	}
 
-	/** Key H: the hub manager — an admin's, or a player's (their anchors); a player not logged in gets a message. */
+	/** Key H: the Phantasmon menu on its Hubs page (an admin's manager or a player's); not logged in: a message. */
 	private void openHubManager() {
 		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
 		if (mc.player == null || mc.screen != null) {
@@ -119,7 +120,6 @@ public class PhantasmonClient implements ClientModInitializer {
 		}
 		// H again while placing an anchor: placing stops, the manager opens.
 		com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
-		mc.setScreen(new com.mystaria.phantasmon.client.gui.PhantasmonHubManagerScreen(hubClient, authSession, hub,
-				com.mystaria.phantasmon.client.admin.AdminSession.isAdmin()));
+		mc.setScreen(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen(null, com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.Category.HUBS));
 	}
 }

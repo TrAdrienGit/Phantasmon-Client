@@ -10,7 +10,7 @@ import net.fabricmc.loader.api.FabricLoader;
  * launch; editing it takes effect at the next game launch.
  *
  * <p>The default is our server's public address ({@link BackendUrlFile#DEFAULT_URL}); the settings screen
- * ({@code PhantasmonSettingsScreen}, Mod Menu) changes it for the next launch.
+ * (Phantasmon menu, Settings page) changes it for the next launch.
  */
 public final class BackendConfig {
 

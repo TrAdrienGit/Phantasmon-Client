@@ -490,5 +490,10 @@
   "phantasmon.settings.save_failed": "Impossible d'écrire config/phantasmon.json.",
   "phantasmon.settings.saved_same": "Enregistré : c'est déjà l'adresse utilisée.",
   "phantasmon.settings.saved_restart": "Enregistré : relance le jeu pour utiliser cette adresse.",
-  "phantasmon.settings.default_set": "Adresse par défaut remise : Enregistrer pour la garder."
+  "phantasmon.settings.default_set": "Adresse par défaut remise : Enregistrer pour la garder.",
+  "phantasmon.menu.title": "Phantasmon",
+  "phantasmon.menu.category.hubs": "Hubs",
+  "phantasmon.menu.category.music": "Musiques",
+  "phantasmon.menu.category.settings": "Paramètres",
+  "phantasmon.hub_manager.schematic_pick": "Choisis un fichier dans la liste."
 }

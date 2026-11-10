@@ -1,6 +1,6 @@
 # Interfaces graphiques et « design system »
 
-> Classes : `gui/PhantasmonCanvasScreen` (socle), `gui/PhantasmonPcScreen`, `gui/PhantasmonPcEditScreen`, `gui/PhantasmonHubManagerScreen`,
+> Classes : `gui/PhantasmonCanvasScreen` (socle), `gui/PhantasmonPcScreen`, `gui/PhantasmonPcEditScreen`, `gui/menu/*` (menu Phantasmon),
 > `gui/PhantasmonTradeScreen`, `gui/PokemonGuiRendering`. Maquettes : [`design/`](../design/README.md).
 > Vérifié le 2026-10-03.
 
@@ -90,42 +90,43 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 
 **Échange** : voir [`live-trade.md`](live-trade.md).
 
-**Paramètres** (`PhantasmonSettingsScreen`, bouton « Configurer » de Mod Menu, 2026-11-10) : adresse du backend
-(`config/phantasmon.json`, défaut `https://server-linux.tail192969.ts.net`) avec TESTER (`GET /health`), PAR DÉFAUT,
-ENREGISTRER (prise en compte au prochain lancement : l'adresse est lue une fois au démarrage) ; apparence (V1 /
-Cobblemon) ; bouton MUSIQUES vers l'écran des musiques.
+## 7. Menu Phantasmon (refonte, lot 1, 2026-11-10)
 
-**Gestionnaire des hubs** (`PhantasmonHubManagerScreen`, touche **H**, 2026-11-10)
+Refonte des menus au niveau du menu de Cobblemon Battle Showtime (référence de qualité) : `gui/menu/`.
 
-- **Joueur** : l'onglet « Hubs » seul, les hubs classiques de Phantasmon (jamais ceux d'un add-on ni leurs ancres :
-  hubs miroirs d'Events réservés aux admins, Adrien 2026-11-10), avec taille,
+- `MenuUi` : boîte à outils commune, mêmes formes que Showtime (police `uniform` de Cobblemon via `drawScaledText`,
+  reliefs éclairés / ombrés, lignes enfoncées, boutons en relief, interrupteurs, puces, fond pointillé, cadre à coins
+  d'accent, barre de défilement). Deux palettes pour les mêmes formes : **Cobblemon** (gris et turquoise, par défaut)
+  et **V1** (cyan sur fond marine), choisies dans les paramètres (`PhantasmonTheme`).
+- `PhantasmonMenuScreen` : en-tête, barre latérale des catégories, page, ligne d'état, dialogues. En pixels GUI (pas
+  le canevas 1600 × 900 des écrans PC / échange). Ouvert par **H** (Hubs), Mod Menu (Paramètres), le lobby de combat
+  et la touche N de Showtime (Musiques). Hors connexion au backend : pas de page Hubs.
+- `RowList` : liste à lignes de Showtime (note, sous-titre, choix, interrupteur avec écoute et étoile, rangée de
+  boutons, champ texte), défilement à la molette ou à la barre.
+- `MenuDialog` : fenêtre de saisie ou de confirmation (rouge si destructive), Tab / Entrée / Échap.
+- Pages : `SettingsPage` (adresse du backend : Tester `GET /health`, Par défaut, Enregistrer pour le prochain
+  lancement ; apparence), `MusicPage` (comme Showtime : dossiers, génération, favoris, écoute, textes de Showtime),
+  `HubsPage` (le gestionnaire des hubs, ci-dessous).
+
+**Gestionnaire des hubs** (`HubsPage`)
+
+- **Joueur** : les hubs classiques de Phantasmon seuls (jamais ceux d'un add-on ni leurs ancres), avec taille,
   construction, date de création (sans l'auteur) et nombre d'ancres ; pour le hub choisi, **ses** ancres (✕ pour
-  chacune) et PLACER UNE ANCRE : nom facultatif (`<hub>-<pseudo>` grisé par défaut), puis le menu se ferme et
-  `hub/HubPlacement` montre la zone du hub à la position du joueur, tournée au quart de tour selon son regard, verte si
-  libre, rouge sinon (blocs gênants recomptés toutes les 5 ticks, dans la barre d'action). Deux boutons du chat
-  (`ChatActions`, Adrien 2026-11-10 : pas de touche) : [Accepter] pose là où est le joueur au clic
-  (`HubController.createAnchor`), [Annuler] abandonne ; H (rouvrir le gestionnaire) abandonne aussi. Route :
-  `GET /hubs/overview`.
-- **Admin** : tout ce qui suit, plus PLACER UNE ANCRE pour lui-même sur les hubs ordinaires.
+  chacune) et PLACER UNE ANCRE : nom facultatif, puis le menu se ferme et `hub/HubPlacement` montre la zone du hub à
+  la position du joueur, tournée au quart de tour selon son regard, verte si libre, rouge sinon ; boutons du chat
+  [Accepter] / [Annuler] ; H abandonne aussi. Route : `GET /hubs/overview`.
+- **Admin** : puces d'onglets « Hubs », ceux des add-ons (`PhantasmonApi.registerHubManagerTab`, interface
+  `api/HubManagerTab` : hubs montrés, lignes de détail, boutons en plus, bouton de création ; un bouton peut déclarer
+  des champs `Field`, demandés dans un `MenuDialog` ; Phantasmon Events y ajoute « Hubs Event »), puis « Autres »
+  s'il reste des hubs qu'aucun onglet ne montre (add-on non installé, D-41). Toutes les ancres de tous les serveurs.
+  Boutons : placer une ancre, SCHEMATIC, relire la construction (hubs classiques), renommer, ceux de l'onglet,
+  supprimer ; + CRÉER en bas de la liste.
+- **SCHEMATIC** : les `.schem` / `.litematic` du dossier `schematics/` de l'instance (sous-dossiers compris, les plus
+  récents d'abord), taille attendue et construction actuelle, OUVRIR LE DOSSIER, COPIER LA ZONE DU HUB
+  (`hub/HubCapture` : ce qui se trouve dans la zone de l'ancre de ce hub où est l'admin, ou la plus proche, devient
+  sa construction), RETIRER LA CONSTRUCTION ; ENVOYER (`PUT /admin/hubs/{name}/schematic`, refus du backend affiché
+  avec sa raison).
+- Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, création,
+  suppression, relecture, schematic (`rest-api.md` du backend).
 
-- Onglets (admin) : « Hubs » (hubs ordinaires), puis ceux des add-ons, réservés aux admins (`PhantasmonApi.registerHubManagerTab`, interface
-  `api/HubManagerTab` : quels hubs l'onglet montre, lignes de détail et boutons en plus, bouton de création ; un
-  bouton peut déclarer des champs (`Field` : nom, nombre, nombre signé, texte), que le gestionnaire demande dans une
-  fenêtre avant d'appeler l'action ; Phantasmon Events y ajoute « Hubs Event »), puis
-  « Autres » seulement s'il reste des hubs qu'aucun onglet ne montre (type d'un add-on non installé, D-41).
-- À gauche, liste défilante (molette) des hubs de l'onglet : nom, nombre d'ancres, taille, construction, date et
-  auteur de la création. À droite, le hub choisi : type, taille, schematic (format, poids, début du SHA-256),
-  création, boutons RENOMMER / RELIRE LA CONSTRUCTION (hubs ordinaires) / boutons de l'onglet / SUPPRIMER, puis la
-  liste défilante de ses ancres sur tous les serveurs (nom, rôle, propriétaire, « ce serveur » ou empreinte, dimension,
-  coordonnées, date), chacune avec un ✕.
-- SCHEMATIC (hubs classiques) : fenêtre listant les `.schem` / `.litematic` du dossier `schematics/` de l'instance
-  (sous-dossiers compris, les plus récents d'abord, défilement), taille attendue et construction actuelle, OUVRIR LE
-  DOSSIER, ENVOYER (`PUT /admin/hubs/{name}/schematic`, nom de fichier ramené aux caractères acceptés ; refus du backend
-  affiché avec sa raison, par exemple la mauvaise taille), RETIRER LA CONSTRUCTION, et COPIER LA ZONE DU HUB : ce qui
-  se trouve dans la zone de l'ancre de ce hub où est l'admin (ou la plus proche, dans ce monde) devient sa construction
-  (`hub/HubCapture` : `.schem` v3 de la taille du hub, rotation de l'ancre annulée, couche du sol comprise, blocs à
-  données gardés) — construire un hub en jeu sans WorldEdit ni Litematica (Adrien 2026-11-10).
-- Fenêtres : création (nom, largeur, hauteur, longueur ; le nom ne garde que minuscules, chiffres et `_`), renommage,
-  confirmations de suppression (hub, ancre). Clavier : Tab, Entrée = valider, Échap = annuler.
-- Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, plus les routes de
-  création, suppression et relecture déjà existantes (`rest-api.md` du backend).
+Prochains lots de la refonte : lobby de combat, puis PC et éditeur, puis écran d'échange (même boîte à outils).

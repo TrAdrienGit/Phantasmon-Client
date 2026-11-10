@@ -144,7 +144,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
 			openingMusic = true;
-			minecraft.setScreen(new PhantasmonMusicScreen(this));
+			minecraft.setScreen(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen(this, com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.Category.MUSIC));
 		} else if (inside(x, y, TIMER_X, 849, TIMER_W, 28)) {
 			controller.lobbyEnableTimer();
 		} else if (inside(x, y, CARD_X + 9, 716, 559, 48)) {

@@ -20,8 +20,8 @@ public final class ShowtimeBridge {
 	public static void register(LiveBattleController controller) {
 		ShowtimeHooks.setPlayerResolver(HubAvatars::playerOrAvatar);
 		ShowtimeHooks.setGlowKeeper(BattleFieldScenes::owns);
-		// Showtime's menu (key N) and settings open Phantasmon's music screen, in Phantasmon's look.
-		ShowtimeHooks.setMusicScreen(com.mystaria.phantasmon.client.gui.PhantasmonMusicScreen::new);
+		// Showtime's menu (key N) and settings open the Phantasmon menu on its Music page.
+		ShowtimeHooks.setMusicScreen(com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen::music);
 		// The lobby plays its own music folder (Phantasmon Resource Pack): Showtime alone has no lobby.
 		ShowtimeHooks.enableLobbyMusic();
 		// Ghost battles are staged by BattleVisuals: Showtime's own staging of Cobblemon battles leaves them alone.
