@@ -114,7 +114,10 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 - SCHEMATIC (hubs classiques) : fenêtre listant les `.schem` / `.litematic` du dossier `schematics/` de l'instance
   (sous-dossiers compris, les plus récents d'abord, défilement), taille attendue et construction actuelle, OUVRIR LE
   DOSSIER, ENVOYER (`PUT /admin/hubs/{name}/schematic`, nom de fichier ramené aux caractères acceptés ; refus du backend
-  affiché avec sa raison, par exemple la mauvaise taille), RETIRER LA CONSTRUCTION.
+  affiché avec sa raison, par exemple la mauvaise taille), RETIRER LA CONSTRUCTION, et COPIER LA ZONE DU HUB : ce qui
+  se trouve dans la zone de l'ancre de ce hub où est l'admin (ou la plus proche, dans ce monde) devient sa construction
+  (`hub/HubCapture` : `.schem` v3 de la taille du hub, rotation de l'ancre annulée, couche du sol comprise, blocs à
+  données gardés) — construire un hub en jeu sans WorldEdit ni Litematica (Adrien 2026-11-10).
 - Fenêtres : création (nom, largeur, hauteur, longueur ; le nom ne garde que minuscules, chiffres et `_`), renommage,
   confirmations de suppression (hub, ancre). Clavier : Tab, Entrée = valider, Échap = annuler.
 - Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, plus les routes de

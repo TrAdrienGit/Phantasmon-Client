@@ -411,6 +411,58 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 				});
 	}
 
+	/**
+	 * COPIER LA ZONE DU HUB: what stands in the zone of this world's anchor of the hub (the one the admin is in, or the
+	 * nearest) becomes its build ({@link HubCapture}), sent like a file; the previous one is kept in replaced/.
+	 */
+	private void captureZone(HubAdminDto hub) {
+		if (uploading) {
+			return;
+		}
+		Minecraft mc = Minecraft.getInstance();
+		if (mc.player == null || mc.level == null) {
+			return;
+		}
+		net.minecraft.world.phys.Vec3 at = mc.player.position();
+		com.mystaria.phantasmon.client.hub.HubAnchorDto anchor = controller.anchorsHere().stream()
+				.filter(candidate -> candidate.hub().equalsIgnoreCase(hub.name()))
+				.min(java.util.Comparator.comparingDouble((com.mystaria.phantasmon.client.hub.HubAnchorDto candidate) ->
+						candidate.coordinates().contains(at.x, at.y, at.z) ? -1
+								: at.distanceToSqr(candidate.origin().x(), candidate.origin().y(), candidate.origin().z())))
+				.orElse(null);
+		if (anchor == null) {
+			setStatus(Component.translatable("phantasmon.hub_manager.capture_no_anchor", hub.name()), ERROR_TEXT);
+			return;
+		}
+		com.mystaria.phantasmon.client.hub.HubBuildLayout layout = anchor.layout();
+		if (!com.mystaria.phantasmon.client.hub.HubCapture.loaded(mc.level, layout)) {
+			setStatus(Component.translatable("phantasmon.hub_manager.capture_too_far", anchor.name()), ERROR_TEXT);
+			return;
+		}
+		byte[] bytes;
+		try {
+			bytes = com.mystaria.phantasmon.client.hub.HubCapture.capture(mc.level, layout);
+		} catch (java.io.IOException | RuntimeException ex) {
+			setStatus(Component.translatable("phantasmon.hub_manager.capture_failed", String.valueOf(ex.getMessage())), ERROR_TEXT);
+			return;
+		}
+		String name = hub.name() + "-copie-" + java.time.LocalDateTime.now()
+				.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".schem";
+		uploading = true;
+		setStatus(Component.translatable("phantasmon.hub_manager.schematic_sending", name), MUTED);
+		client.uploadSchematic(session.accessToken(), hub.name(), name, bytes)
+				.thenAccept(view -> onMain(() -> {
+					uploading = false;
+					modal = Modal.NONE;
+					setStatus(Component.translatable("phantasmon.hub_manager.captured", anchor.name(), view.name()), READY_TEXT);
+					reload();
+				}))
+				.exceptionally(throwable -> {
+					onMain(() -> uploading = false);
+					return failSchematic(throwable);
+				});
+	}
+
 	private void removeBuild(HubAdminDto hub) {
 		client.removeSchematic(session.accessToken(), hub.name()).thenAccept(view -> onMain(() -> {
 			modal = Modal.NONE;
@@ -586,19 +638,30 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 				return true;
 			}
 		}
-		if (inside(x, y, MODAL_X + MODAL_W - 30 - 240, schemFolderY() - 6, 240, 28)) {
+		if (inside(x, y, schemToolX(0), schemToolY(), SCHEM_TOOL_W, 28)) {
 			net.minecraft.Util.getPlatform().openFile(SCHEMATICS_DIR.toFile());
 			return true;
 		}
+		if (hub != null && inside(x, y, schemToolX(1), schemToolY(), SCHEM_TOOL_W, 28)) {
+			captureZone(hub);
+			return true;
+		}
 		int buttonY = top + modalH() - MODAL_BUTTON_H - 22;
-		if (inside(x, y, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H)) {
+		if (inside(x, y, schemButtonX(0), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H)) {
 			modal = Modal.NONE;
-		} else if (hub != null && hub.schematic() != null && inside(x, y, 800 - 120, buttonY, 240, MODAL_BUTTON_H)) {
+		} else if (hub != null && hub.schematic() != null && inside(x, y, schemButtonX(1), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H)) {
 			removeBuild(hub);
-		} else if (hub != null && inside(x, y, MODAL_X + MODAL_W - 30 - 180, buttonY, 180, MODAL_BUTTON_H)) {
+		} else if (hub != null && inside(x, y, schemButtonX(2), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H)) {
 			uploadSchematic(hub);
 		}
 		return true;
+	}
+
+	/** The picker's three bottom buttons, equal, across the modal: 0 cancel, 1 remove the build, 2 send. */
+	private static final int SCHEM_BUTTON_W = (MODAL_W - 60 - 2 * 16) / 3;
+
+	private static int schemButtonX(int index) {
+		return MODAL_X + 30 + index * (SCHEM_BUTTON_W + 16);
 	}
 
 	private int schemListY() {
@@ -606,7 +669,18 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private int schemFolderY() {
-		return schemListY() + SCHEM_ROWS * SCHEM_ROW_H + 18;
+		return schemListY() + SCHEM_ROWS * SCHEM_ROW_H + 10;
+	}
+
+	/** OUVRIR LE DOSSIER and COPIER LA ZONE DU HUB, side by side under the folder's path. */
+	private static final int SCHEM_TOOL_W = (MODAL_W - 60 - 16) / 2;
+
+	private static int schemToolX(int index) {
+		return MODAL_X + 30 + index * (SCHEM_TOOL_W + 16);
+	}
+
+	private int schemToolY() {
+		return schemFolderY() + 18;
 	}
 
 	@Override
@@ -842,6 +916,13 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		g.fill(x, thumbY, x + 4, thumbY + thumbH, CYAN2);
 	}
 
+	/** A modal button whose label is drawn at scale 2, or 1 when it would not fit (the label never overflows). */
+	private void renderFittedButton(GuiGraphics g, int x, int y, int w, int h, String labelKey, boolean danger, boolean hovered) {
+		String label = upper(Component.translatable(labelKey).getString());
+		float scale = textWidth(label, 2f, true, 1.5f) <= w - 16 ? 2f : 1f;
+		renderButton(g, x, y, w, h, labelKey, danger, hovered, scale);
+	}
+
 	private void renderLabelButton(GuiGraphics g, int x, int y, int w, int h, String label, boolean danger, boolean hovered) {
 		int[] gradient = danger ? (hovered ? DANGER_BUTTON_HOVER : DANGER_BUTTON) : (hovered ? STD_BUTTON_HOVER : STD_BUTTON);
 		g.fillGradient(x, y, x + w, y + h, gradient[0], gradient[1]);
@@ -873,7 +954,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			case CREATE -> 400;
 			case RENAME -> 240;
 			case PLACE -> 260;
-			case SCHEMATIC -> 560;
+			case SCHEMATIC -> 600;
 			default -> 190;
 		};
 	}
@@ -991,23 +1072,26 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		}
 		renderScrollbar(g, MODAL_X + MODAL_W - 38, listY + 4, listH - 8, schematicFiles.size(), SCHEM_ROWS, schematicScroll);
 		int folderY = schemFolderY();
-		drawText(g, fitText(SCHEMATICS_DIR.toAbsolutePath().toString(), MODAL_W - 300, 1f, false, 0f), MODAL_X + 30, folderY + 4, 1f,
+		drawText(g, fitText(SCHEMATICS_DIR.toAbsolutePath().toString(), MODAL_W - 60, 1f, false, 0f), MODAL_X + 30, folderY, 1f,
 				DIM, false, 0f);
-		int openX = MODAL_X + MODAL_W - 30 - 240;
-		renderLabelButton(g, openX, folderY - 6, 240, 28, Component.translatable("phantasmon.hub_manager.schematic_open_folder").getString(),
-				false, inside(mx, my, openX, folderY - 6, 240, 28));
+		renderLabelButton(g, schemToolX(0), schemToolY(), SCHEM_TOOL_W, 28,
+				Component.translatable("phantasmon.hub_manager.schematic_open_folder").getString(), false,
+				inside(mx, my, schemToolX(0), schemToolY(), SCHEM_TOOL_W, 28));
+		renderLabelButton(g, schemToolX(1), schemToolY(), SCHEM_TOOL_W, 28,
+				Component.translatable("phantasmon.hub_manager.schematic_capture").getString(), false,
+				!uploading && inside(mx, my, schemToolX(1), schemToolY(), SCHEM_TOOL_W, 28));
 
 		int buttonY = y + modalH() - MODAL_BUTTON_H - 22;
-		renderButton(g, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
-				inside(mx, my, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H), 2f);
+		renderFittedButton(g, schemButtonX(0), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
+				inside(mx, my, schemButtonX(0), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H));
 		if (hub != null && hub.schematic() != null) {
-			renderButton(g, 800 - 120, buttonY, 240, MODAL_BUTTON_H, "phantasmon.hub_manager.schematic_remove", true,
-					inside(mx, my, 800 - 120, buttonY, 240, MODAL_BUTTON_H), 2f);
+			renderFittedButton(g, schemButtonX(1), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H, "phantasmon.hub_manager.schematic_remove",
+					true, inside(mx, my, schemButtonX(1), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H));
 		}
-		int sendX = MODAL_X + MODAL_W - 30 - 180;
 		boolean canSend = schematicPick >= 0 && !uploading;
-		renderButton(g, sendX, buttonY, 180, MODAL_BUTTON_H, uploading ? "phantasmon.hub_manager.schematic_sending_short"
-				: "phantasmon.hub_manager.schematic_send", false, canSend && inside(mx, my, sendX, buttonY, 180, MODAL_BUTTON_H), 2f);
+		renderFittedButton(g, schemButtonX(2), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H, uploading
+				? "phantasmon.hub_manager.schematic_sending_short" : "phantasmon.hub_manager.schematic_send", false,
+				canSend && inside(mx, my, schemButtonX(2), buttonY, SCHEM_BUTTON_W, MODAL_BUTTON_H));
 	}
 
 	private void renderField(GuiGraphics g, int field, String labelKey, double mx, double my) {

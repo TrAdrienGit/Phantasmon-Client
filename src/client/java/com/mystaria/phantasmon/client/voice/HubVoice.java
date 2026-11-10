@@ -41,6 +41,12 @@ public final class HubVoice {
 		/** Its client is connected to a voice server: microphone and speakers work. */
 		boolean connected();
 
+		/** The player muted their microphone (Simple Voice Chat's own toggle). */
+		boolean muted();
+
+		/** The player turned voice chat off (Simple Voice Chat's "disable", the speaker icon crossed out). */
+		boolean deafened();
+
 		/** Plays an Opus frame of {@code speaker} from {@code source} (their avatar). Client thread. */
 		void play(UUID speaker, Entity source, byte[] opus, boolean whispering);
 
@@ -55,8 +61,30 @@ public final class HubVoice {
 	private static volatile GhostSession session;
 	/** In a hub (from {@code HubJoined} to {@code HubLeft}). */
 	private static volatile boolean inHub;
-	/** What the backend was last told ({@code HubVoiceState}), null before. */
+	/** What the backend was last told ({@code HubVoiceState}), null before: enabled. */
 	private static Boolean announced;
+	/** The rest of the last state told: muted, deafened. */
+	private static boolean announcedMuted;
+	private static boolean announcedDeafened;
+
+	/** The others' voice states ({@code HubVoiceStatus}), for the icon next to their names (2026-11-10). */
+	private record Status(boolean enabled, boolean muted, boolean deafened) {
+	}
+
+	private static final java.util.Map<UUID, Status> STATUS = new java.util.concurrent.ConcurrentHashMap<>();
+	/** When each member's last voice frame arrived (millis), and whether they were whispering. */
+	private static final java.util.Map<UUID, long[]> LAST_TALK = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final long TALK_MILLIS = 250;
+	private static final net.minecraft.resources.ResourceLocation ICON_SPEAKER = icon("speaker");
+	private static final net.minecraft.resources.ResourceLocation ICON_WHISPER = icon("speaker_whisper");
+	private static final net.minecraft.resources.ResourceLocation ICON_MUTED = icon("microphone_off");
+	private static final net.minecraft.resources.ResourceLocation ICON_DEAFENED = icon("speaker_off");
+	private static final net.minecraft.resources.ResourceLocation ICON_DISCONNECTED = icon("disconnected");
+
+	/** Simple Voice Chat's own icon (its resource pack, so its icon packs apply). */
+	private static net.minecraft.resources.ResourceLocation icon(String name) {
+		return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("voicechat", "textures/icons/" + name + ".png");
+	}
 	private static int sequence;
 	private static int ticks;
 
@@ -101,6 +129,8 @@ public final class HubVoice {
 	public static void onLeft() {
 		inHub = false;
 		announced = null;
+		STATUS.clear();
+		LAST_TALK.clear();
 		Engine current = engine;
 		if (current != null) {
 			current.forgetAll();
@@ -109,6 +139,10 @@ public final class HubVoice {
 
 	/** A member left: their decoder goes. */
 	public static void onMemberLeft(UUID playerUuid) {
+		if (playerUuid != null) {
+			STATUS.remove(playerUuid);
+			LAST_TALK.remove(playerUuid);
+		}
 		Engine current = engine;
 		if (current != null && playerUuid != null) {
 			current.forget(playerUuid);
@@ -125,10 +159,53 @@ public final class HubVoice {
 	private static void announce() {
 		GhostSession current = session;
 		boolean enabled = usable();
-		if (current != null && inHub && (announced == null || announced != enabled)
-				&& current.send("HubVoiceState", Map.of("enabled", enabled))) {
+		Engine voice = engine;
+		boolean muted = enabled && voice.muted();
+		boolean deafened = enabled && voice.deafened();
+		if (current != null && inHub && (announced == null || announced != enabled || announcedMuted != muted
+				|| announcedDeafened != deafened)
+				&& current.send("HubVoiceState", Map.of("enabled", enabled, "muted", muted, "deafened", deafened))) {
 			announced = enabled;
+			announcedMuted = muted;
+			announcedDeafened = deafened;
 		}
+	}
+
+	/** {@code HubVoiceStatus}: a member's voice state, for their icon. */
+	public static void onStatus(Map<String, Object> data) {
+		try {
+			UUID player = UUID.fromString(String.valueOf(data.get("player_uuid")));
+			STATUS.put(player, new Status(Boolean.TRUE.equals(data.get("enabled")), Boolean.TRUE.equals(data.get("muted")),
+					Boolean.TRUE.equals(data.get("deafened"))));
+		} catch (IllegalArgumentException ex) {
+			LOG.debug("HubVoiceStatus without a valid player_uuid: {}", data);
+		}
+	}
+
+	/**
+	 * The icon next to a hub member's name, as Simple Voice Chat draws above players: speaking (or whispering), muted,
+	 * voice turned off, or no voice at all (not installed / not connected); null: nothing to show. Shown only when
+	 * Simple Voice Chat is installed here (its textures).
+	 */
+	public static net.minecraft.resources.ResourceLocation iconOf(UUID player) {
+		if (engine == null || !inHub || player == null) {
+			return null;
+		}
+		Status status = STATUS.get(player);
+		if (status == null || !status.enabled()) {
+			return ICON_DISCONNECTED;
+		}
+		if (status.deafened()) {
+			return ICON_DEAFENED;
+		}
+		if (status.muted()) {
+			return ICON_MUTED;
+		}
+		long[] talk = LAST_TALK.get(player);
+		if (talk != null && System.currentTimeMillis() - talk[0] < TALK_MILLIS) {
+			return talk[1] != 0 ? ICON_WHISPER : ICON_SPEAKER;
+		}
+		return null;
 	}
 
 	// ---------------------------------------------------------------- talking (Simple Voice Chat's microphone thread)
@@ -160,6 +237,7 @@ public final class HubVoice {
 		boolean whispering = (data.get() & FLAG_WHISPERING) != 0;
 		data.getInt(); // sequence: Opus copes with a lost frame, kept for later use
 		UUID speaker = new UUID(data.getLong(), data.getLong());
+		LAST_TALK.put(speaker, new long[] { System.currentTimeMillis(), whispering ? 1 : 0 });
 		byte[] opus = new byte[data.remaining()];
 		data.get(opus);
 		Minecraft.getInstance().execute(() -> {

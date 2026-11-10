@@ -93,7 +93,22 @@ public final class HubAvatarEntity extends RemotePlayer {
 			case "CROUCHING" -> Pose.CROUCHING;
 			case "SWIMMING" -> Pose.SWIMMING;
 			case "FALL_FLYING" -> Pose.FALL_FLYING;
+			case "CRAWLING" -> CRAWLING;
 			default -> Pose.STANDING;
 		});
+	}
+
+	/**
+	 * The Crawl mod's pose (it adds {@code CRAWLING} to {@link Pose}; its renderer then draws the crawl); without the
+	 * mod here, a crawling player is shown lying as when swimming.
+	 */
+	private static final Pose CRAWLING = crawling();
+
+	private static Pose crawling() {
+		try {
+			return Pose.valueOf("CRAWLING");
+		} catch (IllegalArgumentException ex) {
+			return Pose.SWIMMING;
+		}
 	}
 }

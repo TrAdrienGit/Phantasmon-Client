@@ -141,6 +141,11 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] Éclairage : poser une ancre dont la construction couvre plusieurs chunks, se reconnecter plusieurs fois : jamais un
       morceau de la construction tout noir (avec et sans shaders).
 - [ ] Supprimer une ancre : sa construction disparaît aussitôt chez les autres joueurs du même serveur (`HubAnchorsChanged`).
+- [ ] COPIER LA ZONE DU HUB : nouveau hub sans construction, ancre posée, blocs posés dans la zone (escalier, coffre
+      rempli, porte), copie : la construction apparaît chez tous les ancres de ce hub, tournée comme l'ancre de chacun.
+- [ ] Rejoindre un monde directement dans un hub : la construction s'affiche sans F3+T.
+- [ ] Avatars : icônes de Simple Voice Chat à côté du pseudo (parle, chuchote, muet, son coupé, sans vocal) ; ramper
+      (Crawl) ; assis sur un autre joueur (Player Ladder) ; emote Emotecraft jouée, puis arrêtée.
 - [ ] SCHEMATIC : un fichier de la mauvaise taille est refusé avec sa taille ; le bon devient la construction chez tous ;
       l'ancien est rangé dans `hub_<nom>/replaced/` ; RETIRER LA CONSTRUCTION la fait disparaître.
 - [ ] Déposer un schematic de 31 × 12 × 41 puis RELIRE LA CONSTRUCTION : la construction apparaît chez

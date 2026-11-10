@@ -109,6 +109,20 @@ public final class HubController implements HubListener {
 		this.session = session;
 		this.ghostSession = ghostSession;
 		this.builds = new HubBuilds(hubClient, session);
+		if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emotecraft")) {
+			// Our emotes go to the hub, played on our avatar by the others (Emotecraft, 2026-11-10).
+			com.mystaria.phantasmon.client.compat.emotecraft.HubEmotes.register(this::sendEmote);
+		}
+	}
+
+	/** {@code HubEmote}: the emote we play (null: stopped), while in the hub. */
+	private void sendEmote(UUID emote) {
+		if (joinedAnchor == null) {
+			return;
+		}
+		Map<String, Object> data = new HashMap<>();
+		data.put("emote_uuid", emote == null ? null : emote.toString());
+		ghostSession.send("HubEmote", data);
 	}
 
 	// ---------------------------------------------------------------- tick
@@ -212,6 +226,10 @@ public final class HubController implements HubListener {
 		state.put("pose", pose(player));
 		state.put("on_ground", player.onGround());
 		state.put("skin_parts", skinParts());
+		// Player Ladder (2026-11-10): sitting on another player — their avatars stack the same way for the others.
+		if (player.getVehicle() instanceof net.minecraft.world.entity.player.Player vehicle) {
+			state.put("riding", vehicle.getUUID().toString());
+		}
 		if (anchor.mirror()) {
 			// D-38: a mirror hub's anchors share the same ground at the same heights: the exact height is kept.
 			state.put("y", round(player.getY()));
@@ -255,6 +273,10 @@ public final class HubController implements HubListener {
 	private static String pose(LocalPlayer player) {
 		if (player.isFallFlying()) {
 			return "FALL_FLYING";
+		}
+		// The Crawl mod's own pose (fewizz, 2026-11-10), before swimming: its crawl is not a swim.
+		if ("CRAWLING".equals(player.getPose().name())) {
+			return "CRAWLING";
 		}
 		if (player.isVisuallySwimming()) {
 			return "SWIMMING";
@@ -349,6 +371,14 @@ public final class HubController implements HubListener {
 					avatars.setGhost(playerUuid, null);
 				}
 			}
+			case "HubPlayerEmote" -> {
+				UUID playerUuid = uuid(data.get("player_uuid"));
+				HubAvatarEntity avatar = HubAvatars.shownAvatar(playerUuid);
+				if (avatar != null && net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emotecraft")) {
+					com.mystaria.phantasmon.client.compat.emotecraft.HubEmotes.play(avatar, uuid(data.get("emote_uuid")));
+				}
+			}
+			case "HubVoiceStatus" -> com.mystaria.phantasmon.client.voice.HubVoice.onStatus(data);
 			case "HubAnchorsChanged" -> {
 				// An anchor of this server was posed or deleted (by anyone): its build appears or goes at once.
 				if (GhostSession.serverFingerprint().equals(data.get("server_fingerprint"))) {

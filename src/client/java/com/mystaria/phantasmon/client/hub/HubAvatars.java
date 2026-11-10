@@ -184,6 +184,32 @@ public final class HubAvatars {
 		}
 		avatar.applyPose(pose, onGround);
 		avatar.setSkinParts(skinParts);
+		ride(avatar, state.get("riding") instanceof String riding ? riding : null);
+	}
+
+	/**
+	 * Player Ladder (2026-11-10): the member sits on another member — their avatar rides that one's avatar, so the stack
+	 * looks the same here; off, or the other not shown here: back on its own.
+	 */
+	private void ride(HubAvatarEntity avatar, String riding) {
+		HubAvatarEntity vehicle = null;
+		if (riding != null) {
+			try {
+				vehicle = shownAvatar(UUID.fromString(riding));
+			} catch (IllegalArgumentException ignored) {
+				// not a uuid: on its own
+			}
+		}
+		if (vehicle == avatar) {
+			vehicle = null;
+		}
+		if (vehicle == null) {
+			if (avatar.isPassenger()) {
+				avatar.stopRiding();
+			}
+		} else if (avatar.getVehicle() != vehicle) {
+			avatar.startRiding(vehicle, true);
+		}
 	}
 
 	/** Every half second: hide the avatars whose real player now stands on them, show back the others. */

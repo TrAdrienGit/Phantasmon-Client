@@ -119,6 +119,13 @@ public final class HubBuilds {
 	private final Map<Long, List<Long>> byChunk = new HashMap<>();
 	/** Chunks to (re)build at the next tick: new anchors, chunks the server (re)sent. */
 	private final Set<Long> dirtyChunks = new LinkedHashSet<>();
+	/**
+	 * Chunks just built → ticks since: their sections are drawn again {@link #REDRAW_AT} ticks later. Joining a world
+	 * right inside a hub, its blocks were there (collisions) but invisible until F3+T (Adrien 2026-11-10): the renderer
+	 * (Sodium) had not taken the chunk yet when they were set, and missed them.
+	 */
+	private final java.util.Map<Long, Integer> redraw = new java.util.HashMap<>();
+	private static final int[] REDRAW_AT = { 10, 40, 100 };
 
 	public HubBuilds(HubClient hubClient, AuthSession session) {
 		this.hubClient = hubClient;
@@ -328,6 +335,7 @@ public final class HubBuilds {
 		server.clear();
 		byChunk.clear();
 		dirtyChunks.clear();
+		redraw.clear();
 	}
 
 	// ---------------------------------------------------------------- world
@@ -337,7 +345,11 @@ public final class HubBuilds {
 		if (Minecraft.getInstance().level != level) {
 			sync();
 		}
-		if (level == null || dirtyChunks.isEmpty()) {
+		if (level == null) {
+			return;
+		}
+		redrawBuiltChunks();
+		if (dirtyChunks.isEmpty()) {
 			return;
 		}
 		boolean built = false;
@@ -350,12 +362,43 @@ public final class HubBuilds {
 				continue; // its lighting is not on yet: built once it is (else that chunk of the build stays black)
 			}
 			dirtyChunks.remove(chunk);
+			boolean builtHere = false;
 			for (long key : byChunk.getOrDefault(chunk, List.of())) {
-				built |= apply(key, fake.get(key));
+				builtHere |= apply(key, fake.get(key));
 			}
+			if (builtHere) {
+				redraw.put(chunk, 0);
+			}
+			built |= builtHere;
 		}
 		if (built) {
 			liftPlayerOutOfTheFloor();
+		}
+	}
+
+	/** The sections holding a build's blocks, drawn again a few times after it was built (see {@link #redraw}). */
+	private void redrawBuiltChunks() {
+		if (redraw.isEmpty()) {
+			return;
+		}
+		var it = redraw.entrySet().iterator();
+		while (it.hasNext()) {
+			var entry = it.next();
+			int ticks = entry.getValue() + 1;
+			entry.setValue(ticks);
+			if (java.util.Arrays.stream(REDRAW_AT).anyMatch(at -> at == ticks)) {
+				long chunk = entry.getKey();
+				java.util.Set<Integer> sectionsY = new java.util.HashSet<>();
+				for (long key : byChunk.getOrDefault(chunk, List.of())) {
+					sectionsY.add(SectionPos.blockToSectionCoord(BlockPos.getY(key)));
+				}
+				for (int sectionY : sectionsY) {
+					level.setSectionDirtyWithNeighbors(ChunkPos.getX(chunk), sectionY, ChunkPos.getZ(chunk));
+				}
+			}
+			if (ticks >= REDRAW_AT[REDRAW_AT.length - 1]) {
+				it.remove();
+			}
 		}
 	}
 

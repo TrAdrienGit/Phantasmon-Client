@@ -111,6 +111,18 @@ public final class PhantasmonVoicechatPlugin implements VoicechatPlugin, HubVoic
 	}
 
 	@Override
+	public boolean muted() {
+		VoicechatClientApi current = client;
+		return current != null && current.isMuted();
+	}
+
+	@Override
+	public boolean deafened() {
+		VoicechatClientApi current = client;
+		return current != null && current.isDisabled();
+	}
+
+	@Override
 	public void play(UUID speakerUuid, Entity source, byte[] opus, boolean whispering) {
 		VoicechatClientApi current = client;
 		if (current == null || current.isDisabled() || api == null) {

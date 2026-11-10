@@ -22,7 +22,8 @@
 		"ScreenChatActionMixin",
 		"BattleExtrasPartyMixin",
 		"BattleExtrasSlotsMixin",
-		"BattleExtrasOpponentSlotsMixin"
+		"BattleExtrasOpponentSlotsMixin",
+		"EntityRendererVoiceIconMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
