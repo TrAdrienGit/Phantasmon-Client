@@ -21,11 +21,15 @@ import com.mystaria.phantasmon.client.api.PhantasmonApi;
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.hub.HubAdminDto;
 import com.mystaria.phantasmon.client.hub.HubClient;
+import com.mystaria.phantasmon.client.hub.HubController;
+import com.mystaria.phantasmon.client.hub.HubPlacement;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
 
 /**
- * The admins' hub manager (Adrien 2026-11-10), opened with its key (H): one tab per hub family — Phantasmon's own hubs,
+ * The hub manager (Adrien 2026-11-10), opened with its key (H). A player sees the hubs they can join (size, build,
+ * creation date, anchor count), their own anchors to the selected hub, each deletable, and PLACER UNE ANCRE, which
+ * closes the screen for a preview of the box ({@link HubPlacement}). An admin sees more: one tab per hub family — Phantasmon's own hubs,
  * then the add-ons' ({@link PhantasmonApi#registerHubManagerTab}; Phantasmon Events: its event hubs). Left, the
  * scrolling list of the tab's hubs (size, build, anchors, creation); right, the selected hub's details, its actions
  * (rename, reload the build, delete) and the scrolling list of the anchors leading to it on every server, each
@@ -77,10 +81,13 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private static final int MODAL_BUTTON_W = 200;
 	private static final int MODAL_BUTTON_H = 36;
 
-	private enum Modal { NONE, CREATE, RENAME, DELETE_HUB, DELETE_ANCHOR }
+	private enum Modal { NONE, CREATE, RENAME, PLACE, DELETE_HUB, DELETE_ANCHOR }
 
 	private final HubClient client;
 	private final AuthSession session;
+	private final HubController controller;
+	/** An admin's manager; otherwise a player's (their anchors only, no hub management). */
+	private final boolean admin;
 	private final List<HubManagerTab> addonTabs = PhantasmonApi.hubManagerTabs();
 
 	private int tab;
@@ -99,10 +106,12 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private final String[] fields = { "", "", "", "" };
 	private int focusedField;
 
-	public PhantasmonHubManagerScreen(HubClient client, AuthSession session) {
+	public PhantasmonHubManagerScreen(HubClient client, AuthSession session, HubController controller, boolean admin) {
 		super(Component.translatable("phantasmon.hub_manager.title"));
 		this.client = client;
 		this.session = session;
+		this.controller = controller;
+		this.admin = admin;
 		statusColor = MUTED;
 		reload();
 	}
@@ -141,6 +150,9 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private List<HubManagerTab> tabs() {
 		List<HubManagerTab> tabs = new ArrayList<>();
 		tabs.add(coreTab);
+		if (!admin) {
+			return tabs; // players: Phantasmon's classic hubs only, never an add-on's (Adrien 2026-11-10)
+		}
 		tabs.addAll(addonTabs);
 		if (hubs.stream().anyMatch(otherTab::shows)) {
 			tabs.add(otherTab);
@@ -170,7 +182,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 
 	private void reload() {
 		loading = true;
-		client.adminHubs(session.accessToken()).thenAccept(result -> onMain(() -> {
+		(admin ? client.adminHubs(session.accessToken()) : client.overview(session.accessToken())).thenAccept(result -> onMain(() -> {
 			hubs = result == null ? List.of() : Arrays.asList(result);
 			loading = false;
 			List<HubAdminDto> shown = tabHubs();
@@ -187,6 +199,21 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		String hub = selected;
 		if (hub == null) {
 			anchors = List.of();
+			return;
+		}
+		if (!admin) {
+			// A player: their own anchors to that hub, on every server.
+			client.mine(session.accessToken()).thenAccept(result -> onMain(() -> {
+				if (hub.equals(selected)) {
+					anchors = result == null ? List.of() : Arrays.stream(result)
+							.filter(anchor -> anchor.hub().equalsIgnoreCase(hub))
+							.map(anchor -> new HubAdminDto.Anchor(anchor.uuid(), anchor.name(), anchor.ownerUuid(), session.username(),
+									anchor.serverFingerprint(), anchor.dimension(), anchor.origin().x(), anchor.origin().y(),
+									anchor.origin().z(), anchor.yaw(), anchor.role(), null))
+							.toList();
+					anchorScroll = Math.min(anchorScroll, Math.max(0, anchors.size() - VISIBLE_ANCHORS));
+				}
+			})).exceptionally(this::fail);
 			return;
 		}
 		client.adminAnchors(session.accessToken(), hub).thenAccept(result -> onMain(() -> {
@@ -268,6 +295,16 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 					reload();
 				})).exceptionally(this::fail);
 			}
+			case PLACE -> {
+				if (hub == null) {
+					return;
+				}
+				String name = fields[0].isBlank() ? null : fields[0].strip();
+				modal = Modal.NONE;
+				onClose();
+				HubPlacement.start(controller, hub.name(), name, hub.size());
+				return;
+			}
 			case DELETE_HUB -> {
 				if (hub == null) {
 					return;
@@ -313,11 +350,20 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	/** The buttons under the selected hub: Phantasmon's, then the tab's own. */
 	private List<HubManagerTab.Action> actions(HubAdminDto hub) {
 		List<HubManagerTab.Action> actions = new ArrayList<>();
+		HubManagerTab.Action place = new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.place"), false,
+				(h, done, report) -> openModal(Modal.PLACE));
+		if (!admin) {
+			if (hub.normal()) {
+				actions.add(place);
+			}
+			return actions;
+		}
 		actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.rename"), false,
 				(h, done, report) -> openModal(Modal.RENAME)));
 		if (hub.normal()) {
 			actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.reload"), false,
 					(h, done, report) -> reloadBuild(h)));
+			actions.add(place);
 		}
 		actions.addAll(currentTab().actions());
 		actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.delete"), true,
@@ -326,6 +372,9 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private HubManagerTab.Action createAction() {
+		if (!admin) {
+			return null;
+		}
 		if (currentTab() == coreTab) {
 			return new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.create"), false,
 					(h, done, report) -> openModal(Modal.CREATE));
@@ -405,7 +454,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private boolean clickModal(double x, double y) {
-		int fieldCount = modal == Modal.CREATE ? 4 : modal == Modal.RENAME ? 1 : 0;
+		int fieldCount = fieldCount();
 		for (int i = 0; i < fieldCount; i++) {
 			if (inside(x, y, fieldX(i), fieldY(i), fieldW(i), FIELD_H)) {
 				focusedField = i;
@@ -446,11 +495,16 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean charTyped(char chr, int modifiers) {
-		if (modal != Modal.CREATE && modal != Modal.RENAME) {
+		if (fieldCount() == 0) {
 			return super.charTyped(chr, modifiers);
 		}
 		String value = fields[focusedField];
-		if (focusedField == 0) {
+		if (modal == Modal.PLACE) {
+			// Anchor names: letters, digits, space, _ and -, up to 32 (the backend checks the rest).
+			if (value.length() < 32 && (Character.isLetterOrDigit(chr) || chr == ' ' || chr == '_' || chr == '-')) {
+				fields[0] = value + chr;
+			}
+		} else if (focusedField == 0) {
 			// Hub names: lower-case letters, digits and _, 2 to 32 (the backend's rule); a space becomes _.
 			char c = chr == ' ' || chr == '-' ? '_' : Character.toLowerCase(chr);
 			if (value.length() < 32 && (c >= 'a' && c <= 'z' || c >= '0' && c <= '9' || c == '_')) {
@@ -465,7 +519,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 		if (modal != Modal.NONE) {
-			int fieldCount = modal == Modal.CREATE ? 4 : modal == Modal.RENAME ? 1 : 0;
+			int fieldCount = fieldCount();
 			switch (keyCode) {
 				case GLFW.GLFW_KEY_ESCAPE -> modal = Modal.NONE;
 				case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> confirmModal();
@@ -607,11 +661,11 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private void renderAnchors(GuiGraphics g, double mx, double my) {
 		g.fill(DETAIL_X, ANCHOR_Y, DETAIL_X + DETAIL_W, ANCHOR_Y + ANCHOR_H, INFO_BOX_BG);
 		outline(g, DETAIL_X, ANCHOR_Y, DETAIL_W, ANCHOR_H, LINE_20);
-		drawText(g, upper(Component.translatable("phantasmon.hub_manager.anchors", anchors.size()).getString()), DETAIL_X + 18,
+		drawText(g, upper(Component.translatable(admin ? "phantasmon.hub_manager.anchors" : "phantasmon.hub_manager.my_anchors", anchors.size()).getString()), DETAIL_X + 18,
 				ANCHOR_Y + 14, 2f, MUTED, false, 2f);
 		g.fill(DETAIL_X + 9, ANCHOR_Y + ANCHOR_HEAD - 4, DETAIL_X + DETAIL_W - 9, ANCHOR_Y + ANCHOR_HEAD - 4 + hairline(), LINE_25);
 		if (anchors.isEmpty()) {
-			drawCentered(g, Component.translatable("phantasmon.hub_manager.no_anchor").getString(), DETAIL_X + DETAIL_W / 2f,
+			drawCentered(g, Component.translatable(admin ? "phantasmon.hub_manager.no_anchor" : "phantasmon.hub_manager.no_anchor_mine").getString(), DETAIL_X + DETAIL_W / 2f,
 					ANCHOR_Y + ANCHOR_H / 2f, 2f, DIM, false, 0f);
 			return;
 		}
@@ -666,10 +720,19 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 
 	// ---- Modals ----
 
+	private int fieldCount() {
+		return switch (modal) {
+			case CREATE -> 4;
+			case RENAME, PLACE -> 1;
+			default -> 0;
+		};
+	}
+
 	private int modalH() {
 		return switch (modal) {
 			case CREATE -> 400;
 			case RENAME -> 240;
+			case PLACE -> 260;
 			default -> 190;
 		};
 	}
@@ -701,6 +764,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		String title = switch (modal) {
 			case CREATE -> Component.translatable("phantasmon.hub_manager.create_title").getString();
 			case RENAME -> Component.translatable("phantasmon.hub_manager.rename_title", hub == null ? "?" : hub.name()).getString();
+			case PLACE -> Component.translatable("phantasmon.hub_manager.place_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_HUB -> Component.translatable("phantasmon.hub_manager.delete_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_ANCHOR -> Component.translatable("phantasmon.hub_manager.delete_anchor_title",
 					anchorToDelete == null ? "?" : anchorToDelete.name()).getString();
@@ -717,10 +781,20 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 						1f, DIM, false, 0f);
 			}
 			case RENAME -> renderField(g, 0, "phantasmon.hub_manager.field.name", mx, my);
+			case PLACE -> {
+				renderField(g, 0, "phantasmon.hub_manager.field.anchor_name", mx, my);
+				if (fields[0].isEmpty() && hub != null) {
+					drawText(g, HubController.defaultAnchorName(hub.name(), session.username() == null ? "?" : session.username()),
+							fieldX(0) + 9, fieldY(0) + 24, 2f, DIM, false, 0f);
+				}
+				drawCentered(g, fitText(Component.translatable("phantasmon.hub_manager.place_hint").getString(), MODAL_W - 40, 1f, false, 0f),
+						800, fieldY(0) + FIELD_H + 16, 1f, DIM, false, 0f);
+			}
 			case DELETE_HUB -> drawCentered(g, fitText(Component.translatable("phantasmon.hub_manager.delete_text",
 					hub == null ? 0 : hub.anchors()).getString(), MODAL_W - 40, 2f, false, 0f), 800, y + 76, 2f, TEXT2, false, 0f);
-			case DELETE_ANCHOR -> drawCentered(g, fitText(Component.translatable("phantasmon.hub_manager.delete_anchor_text",
-					anchorToDelete == null || anchorToDelete.ownerName() == null ? "?" : anchorToDelete.ownerName()).getString(),
+			case DELETE_ANCHOR -> drawCentered(g, fitText((admin ? Component.translatable("phantasmon.hub_manager.delete_anchor_text",
+					anchorToDelete == null || anchorToDelete.ownerName() == null ? "?" : anchorToDelete.ownerName())
+					: Component.translatable("phantasmon.hub_manager.delete_own_anchor_text")).getString(),
 					MODAL_W - 40, 2f, false, 0f), 800, y + 76, 2f, TEXT2, false, 0f);
 			default -> {
 			}
@@ -730,7 +804,8 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		renderButton(g, 800 - MODAL_BUTTON_W - 10, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
 				inside(mx, my, 800 - MODAL_BUTTON_W - 10, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H), 2f);
 		renderButton(g, 810, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H, destructive ? "phantasmon.hub_manager.delete"
-				: modal == Modal.CREATE ? "phantasmon.hub_manager.create_confirm" : "phantasmon.hub_manager.rename_confirm",
+				: modal == Modal.CREATE ? "phantasmon.hub_manager.create_confirm"
+						: modal == Modal.PLACE ? "phantasmon.hub_manager.place_confirm" : "phantasmon.hub_manager.rename_confirm",
 				destructive, inside(mx, my, 810, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H), 2f);
 		endModalLayer(g);
 	}
@@ -763,7 +838,11 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		return hub.schematic() == null ? Component.translatable("phantasmon.hub_manager.no_build").getString() : hub.schematic().name();
 	}
 
-	private static String created(HubAdminDto hub) {
+	private String created(HubAdminDto hub) {
+		if (!admin) {
+			return Component.translatable("phantasmon.hub_manager.created_on", hub.createdAt() == null ? "?" : date(hub.createdAt()))
+					.getString();
+		}
 		String by = hub.createdByName() != null ? hub.createdByName()
 				: Component.translatable("phantasmon.hub_manager.by_system").getString();
 		return Component.translatable("phantasmon.hub_manager.created_at", hub.createdAt() == null ? "?" : date(hub.createdAt()), by)

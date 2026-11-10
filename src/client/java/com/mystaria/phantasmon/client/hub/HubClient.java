@@ -53,6 +53,11 @@ public final class HubClient {
 				Map.of("name", name, "length", length, "width", width, "height", height), bearerToken, HubDto.class);
 	}
 
+	/** Hub manager for players: the joinable hubs, with creation date and anchor count (no author). */
+	public CompletableFuture<HubAdminDto[]> overview(String bearerToken) {
+		return httpClient.get(BackendConfig.BASE_URL.resolve("/hubs/overview"), bearerToken, HubAdminDto[].class);
+	}
+
 	/** Admin, hub manager: every hub of every kind, with its creation and anchor count. */
 	public CompletableFuture<HubAdminDto[]> adminHubs(String bearerToken) {
 		return httpClient.get(BackendConfig.BASE_URL.resolve("/admin/hubs"), bearerToken, HubAdminDto[].class);

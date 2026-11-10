@@ -8,7 +8,8 @@ import net.minecraft.network.chat.Component;
 import com.mystaria.phantasmon.client.hub.HubAdminDto;
 
 /**
- * A tab an add-on adds to the admins' hub manager (Phantasmon Events: its event hubs, mirror hubs among them),
+ * A tab an add-on adds to the hub manager, for admins only: players see Phantasmon's classic hubs and nothing else
+ * (Adrien 2026-11-10: no add-on hub, no add-on anchor for them). A tab an add-on adds to the admins' hub manager (Phantasmon Events: its event hubs, mirror hubs among them),
  * registered with {@link PhantasmonApi#registerHubManagerTab}. Phantasmon draws the tab like its own "Hubs" tab: the
  * list of the hubs it {@link #shows}, the selected hub's details, its anchors (deletable one by one), rename and
  * delete; the tab adds its own lines and buttons.
@@ -31,7 +32,7 @@ public interface HubManagerTab {
 		return List.of();
 	}
 
-	/** The tab's own "create" button; null: the tab creates nothing from the manager. */
+	/** The tab's own "create" button (admins); null: the tab creates nothing from the manager. */
 	default Action createAction() {
 		return null;
 	}

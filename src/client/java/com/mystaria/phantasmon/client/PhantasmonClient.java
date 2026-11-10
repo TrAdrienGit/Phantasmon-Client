@@ -64,6 +64,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			refreshScheduler.stop();
 			ghostSession.stop();
 			hub.reset();
+			com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
 			com.mystaria.showtime.audio.BattleMusic.stop();
@@ -81,6 +82,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveTrade.tick();
 			liveBattle.tick();
 			hub.tick();
+			com.mystaria.phantasmon.client.hub.HubPlacement.tick();
 			com.mystaria.phantasmon.client.voice.HubVoice.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
@@ -91,6 +93,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		WorldRenderEvents.AFTER_ENTITIES.register(hub::renderWorld);
 		WorldRenderEvents.AFTER_TRANSLUCENT.register(context ->
 				com.mystaria.phantasmon.client.hub.HubDebugBorders.render(context, hub::anchorsHere));
+		WorldRenderEvents.AFTER_TRANSLUCENT.register(com.mystaria.phantasmon.client.hub.HubPlacement::render);
 		HudRenderCallback.EVENT.register((graphics, tickCounter) -> ghostPartyHud.render(graphics));
 
 		com.mystaria.phantasmon.client.battle.ShowtimeBridge.register(liveBattle);
@@ -102,7 +105,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		PhantasmonCommands.register(authService, ghostSession, liveTrade, liveBattle);
 	}
 
-	/** Key H: the admins' hub manager; a player not logged in, or not an admin, gets a message instead. */
+	/** Key H: the hub manager — an admin's, or a player's (their anchors); a player not logged in gets a message. */
 	private void openHubManager() {
 		net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
 		if (mc.player == null || mc.screen != null) {
@@ -113,11 +116,9 @@ public class PhantasmonClient implements ClientModInitializer {
 					.withStyle(net.minecraft.ChatFormatting.RED), false);
 			return;
 		}
-		if (!com.mystaria.phantasmon.client.admin.AdminSession.isAdmin()) {
-			mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("phantasmon.hub_manager.admin_only")
-					.withStyle(net.minecraft.ChatFormatting.RED), false);
-			return;
-		}
-		mc.setScreen(new com.mystaria.phantasmon.client.gui.PhantasmonHubManagerScreen(hubClient, authSession));
+		// H again while placing an anchor: placing stops, the manager opens.
+		com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
+		mc.setScreen(new com.mystaria.phantasmon.client.gui.PhantasmonHubManagerScreen(hubClient, authSession, hub,
+				com.mystaria.phantasmon.client.admin.AdminSession.isAdmin()));
 	}
 }

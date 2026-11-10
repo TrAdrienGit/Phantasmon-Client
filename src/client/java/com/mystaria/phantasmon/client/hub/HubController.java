@@ -515,85 +515,14 @@ public final class HubController implements HubListener {
 	}
 
 	/** {@code <hub>-<player>}, within the 32 characters an anchor name may have. */
-	static String defaultAnchorName(String hub, String player) {
+	public static String defaultAnchorName(String hub, String player) {
 		String suffix = "-" + player;
 		String prefix = hub.length() + suffix.length() > 32 ? hub.substring(0, Math.max(1, 32 - suffix.length())) : hub;
 		String name = prefix + suffix;
 		return name.length() > 32 ? name.substring(0, 32) : name;
 	}
 
-	/** {@code /phantasmon hub anchor info}: the player's anchors, one per hub at most. */
-	public void showMyAnchor() {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		hubClient.mine(session.accessToken())
-				.thenAccept(mine -> onClientThread(() -> {
-					if (mine.length == 0) {
-						chat(Component.translatable("phantasmon.hub.anchor.none"));
-					}
-					for (HubAnchorDto anchor : mine) {
-						chat(Component.translatable("phantasmon.hub.anchor.info", anchor.name(), anchor.hub(), anchor.dimension(),
-								Math.round(anchor.origin().x()), Math.round(anchor.origin().y()), Math.round(anchor.origin().z())));
-					}
-				}))
-				.exceptionally(this::reportFailure);
-	}
-
-	/** {@code /phantasmon hub anchor delete <hub>}: the player's own anchor of that hub. */
-	public void deleteMyAnchor(String hubName) {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		hubClient.mine(session.accessToken())
-				.thenCompose(mine -> {
-					for (HubAnchorDto anchor : mine) {
-						if (anchor.hub().equalsIgnoreCase(hubName.strip())) {
-							return hubClient.delete(session.accessToken(), anchor.uuid()).thenApply(ignored -> anchor);
-						}
-					}
-					return java.util.concurrent.CompletableFuture.<HubAnchorDto>completedFuture(null);
-				})
-				.thenAccept(anchor -> onClientThread(() -> {
-					if (anchor == null) {
-						chat(Component.translatable("phantasmon.hub.anchor.none_in_hub", hubName).withStyle(ChatFormatting.RED));
-						return;
-					}
-					chat(Component.translatable("phantasmon.hub.anchor.deleted", anchor.name()).withStyle(ChatFormatting.LIGHT_PURPLE));
-					refreshAnchors();
-				}))
-				.exceptionally(this::reportFailure);
-	}
-
 	// ---------------------------------------------------------------- hubs (D-35)
-
-	/** {@code /phantasmon hub list}: every hub, its size and whether it has a build. */
-	public void listHubs() {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		fetchHubs().thenAccept(list -> onClientThread(() -> {
-			if (list.isEmpty()) {
-				chat(Component.translatable("phantasmon.hub.list.none"));
-			}
-			for (HubDto hub : list) {
-				chat(Component.translatable(hub.mirror() ? "phantasmon.hub.list.entry_mirror"
-						: hub.schematic() == null ? "phantasmon.hub.list.entry_empty" : "phantasmon.hub.list.entry",
-						hub.name(), hub.size().x(), hub.size().y(), hub.size().z(), hub.radius()));
-			}
-		})).exceptionally(this::reportFailure);
-	}
-
-	/** Admin: {@code /phantasmon admin hub create <name> <length> <width> <height>}. */
-	public void adminCreateHub(String name, int length, int width, int height) {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		hubClient.createHub(session.accessToken(), name, length, width, height)
-				.thenAccept(hub -> onClientThread(() -> chat(Component.translatable("phantasmon.admin.hub.created", hub.name(),
-						length, width, height, "hub_" + hub.name()).withStyle(ChatFormatting.GOLD))))
-				.exceptionally(this::reportAdminFailure);
-	}
 
 	/** Admin: a mirror hub (D-38, Phantasmon Events) of that radius, the whole height of the world. */
 	public void adminCreateMirrorHub(String name, int radius) {
@@ -659,19 +588,6 @@ public final class HubController implements HubListener {
 				.exceptionally(this::reportAdminFailure);
 	}
 
-	/** Admin: {@code /phantasmon admin hub reload <name>}. */
-	public void adminReloadHub(String name) {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		hubClient.reloadHub(session.accessToken(), name)
-				.thenAccept(hub -> onClientThread(() -> chat((hub.schematic() == null
-						? Component.translatable("phantasmon.admin.hub.reloaded_empty", hub.name())
-						: Component.translatable("phantasmon.admin.hub.reloaded", hub.name(), hub.schematic().name()))
-						.withStyle(ChatFormatting.GOLD))))
-				.exceptionally(this::reportAdminFailure);
-	}
-
 	/** Suggestions for a hub name argument, from the hubs list — asked again when stale, so new hubs show up. */
 	public java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestHubs(
 			com.mojang.brigadier.suggestion.SuggestionsBuilder builder) {
@@ -717,24 +633,6 @@ public final class HubController implements HubListener {
 			}
 			action.accept(hub);
 		})).exceptionally(this::reportFailure);
-	}
-
-	/** {@code /phantasmon hub anchor delete here}: the anchor the player stands in (its creator or an admin). */
-	public void deleteAnchorHere() {
-		if (!requireAuthenticated()) {
-			return;
-		}
-		HubAnchorDto anchor = currentAnchor;
-		if (anchor == null) {
-			chat(Component.translatable("phantasmon.hub.not_in_anchor"));
-			return;
-		}
-		hubClient.delete(session.accessToken(), anchor.uuid())
-				.thenAccept(ignored -> onClientThread(() -> {
-					chat(Component.translatable("phantasmon.hub.anchor.deleted", anchor.name()).withStyle(ChatFormatting.LIGHT_PURPLE));
-					refreshAnchors();
-				}))
-				.exceptionally(this::reportFailure);
 	}
 
 	// ---------------------------------------------------------------- anchors

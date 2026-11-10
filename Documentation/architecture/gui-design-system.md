@@ -90,9 +90,18 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 
 **Échange** : voir [`live-trade.md`](live-trade.md).
 
-**Gestionnaire des hubs** (`PhantasmonHubManagerScreen`, touche **H**, admins seulement, 2026-11-10)
+**Gestionnaire des hubs** (`PhantasmonHubManagerScreen`, touche **H**, 2026-11-10)
 
-- Onglets : « Hubs » (hubs ordinaires), puis ceux des add-ons (`PhantasmonApi.registerHubManagerTab`, interface
+- **Joueur** : l'onglet « Hubs » seul, les hubs classiques de Phantasmon (jamais ceux d'un add-on ni leurs ancres :
+  hubs miroirs d'Events réservés aux admins, Adrien 2026-11-10), avec taille,
+  construction, date de création (sans l'auteur) et nombre d'ancres ; pour le hub choisi, **ses** ancres (✕ pour
+  chacune) et PLACER UNE ANCRE : nom facultatif (`<hub>-<pseudo>` grisé par défaut), puis le menu se ferme et
+  `hub/HubPlacement` montre la zone du hub à la position du joueur, tournée au quart de tour selon son regard, verte si
+  libre, rouge sinon (blocs gênants recomptés toutes les 5 ticks, dans la barre d'action). Entrée pose
+  (`HubController.createAnchor`), Échap annule, H rouvre le gestionnaire. Route : `GET /hubs/overview`.
+- **Admin** : tout ce qui suit, plus PLACER UNE ANCRE pour lui-même sur les hubs ordinaires.
+
+- Onglets (admin) : « Hubs » (hubs ordinaires), puis ceux des add-ons, réservés aux admins (`PhantasmonApi.registerHubManagerTab`, interface
   `api/HubManagerTab` : quels hubs l'onglet montre, lignes de détail et boutons en plus, bouton de création), puis
   « Autres » seulement s'il reste des hubs qu'aucun onglet ne montre (type d'un add-on non installé, D-41).
 - À gauche, liste défilante (molette) des hubs de l'onglet : nom, nombre d'ancres, taille, construction, date et

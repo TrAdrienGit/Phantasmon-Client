@@ -110,14 +110,14 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 - [ ] Backend lancé avec l'arène par défaut, puis avec la vraie construction (`.schem` et `.litematic`) ; deux fichiers
       ou une mauvaise taille : le backend refuse de démarrer avec un message clair.
-- [ ] `/phantasmon hub anchor create` sur un terrain encombré : refus, nombre de blocs gênants ; sur un terrain dégagé :
+- [ ] Placer une ancre (touche H) sur un terrain encombré : zone rouge, Entrée refusée avec le nombre de blocs ; dégagé :
       la construction apparaît, le joueur se retrouve sur le sol.
 - [ ] Orientation : poser face au nord, à l'est, au sud, à l'ouest — l'entrée suit le regard.
 - [ ] Rendu identique à de vrais blocs, avec et sans Iris (ombres, lumière des lanternes).
 - [ ] Collisions : marcher sur le sol, se cogner aux murs ; un second joueur Phantasmon du serveur voit la salle.
 - [ ] Incassable (survie et créatif) ; rien ne se pose contre un faux bloc ; la porte s'ouvre et se ferme.
 - [ ] S'éloigner au-delà de la distance de rendu puis revenir : la salle est toujours là.
-- [ ] `/phantasmon hub anchor delete` : la salle disparaît, le terrain d'origine revient.
+- [ ] Supprimer l'ancre (✕ du gestionnaire) : la salle disparaît, le terrain d'origine revient.
 - [ ] Serveur avec `allow-flight=false` : noter si le joueur est expulsé en restant sur le faux sol (LIM-14).
 
 ### Vocal du hub (D-36)
@@ -135,22 +135,24 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 ### Plusieurs hubs (D-35)
 
-- [ ] Admin : `/phantasmon admin hub create arene 41 31 12` : message, dossier `hub_schematics/hub_arene/` créé ; un
-      joueur voit « arene » dans la complétion de `/phantasmon hub anchor create` sans relancer le jeu.
+- [ ] Admin : gestionnaire (H), + CRÉER UN HUB `arene` 31 × 12 × 41 : message, dossier `hub_schematics/hub_arene/`
+      créé ; un joueur voit « arene » dans son gestionnaire sans relancer le jeu.
 - [ ] Hub sans construction : l'Anchor se pose, le contour (rectangle) suit l'orientation, on peut entrer dans le hub.
-- [ ] Déposer un schematic de 31 × 12 × 41 puis `/phantasmon admin hub reload arene` : la construction apparaît chez
+- [ ] Déposer un schematic de 31 × 12 × 41 puis RELIRE LA CONSTRUCTION : la construction apparaît chez
       tous ; un fichier de mauvaise taille : refus avec la raison, l'ancienne construction reste.
 - [ ] Un Anchor par hub : un second dans `arene` refusé, un dans `global` accepté ; deux Anchors qui se touchent :
       refus « chevaucherait ».
 - [ ] Espaces séparés : J1 dans `global`, J2 dans `arene` ne se voient pas, `/hc` ne passe pas de l'un à l'autre.
-- [ ] `/phantasmon admin hub delete arene` : constructions disparues, membres sortis, dossier renommé `.deleted-…`.
+- [ ] SUPPRIMER `arene` : constructions disparues, membres sortis, dossier renommé `.deleted-…`.
+- [ ] Gestionnaire, joueur non admin : seulement ses ancres (✕ sur chacune), pas d'auteur des hubs, pas de bouton de
+      gestion ; admin : RENOMMER (dossier suivi, ancres gardées), toutes les ancres de tous les serveurs, ✕ sur chacune.
 
 ### Global Hub (Phantasmon Network, N3)
 
 Deux serveurs (deux adresses différentes : chacun a sa propre empreinte) et deux comptes.
 
-- [ ] `/phantasmon hub anchor create Test` : message de confirmation, carré violet au sol, nom flottant au centre ;
-      un second `create` répond « vous avez déjà un Anchor ».
+- [ ] Placer une ancre « Test » (H) : message de confirmation, carré violet au sol, nom flottant au centre ;
+      une seconde dans le même hub répond « vous avez déjà un Anchor ».
 - [ ] Partage (D-30) : un second joueur **du même serveur** voit le carré et le nom (rechargement toutes les 30 s au
       plus) et peut entrer dans le Hub par cet Anchor ; un joueur d'un **autre** serveur (autre empreinte) ne le voit pas.
 - [ ] Entrer dans le carré fait entrer dans le Hub sans invitation.
@@ -160,7 +162,7 @@ Deux serveurs (deux adresses différentes : chacun a sa propre empreinte) et deu
 - [ ] `/phantasmon hub leave` dans le carré : sortie du Hub, pas de retour avant d'être sorti du carré puis revenu.
 - [ ] Rester près d'un Anchor avec le jeu en pause (Échap, monde solo) une minute puis reprendre : pas de rafale de
       particules ni de saccade.
-- [ ] `/phantasmon hub anchor delete` en étant dans le Hub : « l'Anchor … a été supprimé », sortie du Hub.
+- [ ] Supprimer son ancre depuis le gestionnaire en étant dans le Hub : « l'Anchor … a été supprimé », sortie du Hub.
 - [ ] Redémarrer le backend en étant dans le Hub : après la reconnexion, retour dans le Hub sans nouvelle invitation.
 
 ### Global Hub — avatars (Phantasmon Network, N4)

@@ -113,13 +113,15 @@ Le Global Hub réunit des joueurs Phantasmon de **serveurs Minecraft différents
 serveurs. On y entre par un **Anchor** : une zone de 21 × 21 × 21 blocs posée par un joueur. Tous les joueurs
 Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serveur ne la voient jamais.
 
-1. **Poser un Anchor** : il existe plusieurs hubs, créés par les admins (`/phantasmon hub list` : nom et taille).
-   Placez-vous au centre d'une zone plate et dégagée, regardez dans la direction qui sera « l'avant » du hub, puis
-   `/phantasmon hub anchor create <hub>` (la complétion propose les hubs). La zone du hub, de vos pieds vers le haut,
+1. **Poser un Anchor** : il existe plusieurs hubs, créés par les admins. Touche **H** : le gestionnaire des hubs
+   liste les hubs (taille, construction, date, nombre d'ancres) et vos ancres vers chacun. Choisissez un hub, PLACER
+   UNE ANCRE, un nom facultatif, PLACER : le menu se ferme et la zone du hub vous suit, à vos pieds, tournée selon votre
+   regard (au quart de tour) ; verte si elle est libre, rouge avec le nombre de blocs gênants sinon. **Entrée** la pose,
+   **Échap** annule. La zone du hub, de vos pieds vers le haut,
    doit être entièrement vide (air) et ne pas toucher un autre Anchor : la **construction du hub** (salle, arène…)
    s'y bâtit aussitôt pour tous les joueurs Phantasmon du serveur. Ses blocs n'existent que pour Phantasmon : on ne
    peut ni les casser ni poser de bloc dessus ; les portes s'ouvrent. Chacun peut poser un Anchor par hub ; pour le
-   déplacer, `/phantasmon hub anchor delete <hub>` puis recréez-le (la construction disparaît avec l'Anchor). Chaque
+   déplacer, supprimez-la (✕ dans le gestionnaire) puis reposez-la (la construction disparaît avec l'Anchor). Chaque
    hub est un espace à part : on n'y voit que les joueurs entrés par un Anchor du même hub.
    **Vocal** : avec le mod Simple Voice Chat (facultatif), on entend les joueurs du hub depuis leur avatar et ils vous
    entendent, avec vos réglages habituels de Simple Voice Chat (touche pour parler, activation vocale, muet). Il faut

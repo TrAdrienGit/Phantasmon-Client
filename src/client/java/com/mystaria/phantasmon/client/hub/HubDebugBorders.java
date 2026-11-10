@@ -51,24 +51,29 @@ public final class HubDebugBorders {
 		if (HUBS.isEmpty()) {
 			return;
 		}
+		List<HubBuildLayout> layouts = anchors.get().stream()
+				.filter(anchor -> HUBS.contains(anchor.hub().toLowerCase(Locale.ROOT)))
+				.map(HubAnchorDto::layout)
+				.toList();
+		renderBoxes(context, layouts, 0.75F, 0.35F, 1.0F);
+	}
+
+	/**
+	 * Draws these build boxes with the world border's scrolling force field, tinted {@code r g b} (purple: debug
+	 * borders; green / red: an anchor being placed, {@link HubPlacement}).
+	 */
+	public static void renderBoxes(WorldRenderContext context, List<HubBuildLayout> layouts, float r, float g, float b) {
+		if (layouts.isEmpty()) {
+			return;
+		}
 		Vec3 camera = context.camera().getPosition();
 		Matrix4f pose = context.matrixStack() == null ? new Matrix4f() : context.matrixStack().last().pose();
-		BufferBuilder buffer = null;
 		float scroll = (Util.getMillis() % 3000L) / 3000.0F;
-		for (HubAnchorDto anchor : anchors.get()) {
-			if (!HUBS.contains(anchor.hub().toLowerCase(Locale.ROOT))) {
-				continue;
-			}
-			if (buffer == null) {
-				buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-			}
-			HubBuildLayout layout = anchor.layout();
+		BufferBuilder buffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+		for (HubBuildLayout layout : layouts) {
 			int[] min = layout.min();
 			int[] max = layout.max();
 			box(buffer, pose, camera, min[0], min[1], min[2], max[0] + 1, max[1] + 1, max[2] + 1, scroll);
-		}
-		if (buffer == null) {
-			return;
 		}
 		MeshData mesh = buffer.build();
 		if (mesh == null) {
@@ -79,7 +84,7 @@ public final class HubDebugBorders {
 				GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ZERO);
 		RenderSystem.setShaderTexture(0, FORCEFIELD);
 		RenderSystem.setShader(GameRenderer::getPositionTexShader);
-		RenderSystem.setShaderColor(0.75F, 0.35F, 1.0F, 0.8F);
+		RenderSystem.setShaderColor(r, g, b, 0.8F);
 		RenderSystem.depthMask(false);
 		RenderSystem.polygonOffset(-3.0F, -3.0F);
 		RenderSystem.enablePolygonOffset();
