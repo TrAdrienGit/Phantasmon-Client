@@ -40,7 +40,7 @@ serveur. Phantasmon étant client uniquement, presque tout est dans `src/client`
   "id": "phantasmon",
   "version": "${version}",
   "name": "Phantasmon",
-  "license": "GPL-3.0-only",
+  "license": "Apache-2.0",
   "icon": "assets/phantasmon/icon.png",
   "environment": "client",
   "entrypoints": {

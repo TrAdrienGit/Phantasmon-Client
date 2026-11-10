@@ -160,6 +160,15 @@ public final class PhantasmonApi {
 		return true;
 	}
 
+	/**
+	 * Adds an AI level for NPC battles (TODO-35, D-41): {@code factory} makes a fresh AI for one battle, its argument
+	 * the NPC's chat debug ({@code ai_debug}). Cobblemon's levels ({@code random}, {@code easy}, {@code normal},
+	 * {@code hard}, {@code veryhard}) are Phantasmon's own and cannot be replaced.
+	 */
+	public static void registerBattleAi(String level, java.util.function.Function<Boolean, PhantasmonBattleAI> factory) {
+		com.mystaria.phantasmon.client.battle.GhostBattles.registerAi(level, factory);
+	}
+
 	/** Phantasmon's WebSocket received an {@code Events*} message (client thread). */
 	public static void dispatchEvents(String type, Map<String, Object> data) {
 		EVENTS_LISTENERS.forEach(listener -> listener.accept(type, data));

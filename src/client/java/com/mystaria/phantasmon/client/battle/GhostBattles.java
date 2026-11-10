@@ -26,6 +26,7 @@ import com.cobblemon.mod.common.pokemon.Pokemon;
 
 import net.minecraft.client.Minecraft;
 
+import com.mystaria.phantasmon.client.api.PhantasmonBattleAI;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
 import com.mystaria.showtime.battle.BattleShowtime;
 
@@ -272,7 +273,7 @@ public final class GhostBattles {
 	/**
 	 * {@code guestAi} non-null: the guest side is played by an AI on this client, every time the engine asks it to
 	 * choose — the admin solo battle (Adrien 2026-10-07, a mirror of the host's team, {@code random}) or an event's
-	 * trainer NPC (Phantasmon Events, its AI level: see {@link #ai}); {@code guestSink} then only sees its packets.
+	 * trainer NPC (an add-on's, its AI level: see {@link #ai}); {@code guestSink} then only sees its packets.
 	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
@@ -285,13 +286,9 @@ public final class GhostBattles {
 				BattleThread.get().ensureShowdown();
 				List<BattlePokemon> hostPokemon = battleTeam(hostTeam);
 				List<BattlePokemon> guestPokemon = battleTeam(guestTeam);
-				if (ai instanceof ExpertBattleAI expert && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
-					// The expert AI picks its lead against the player's team, as at team preview (Adrien 2026-11-03).
-					guestPokemon = expert.leadFirst(guestPokemon, hostPokemon);
-				} else if (ai instanceof RebornBattleAI reborn && reborn.picksLead() && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
-					// Reborn-Tweak (Adrien 2026-11-07): Reborn's AI with the expert's choice of lead; plain Reborn, as in
-					// the game, leads with the first of its team.
-					guestPokemon = new ExpertBattleAI(false).leadFirst(guestPokemon, hostPokemon);
+				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
+					// An add-on's AI may pick its lead against the player's team, as at team preview (Adrien 2026-11-03).
+					guestPokemon = addonAi.orderTeam(guestPokemon, hostPokemon);
 				}
 				if (hostPokemon.isEmpty() || guestPokemon.isEmpty()) {
 					callbacks.failed();
@@ -384,34 +381,46 @@ public final class GhostBattles {
 		});
 	}
 
+	/** AI levels added by add-ons (TODO-35, D-41): level → a fresh AI, its argument the chat debug. */
+	private static final Map<String, java.util.function.Function<Boolean, PhantasmonBattleAI>> ADDON_AIS =
+			new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** Cobblemon's own levels: never replaced by an add-on. */
+	private static final java.util.Set<String> COBBLEMON_AIS = java.util.Set.of("random", "easy", "normal", "hard", "veryhard");
+
+	/** {@link com.mystaria.phantasmon.client.api.PhantasmonApi#registerBattleAi}. */
+	public static void registerAi(String level, java.util.function.Function<Boolean, PhantasmonBattleAI> factory) {
+		if (level == null || factory == null || COBBLEMON_AIS.contains(level)) {
+			throw new IllegalArgumentException("Cannot register battle AI level " + level);
+		}
+		ADDON_AIS.put(level, factory);
+		LOG.info("Battle AI level {} registered", level);
+	}
+
 	/**
-	 * An AI level (Phantasmon Events' NPCs): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal},
-	 * {@code hard}, {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out,
-	 * statuses and boosts by skill); {@code expert} Phantasmon's own ({@link ExpertBattleAI}); {@code reborn} Pokémon
-	 * Reborn's, translated ({@link RebornBattleAI}), leading with its first Pokémon as in the game; {@code reborn_tweak} the
-	 * same with the expert's choice of lead. Unknown: {@code normal}.
+	 * An AI level (NPC battles): {@code random} is Cobblemon's random AI; {@code easy}, {@code normal}, {@code hard},
+	 * {@code veryhard} its "strong" AI at skill 1, 3, 4 and 5 (damage, type matchups, switching out, statuses and
+	 * boosts by skill); any other level comes from an add-on ({@link #registerAi}; Phantasmon Events brings
+	 * {@code expert}, {@code reborn}, {@code reborn_tweak}). Unknown: {@code normal}.
 	 */
 	public static com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai(String level) {
-		// "<level>:debug": the NPC's AI debug, its reasoning in the chat (the Expert AI only, Adrien 2026-11-03).
+		// "<level>:debug": the NPC's AI debug, its reasoning in the chat (Adrien 2026-11-03).
 		boolean debug = level != null && level.endsWith(":debug");
 		if (debug) {
 			level = level.substring(0, level.length() - ":debug".length());
 		}
-		if ("expert".equals(level)) {
-			return new ExpertBattleAI(debug);
+		java.util.function.Function<Boolean, PhantasmonBattleAI> addon = level == null ? null : ADDON_AIS.get(level);
+		if (addon != null) {
+			return addon.apply(debug);
 		}
-		if ("reborn".equals(level)) {
-			return new RebornBattleAI(debug);
-		}
-		if ("reborn_tweak".equals(level)) {
-			return new RebornBattleAI(debug, true);
+		if (level != null && !COBBLEMON_AIS.contains(level)) {
+			LOG.warn("Battle AI level {} unknown (add-on missing?): Cobblemon's normal AI plays", level);
 		}
 		return switch (level == null ? "normal" : level) {
 			case "random" -> new com.cobblemon.mod.common.battles.ai.RandomBattleAI();
 			case "easy" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(1);
 			case "hard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(4);
 			case "veryhard" -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(5);
-			case "expert" -> new ExpertBattleAI();
 			default -> new com.cobblemon.mod.common.battles.ai.StrongBattleAI(3);
 		};
 	}
@@ -475,8 +484,8 @@ public final class GhostBattles {
 			com.cobblemon.mod.common.battles.ActiveBattlePokemon active, com.cobblemon.mod.common.battles.ShowdownMoveset moveset,
 			boolean forceSwitch, java.util.Set<UUID> switchedIn) {
 		if (forceSwitch) {
-			// The expert and Reborn AIs pick their replacement (checked); the others get the healthiest Pokémon.
-			if (ai instanceof ExpertBattleAI || ai instanceof RebornBattleAI) {
+			// An add-on's AI (expert, Reborn) picks its replacement (checked); Cobblemon's get the healthiest Pokémon.
+			if (ai instanceof PhantasmonBattleAI) {
 				try {
 					if (ai.choose(active, battle, actor.getSide(), moveset, true) instanceof com.cobblemon.mod.common.battles.SwitchActionResponse change
 							&& switchable(actor, change.getNewPokemonId(), switchedIn) != null) {
@@ -484,7 +493,7 @@ public final class GhostBattles {
 						return change;
 					}
 				} catch (RuntimeException ex) {
-					LOG.warn("Expert AI failed to pick a replacement, falling back", ex);
+					LOG.warn("Battle AI failed to pick a replacement, falling back", ex);
 				}
 			}
 			BattlePokemon replacement = bestReplacement(actor, switchedIn);
@@ -520,8 +529,8 @@ public final class GhostBattles {
 		// Adrien 2026-11-03: the AI debug announced a move the NPC then did not play — Cobblemon refused it and the
 		// random AI played. Say so, so the debug never shows a choice that was not played.
 		LOG.info("Battle AI choice {} refused by Cobblemon: random AI plays {}", describe(response), describe(fallback));
-		if (ai instanceof ExpertBattleAI || ai instanceof RebornBattleAI) {
-			ExpertBattleAI.say("§c[IA] Choix refusé par Cobblemon (" + describe(response) + ") : joué au hasard → " + describe(fallback));
+		if (ai instanceof PhantasmonBattleAI addonAi) {
+			addonAi.onChoiceRefused("§c[IA] Choix refusé par Cobblemon (" + describe(response) + ") : joué au hasard → " + describe(fallback));
 		}
 		return fallback;
 	}
