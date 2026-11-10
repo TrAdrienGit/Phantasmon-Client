@@ -22,6 +22,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -344,6 +345,10 @@ public final class HubBuilds {
 			if (!level.getChunkSource().hasChunk(ChunkPos.getX(chunk), ChunkPos.getZ(chunk))) {
 				continue; // not in view: built when the server sends it
 			}
+			List<Long> keys = byChunk.getOrDefault(chunk, List.of());
+			if (!keys.isEmpty() && !lightReady(chunk, keys.get(0))) {
+				continue; // its lighting is not on yet: built once it is (else that chunk of the build stays black)
+			}
 			dirtyChunks.remove(chunk);
 			for (long key : byChunk.getOrDefault(chunk, List.of())) {
 				built |= apply(key, fake.get(key));
@@ -352,6 +357,17 @@ public final class HubBuilds {
 		if (built) {
 			liftPlayerOutOfTheFloor();
 		}
+	}
+
+	/**
+	 * Whether the chunk's lighting is on. A chunk the server sends is loaded at once but its light is applied and
+	 * turned on a little later ({@code ClientPacketListener} queues it, {@code ClientLevel.queueLightUpdate}): blocks
+	 * set in between are never lit — a quarter of the build black, with or without shaders (Adrien 2026-11-10).
+	 */
+	private boolean lightReady(long chunk, long anyKey) {
+		return level.getChunkSource().getLightEngine()
+				.lightOnInSection(SectionPos.of(ChunkPos.getX(chunk), SectionPos.blockToSectionCoord(BlockPos.getY(anyKey)),
+						ChunkPos.getZ(chunk)));
 	}
 
 	private boolean apply(long key, Placed placed) {

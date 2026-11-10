@@ -76,6 +76,15 @@ public final class BackendJsonClient {
 				});
 	}
 
+	/** {@code PUT} of a binary body (e.g. a hub's schematic, admins), answered with JSON; a longer timeout. */
+	public <T> CompletableFuture<T> putBytes(URI uri, byte[] body, String bearerToken, Class<T> responseType) {
+		HttpRequest.Builder builder = HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(60))
+				.header("Accept", "application/json")
+				.header("Content-Type", "application/octet-stream")
+				.PUT(HttpRequest.BodyPublishers.ofByteArray(body));
+		return send(authorize(builder, bearerToken), responseType);
+	}
+
 	/** {@code DELETE} answered with a JSON body. */
 	public <T> CompletableFuture<T> delete(URI uri, String bearerToken, Class<T> responseType) {
 		return send(authorize(baseBuilder(uri).DELETE(), bearerToken), responseType);

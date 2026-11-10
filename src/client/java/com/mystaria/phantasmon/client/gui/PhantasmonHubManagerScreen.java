@@ -81,7 +81,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	private static final int MODAL_BUTTON_W = 200;
 	private static final int MODAL_BUTTON_H = 36;
 
-	private enum Modal { NONE, CREATE, RENAME, PLACE, DELETE_HUB, DELETE_ANCHOR }
+	private enum Modal { NONE, CREATE, RENAME, PLACE, SCHEMATIC, DELETE_HUB, DELETE_ANCHOR }
 
 	private final HubClient client;
 	private final AuthSession session;
@@ -105,6 +105,16 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	/** The form's fields: create = name, width, height, length; rename = name. */
 	private final String[] fields = { "", "", "", "" };
 	private int focusedField;
+
+	/** The schematic picker (admins): the .schem / .litematic files of the game's schematics/ folder. */
+	private static final java.nio.file.Path SCHEMATICS_DIR = net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir()
+			.resolve("schematics");
+	private static final int SCHEM_ROW_H = 40;
+	private static final int SCHEM_ROWS = 8;
+	private List<java.nio.file.Path> schematicFiles = List.of();
+	private int schematicScroll;
+	private int schematicPick = -1;
+	private boolean uploading;
 
 	public PhantasmonHubManagerScreen(HubClient client, AuthSession session, HubController controller, boolean admin) {
 		super(Component.translatable("phantasmon.hub_manager.title"));
@@ -258,6 +268,11 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	// =====================================================================
 
 	private void openModal(Modal next) {
+		if (next == Modal.SCHEMATIC) {
+			schematicFiles = listSchematics();
+			schematicScroll = 0;
+			schematicPick = -1;
+		}
 		modal = next;
 		Arrays.fill(fields, "");
 		focusedField = 0;
@@ -295,6 +310,12 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 					reload();
 				})).exceptionally(this::fail);
 			}
+			case SCHEMATIC -> {
+				if (hub != null) {
+					uploadSchematic(hub); // the picker closes once the backend accepted the file
+				}
+				return;
+			}
 			case PLACE -> {
 				if (hub == null) {
 					return;
@@ -310,6 +331,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 					return;
 				}
 				client.deleteHub(session.accessToken(), hub.name()).thenAccept(deleted -> onMain(() -> {
+					controller.refreshAnchors();
 					setStatus(Component.translatable("phantasmon.hub_manager.deleted", deleted.hub(), deleted.anchorsDeleted()),
 							READY_TEXT);
 					selected = null;
@@ -323,6 +345,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 				}
 				client.delete(session.accessToken(), anchor.uuid()).thenAccept(done -> onMain(() -> {
 					setStatus(Component.translatable("phantasmon.hub_manager.anchor_deleted", anchor.name()), READY_TEXT);
+					controller.refreshAnchors(); // its build goes at once here, not at the next 30 s refresh
 					reload();
 				})).exceptionally(this::fail);
 			}
@@ -330,6 +353,82 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			}
 		}
 		modal = Modal.NONE;
+	}
+
+	/** The schematics/ folder's .schem and .litematic files (sub-folders too, as Litematica saves them), newest first. */
+	private static List<java.nio.file.Path> listSchematics() {
+		try {
+			java.nio.file.Files.createDirectories(SCHEMATICS_DIR);
+			try (var files = java.nio.file.Files.walk(SCHEMATICS_DIR, 4)) {
+				return files.filter(java.nio.file.Files::isRegularFile)
+						.filter(path -> {
+							String name = path.getFileName().toString().toLowerCase(Locale.ROOT);
+							return name.endsWith(".schem") || name.endsWith(".litematic");
+						})
+						.sorted(java.util.Comparator.comparingLong((java.nio.file.Path path) -> path.toFile().lastModified()).reversed())
+						.toList();
+			}
+		} catch (java.io.IOException ex) {
+			return List.of();
+		}
+	}
+
+	/** The name the backend accepts: letters, digits, space, _ . ( ) -; anything else becomes _. */
+	private static String uploadName(java.nio.file.Path file) {
+		String name = file.getFileName().toString();
+		int dot = name.lastIndexOf('.');
+		String base = name.substring(0, dot).replaceAll("[^A-Za-z0-9 _.()-]", "_");
+		if (base.isBlank()) {
+			base = "hub";
+		}
+		return (base.length() > 90 ? base.substring(0, 90) : base) + name.substring(dot).toLowerCase(Locale.ROOT);
+	}
+
+	private void uploadSchematic(HubAdminDto hub) {
+		if (schematicPick < 0 || schematicPick >= schematicFiles.size() || uploading) {
+			return;
+		}
+		java.nio.file.Path file = schematicFiles.get(schematicPick);
+		String name = uploadName(file);
+		uploading = true;
+		setStatus(Component.translatable("phantasmon.hub_manager.schematic_sending", name), MUTED);
+		java.util.concurrent.CompletableFuture.supplyAsync(() -> {
+			try {
+				return java.nio.file.Files.readAllBytes(file);
+			} catch (java.io.IOException ex) {
+				throw new CompletionException(ex);
+			}
+		}).thenCompose(bytes -> client.uploadSchematic(session.accessToken(), hub.name(), name, bytes))
+				.thenAccept(view -> onMain(() -> {
+					uploading = false;
+					modal = Modal.NONE;
+					setStatus(Component.translatable("phantasmon.hub_manager.schematic_sent", name, view.name()), READY_TEXT);
+					reload();
+				}))
+				.exceptionally(throwable -> {
+					onMain(() -> uploading = false);
+					return failSchematic(throwable);
+				});
+	}
+
+	private void removeBuild(HubAdminDto hub) {
+		client.removeSchematic(session.accessToken(), hub.name()).thenAccept(view -> onMain(() -> {
+			modal = Modal.NONE;
+			setStatus(Component.translatable("phantasmon.hub_manager.schematic_removed", view.name()), READY_TEXT);
+			reload();
+		})).exceptionally(this::failSchematic);
+	}
+
+	/** Like {@link #fail}, with the backend's reason when the file was refused (wrong size, unreadable). */
+	private Void failSchematic(Throwable throwable) {
+		Throwable cause = throwable instanceof CompletionException ? throwable.getCause() : throwable;
+		if (cause instanceof BackendApiException api && "ERROR_HUB_SCHEMATIC_INVALID".equals(api.errorCode())
+				&& api.details() != null && api.details().get("reason") != null) {
+			onMain(() -> setStatus(Component.translatable("phantasmon.hub_manager.schematic_refused", api.details().get("reason")),
+					ERROR_TEXT));
+			return null;
+		}
+		return fail(throwable);
 	}
 
 	private void reloadBuild(HubAdminDto hub) {
@@ -361,6 +460,8 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.rename"), false,
 				(h, done, report) -> openModal(Modal.RENAME)));
 		if (hub.normal()) {
+			actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.schematic"), false,
+					(h, done, report) -> openModal(Modal.SCHEMATIC)));
 			actions.add(new HubManagerTab.Action(Component.translatable("phantasmon.hub_manager.reload"), false,
 					(h, done, report) -> reloadBuild(h)));
 			actions.add(place);
@@ -454,6 +555,9 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private boolean clickModal(double x, double y) {
+		if (modal == Modal.SCHEMATIC) {
+			return clickSchematic(x, y);
+		}
 		int fieldCount = fieldCount();
 		for (int i = 0; i < fieldCount; i++) {
 			if (inside(x, y, fieldX(i), fieldY(i), fieldW(i), FIELD_H)) {
@@ -473,8 +577,44 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 		return true;
 	}
 
+	private boolean clickSchematic(double x, double y) {
+		HubAdminDto hub = selectedHub();
+		int top = modalY();
+		for (int row = 0; row < SCHEM_ROWS && schematicScroll + row < schematicFiles.size(); row++) {
+			if (inside(x, y, MODAL_X + 30, schemListY() + row * SCHEM_ROW_H, MODAL_W - 60, SCHEM_ROW_H)) {
+				schematicPick = schematicScroll + row;
+				return true;
+			}
+		}
+		if (inside(x, y, MODAL_X + MODAL_W - 30 - 240, schemFolderY() - 6, 240, 28)) {
+			net.minecraft.Util.getPlatform().openFile(SCHEMATICS_DIR.toFile());
+			return true;
+		}
+		int buttonY = top + modalH() - MODAL_BUTTON_H - 22;
+		if (inside(x, y, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H)) {
+			modal = Modal.NONE;
+		} else if (hub != null && hub.schematic() != null && inside(x, y, 800 - 120, buttonY, 240, MODAL_BUTTON_H)) {
+			removeBuild(hub);
+		} else if (hub != null && inside(x, y, MODAL_X + MODAL_W - 30 - 180, buttonY, 180, MODAL_BUTTON_H)) {
+			uploadSchematic(hub);
+		}
+		return true;
+	}
+
+	private int schemListY() {
+		return modalY() + 96;
+	}
+
+	private int schemFolderY() {
+		return schemListY() + SCHEM_ROWS * SCHEM_ROW_H + 18;
+	}
+
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (modal == Modal.SCHEMATIC) {
+			schematicScroll = clamp(schematicScroll - (int) Math.signum(scrollY), schematicFiles.size() - SCHEM_ROWS);
+			return true;
+		}
 		if (modal != Modal.NONE) {
 			return true;
 		}
@@ -733,6 +873,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			case CREATE -> 400;
 			case RENAME -> 240;
 			case PLACE -> 260;
+			case SCHEMATIC -> 560;
 			default -> 190;
 		};
 	}
@@ -765,6 +906,7 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			case CREATE -> Component.translatable("phantasmon.hub_manager.create_title").getString();
 			case RENAME -> Component.translatable("phantasmon.hub_manager.rename_title", hub == null ? "?" : hub.name()).getString();
 			case PLACE -> Component.translatable("phantasmon.hub_manager.place_title", hub == null ? "?" : hub.name()).getString();
+			case SCHEMATIC -> Component.translatable("phantasmon.hub_manager.schematic_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_HUB -> Component.translatable("phantasmon.hub_manager.delete_title", hub == null ? "?" : hub.name()).getString();
 			case DELETE_ANCHOR -> Component.translatable("phantasmon.hub_manager.delete_anchor_title",
 					anchorToDelete == null ? "?" : anchorToDelete.name()).getString();
@@ -799,6 +941,11 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 			default -> {
 			}
 		}
+		if (modal == Modal.SCHEMATIC) {
+			renderSchematicPicker(g, hub, mx, my);
+			endModalLayer(g);
+			return;
+		}
 		int buttonY = y + h - MODAL_BUTTON_H - 22;
 		boolean destructive = modal == Modal.DELETE_HUB || modal == Modal.DELETE_ANCHOR;
 		renderButton(g, 800 - MODAL_BUTTON_W - 10, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
@@ -808,6 +955,59 @@ public final class PhantasmonHubManagerScreen extends PhantasmonCanvasScreen {
 						: modal == Modal.PLACE ? "phantasmon.hub_manager.place_confirm" : "phantasmon.hub_manager.rename_confirm",
 				destructive, inside(mx, my, 810, buttonY, MODAL_BUTTON_W, MODAL_BUTTON_H), 2f);
 		endModalLayer(g);
+	}
+
+	private void renderSchematicPicker(GuiGraphics g, HubAdminDto hub, double mx, double my) {
+		int y = modalY();
+		String expected = hub == null || hub.size() == null ? "?"
+				: Component.translatable("phantasmon.hub_manager.schematic_size", hub.size().x(), hub.size().y(), hub.size().z(),
+						hub.schematic() == null ? Component.translatable("phantasmon.hub_manager.no_build").getString()
+								: hub.schematic().name()).getString();
+		drawCentered(g, fitText(expected, MODAL_W - 40, 1f, false, 0f), 800, y + 62, 1f, TEXT2, false, 0f);
+		int listY = schemListY();
+		int listH = SCHEM_ROWS * SCHEM_ROW_H;
+		g.fill(MODAL_X + 30, listY, MODAL_X + MODAL_W - 30, listY + listH, INFO_BOX_BG);
+		outline(g, MODAL_X + 30, listY, MODAL_W - 60, listH, LINE_20);
+		if (schematicFiles.isEmpty()) {
+			drawCentered(g, fitText(Component.translatable("phantasmon.hub_manager.schematic_empty").getString(), MODAL_W - 80, 1f, false, 0f),
+					800, listY + listH / 2f - 4, 1f, DIM, false, 0f);
+		}
+		for (int row = 0; row < SCHEM_ROWS && schematicScroll + row < schematicFiles.size(); row++) {
+			java.nio.file.Path file = schematicFiles.get(schematicScroll + row);
+			int rowY = listY + row * SCHEM_ROW_H;
+			boolean picked = schematicScroll + row == schematicPick;
+			if (picked) {
+				g.fill(MODAL_X + 31, rowY, MODAL_X + MODAL_W - 31, rowY + SCHEM_ROW_H, SLOT_SELECTED_BG);
+				g.fill(MODAL_X + 31, rowY, MODAL_X + 35, rowY + SCHEM_ROW_H, CYAN);
+			} else if (inside(mx, my, MODAL_X + 30, rowY, MODAL_W - 60, SCHEM_ROW_H)) {
+				g.fill(MODAL_X + 31, rowY, MODAL_X + MODAL_W - 31, rowY + SCHEM_ROW_H, SLOT_HOVER_BG);
+			}
+			String relative = SCHEMATICS_DIR.relativize(file).toString().replace('\\', '/');
+			String kib = Math.max(1, file.toFile().length() / 1024) + " Kio";
+			float kibWidth = textWidth(kib, 1f, false, 0f);
+			drawText(g, fitText(relative, MODAL_W - 120 - kibWidth, 2f, false, 0f), MODAL_X + 44, rowY + 13, 2f,
+					picked ? WHITE : TEXT2, false, 0f);
+			drawText(g, kib, MODAL_X + MODAL_W - 44 - kibWidth, rowY + 17, 1f, MUTED, false, 0f);
+		}
+		renderScrollbar(g, MODAL_X + MODAL_W - 38, listY + 4, listH - 8, schematicFiles.size(), SCHEM_ROWS, schematicScroll);
+		int folderY = schemFolderY();
+		drawText(g, fitText(SCHEMATICS_DIR.toAbsolutePath().toString(), MODAL_W - 300, 1f, false, 0f), MODAL_X + 30, folderY + 4, 1f,
+				DIM, false, 0f);
+		int openX = MODAL_X + MODAL_W - 30 - 240;
+		renderLabelButton(g, openX, folderY - 6, 240, 28, Component.translatable("phantasmon.hub_manager.schematic_open_folder").getString(),
+				false, inside(mx, my, openX, folderY - 6, 240, 28));
+
+		int buttonY = y + modalH() - MODAL_BUTTON_H - 22;
+		renderButton(g, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H, "phantasmon.hub_manager.cancel", false,
+				inside(mx, my, MODAL_X + 30, buttonY, 180, MODAL_BUTTON_H), 2f);
+		if (hub != null && hub.schematic() != null) {
+			renderButton(g, 800 - 120, buttonY, 240, MODAL_BUTTON_H, "phantasmon.hub_manager.schematic_remove", true,
+					inside(mx, my, 800 - 120, buttonY, 240, MODAL_BUTTON_H), 2f);
+		}
+		int sendX = MODAL_X + MODAL_W - 30 - 180;
+		boolean canSend = schematicPick >= 0 && !uploading;
+		renderButton(g, sendX, buttonY, 180, MODAL_BUTTON_H, uploading ? "phantasmon.hub_manager.schematic_sending_short"
+				: "phantasmon.hub_manager.schematic_send", false, canSend && inside(mx, my, sendX, buttonY, 180, MODAL_BUTTON_H), 2f);
 	}
 
 	private void renderField(GuiGraphics g, int field, String labelKey, double mx, double my) {

@@ -116,8 +116,8 @@ Phantasmon de ce serveur la voient et peuvent l'utiliser ; ceux d'un autre serve
 1. **Poser un Anchor** : il existe plusieurs hubs, créés par les admins. Touche **H** : le gestionnaire des hubs
    liste les hubs (taille, construction, date, nombre d'ancres) et vos ancres vers chacun. Choisissez un hub, PLACER
    UNE ANCRE, un nom facultatif, PLACER : le menu se ferme et la zone du hub vous suit, à vos pieds, tournée selon votre
-   regard (au quart de tour) ; verte si elle est libre, rouge avec le nombre de blocs gênants sinon. **Entrée** la pose,
-   **Échap** annule. La zone du hub, de vos pieds vers le haut,
+   regard (au quart de tour) ; verte si elle est libre, rouge avec le nombre de blocs gênants sinon. Placez-vous, ouvrez
+   le chat (T) et cliquez sur **[Accepter]** pour la poser là où vous êtes, ou **[Annuler]**. La zone du hub, de vos pieds vers le haut,
    doit être entièrement vide (air) et ne pas toucher un autre Anchor : la **construction du hub** (salle, arène…)
    s'y bâtit aussitôt pour tous les joueurs Phantasmon du serveur. Ses blocs n'existent que pour Phantasmon : on ne
    peut ni les casser ni poser de bloc dessus ; les portes s'ouvrent. Chacun peut poser un Anchor par hub ; pour le

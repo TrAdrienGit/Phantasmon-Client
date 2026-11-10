@@ -69,6 +69,18 @@ public final class HubClient {
 				HubAdminDto.Anchor[].class);
 	}
 
+	/** Admin, hub manager: gives a classic hub its build ({@code fileName}: .schem or .litematic). */
+	public CompletableFuture<HubDto> uploadSchematic(String bearerToken, String hub, String fileName, byte[] bytes) {
+		return httpClient.putBytes(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(hub) + "/schematic?file_name="
+				+ encode(fileName)), bytes, bearerToken, HubDto.class);
+	}
+
+	/** Admin, hub manager: the hub goes without a build. */
+	public CompletableFuture<HubDto> removeSchematic(String bearerToken, String hub) {
+		return httpClient.delete(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(hub) + "/schematic"), bearerToken,
+				HubDto.class);
+	}
+
 	/** Admin, hub manager: renames a hub (its schematic folder follows). */
 	public CompletableFuture<HubDto> renameHub(String bearerToken, String hub, String newName) {
 		return httpClient.post(BackendConfig.BASE_URL.resolve("/admin/hubs/" + encode(hub) + "/rename"),

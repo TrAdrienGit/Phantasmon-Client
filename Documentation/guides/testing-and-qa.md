@@ -110,7 +110,7 @@ Minecraft doit être extraite dans une classe testable et couverte.
 
 - [ ] Backend lancé avec l'arène par défaut, puis avec la vraie construction (`.schem` et `.litematic`) ; deux fichiers
       ou une mauvaise taille : le backend refuse de démarrer avec un message clair.
-- [ ] Placer une ancre (touche H) sur un terrain encombré : zone rouge, Entrée refusée avec le nombre de blocs ; dégagé :
+- [ ] Placer une ancre (touche H) sur un terrain encombré : zone rouge, [Accepter] refusé avec le nombre de blocs ; dégagé :
       la construction apparaît, le joueur se retrouve sur le sol.
 - [ ] Orientation : poser face au nord, à l'est, au sud, à l'ouest — l'entrée suit le regard.
 - [ ] Rendu identique à de vrais blocs, avec et sans Iris (ombres, lumière des lanternes).
@@ -138,6 +138,11 @@ Minecraft doit être extraite dans une classe testable et couverte.
 - [ ] Admin : gestionnaire (H), + CRÉER UN HUB `arene` 31 × 12 × 41 : message, dossier `hub_schematics/hub_arene/`
       créé ; un joueur voit « arene » dans son gestionnaire sans relancer le jeu.
 - [ ] Hub sans construction : l'Anchor se pose, le contour (rectangle) suit l'orientation, on peut entrer dans le hub.
+- [ ] Éclairage : poser une ancre dont la construction couvre plusieurs chunks, se reconnecter plusieurs fois : jamais un
+      morceau de la construction tout noir (avec et sans shaders).
+- [ ] Supprimer une ancre : sa construction disparaît aussitôt chez les autres joueurs du même serveur (`HubAnchorsChanged`).
+- [ ] SCHEMATIC : un fichier de la mauvaise taille est refusé avec sa taille ; le bon devient la construction chez tous ;
+      l'ancien est rangé dans `hub_<nom>/replaced/` ; RETIRER LA CONSTRUCTION la fait disparaître.
 - [ ] Déposer un schematic de 31 × 12 × 41 puis RELIRE LA CONSTRUCTION : la construction apparaît chez
       tous ; un fichier de mauvaise taille : refus avec la raison, l'ancienne construction reste.
 - [ ] Un Anchor par hub : un second dans `arene` refusé, un dans `global` accepté ; deux Anchors qui se touchent :

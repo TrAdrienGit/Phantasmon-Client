@@ -349,6 +349,12 @@ public final class HubController implements HubListener {
 					avatars.setGhost(playerUuid, null);
 				}
 			}
+			case "HubAnchorsChanged" -> {
+				// An anchor of this server was posed or deleted (by anyone): its build appears or goes at once.
+				if (GhostSession.serverFingerprint().equals(data.get("server_fingerprint"))) {
+					refreshAnchors();
+				}
+			}
 			case "HubCatalogChanged" -> {
 				// An admin created, deleted or reloaded a hub: suggestions, anchors and builds follow.
 				refreshHubs();
@@ -637,7 +643,7 @@ public final class HubController implements HubListener {
 
 	// ---------------------------------------------------------------- anchors
 
-	private void refreshAnchors() {
+	public void refreshAnchors() {
 		ticksSinceRefresh = 0;
 		LocalPlayer player = Minecraft.getInstance().player;
 		if (player == null || !session.isAuthenticated()) {

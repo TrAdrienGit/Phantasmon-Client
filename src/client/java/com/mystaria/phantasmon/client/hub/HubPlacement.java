@@ -2,23 +2,21 @@ package com.mystaria.phantasmon.client.hub;
 
 import java.util.List;
 
-import org.lwjgl.glfw.GLFW;
-
-import com.mojang.blaze3d.platform.InputConstants;
-
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
 
+import com.mystaria.phantasmon.client.command.ChatActions;
+
 /**
  * Placing an anchor from the hub manager (Adrien 2026-11-10): the manager closes and the hub's box follows the player,
  * where the anchor would stand (their position, their facing snapped to a quarter turn) — green when the box is empty,
- * red with the number of blocks in the way otherwise (D-34: the build needs air). Enter poses it
- * ({@link HubController#createAnchor}, which checks again), Escape cancels. The action bar says all that.
+ * red with the number of blocks in the way otherwise (D-34: the build needs air). Two chat buttons (Adrien 2026-11-10:
+ * no key) — [Accepter] poses it where the player stands when they click ({@link HubController#createAnchor}, which
+ * checks again), [Annuler] gives up; opening the hub manager (H) gives up too. The action bar says all that.
  */
 public final class HubPlacement {
 
@@ -31,7 +29,6 @@ public final class HubPlacement {
 	private static HubAnchorDto.Size size;
 	private static int inTheWay;
 	private static int ticks;
-	private static boolean enterWasDown = true;
 
 	private HubPlacement() {
 	}
@@ -44,7 +41,50 @@ public final class HubPlacement {
 		size = hubSize;
 		inTheWay = 0;
 		ticks = 0;
-		enterWasDown = true; // the Enter that confirmed the manager's form must not pose the anchor at once
+		postButtons();
+	}
+
+	/** The chat buttons, registered once ({@link ChatActions}); a click once placing is over does nothing. */
+	public static void register() {
+		ChatActions.register("hub.place.accept", HubPlacement::accept);
+		ChatActions.register("hub.place.cancel", () -> {
+			if (hub != null) {
+				hub = null;
+				message(Component.translatable("phantasmon.hub.place.cancelled").withStyle(ChatFormatting.GRAY));
+			}
+		});
+	}
+
+	private static void postButtons() {
+		message(Component.translatable("phantasmon.hub.place.chat", hub, size.x(), size.y(), size.z())
+				.withStyle(ChatFormatting.LIGHT_PURPLE)
+				.append(" ")
+				.append(ChatActions.button("phantasmon.hub.place.accept", "hub.place.accept", ChatFormatting.GREEN))
+				.append(" ")
+				.append(ChatActions.button("phantasmon.hub.place.cancel", "hub.place.cancel", ChatFormatting.RED)));
+	}
+
+	private static void message(Component text) {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (player != null) {
+			player.displayClientMessage(text, false);
+		}
+	}
+
+	private static void accept() {
+		LocalPlayer player = Minecraft.getInstance().player;
+		if (hub == null || player == null) {
+			return;
+		}
+		inTheWay = HubBuilds.blocksInTheWay((ClientLevel) player.level(), layout(player));
+		if (inTheWay > 0) {
+			message(Component.translatable("phantasmon.hub.place.blocked", inTheWay).withStyle(ChatFormatting.RED));
+			postButtons();
+			return;
+		}
+		String posing = hub;
+		hub = null;
+		controller.createAnchor(posing, anchorName);
 	}
 
 	public static boolean active() {
@@ -71,31 +111,10 @@ public final class HubPlacement {
 			hub = null;
 			return;
 		}
-		if (mc.screen instanceof PauseScreen) {
-			// Escape: cancelled (the pause menu that opened stays, as with any Escape).
-			hub = null;
-			player.displayClientMessage(Component.translatable("phantasmon.hub.place.cancelled"), true);
-			return;
-		}
-		if (mc.screen != null) {
-			return;
-		}
-		boolean enterDown = InputConstants.isKeyDown(mc.getWindow().getWindow(), GLFW.GLFW_KEY_ENTER)
-				|| InputConstants.isKeyDown(mc.getWindow().getWindow(), GLFW.GLFW_KEY_KP_ENTER);
-		boolean pressed = enterDown && !enterWasDown;
-		enterWasDown = enterDown;
 		if (ticks++ % CHECK_EVERY == 0) {
 			inTheWay = HubBuilds.blocksInTheWay((ClientLevel) player.level(), layout(player));
 		}
-		if (pressed) {
-			if (inTheWay > 0) {
-				player.displayClientMessage(Component.translatable("phantasmon.hub.place.blocked", inTheWay)
-						.withStyle(ChatFormatting.RED), true);
-				return;
-			}
-			String posing = hub;
-			hub = null;
-			controller.createAnchor(posing, anchorName);
+		if (mc.screen != null) {
 			return;
 		}
 		Component prompt = inTheWay > 0

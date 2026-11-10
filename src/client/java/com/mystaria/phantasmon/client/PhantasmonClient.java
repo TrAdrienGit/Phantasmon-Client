@@ -100,6 +100,7 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostVirtualItems.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
+		com.mystaria.phantasmon.client.hub.HubPlacement.register();
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);
 		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
 		PhantasmonCommands.register(authService, ghostSession, liveTrade, liveBattle);

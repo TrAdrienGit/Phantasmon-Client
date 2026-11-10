@@ -97,8 +97,10 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   construction, date de création (sans l'auteur) et nombre d'ancres ; pour le hub choisi, **ses** ancres (✕ pour
   chacune) et PLACER UNE ANCRE : nom facultatif (`<hub>-<pseudo>` grisé par défaut), puis le menu se ferme et
   `hub/HubPlacement` montre la zone du hub à la position du joueur, tournée au quart de tour selon son regard, verte si
-  libre, rouge sinon (blocs gênants recomptés toutes les 5 ticks, dans la barre d'action). Entrée pose
-  (`HubController.createAnchor`), Échap annule, H rouvre le gestionnaire. Route : `GET /hubs/overview`.
+  libre, rouge sinon (blocs gênants recomptés toutes les 5 ticks, dans la barre d'action). Deux boutons du chat
+  (`ChatActions`, Adrien 2026-11-10 : pas de touche) : [Accepter] pose là où est le joueur au clic
+  (`HubController.createAnchor`), [Annuler] abandonne ; H (rouvrir le gestionnaire) abandonne aussi. Route :
+  `GET /hubs/overview`.
 - **Admin** : tout ce qui suit, plus PLACER UNE ANCRE pour lui-même sur les hubs ordinaires.
 
 - Onglets (admin) : « Hubs » (hubs ordinaires), puis ceux des add-ons, réservés aux admins (`PhantasmonApi.registerHubManagerTab`, interface
@@ -109,6 +111,10 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   création, boutons RENOMMER / RELIRE LA CONSTRUCTION (hubs ordinaires) / boutons de l'onglet / SUPPRIMER, puis la
   liste défilante de ses ancres sur tous les serveurs (nom, rôle, propriétaire, « ce serveur » ou empreinte, dimension,
   coordonnées, date), chacune avec un ✕.
+- SCHEMATIC (hubs classiques) : fenêtre listant les `.schem` / `.litematic` du dossier `schematics/` de l'instance
+  (sous-dossiers compris, les plus récents d'abord, défilement), taille attendue et construction actuelle, OUVRIR LE
+  DOSSIER, ENVOYER (`PUT /admin/hubs/{name}/schematic`, nom de fichier ramené aux caractères acceptés ; refus du backend
+  affiché avec sa raison, par exemple la mauvaise taille), RETIRER LA CONSTRUCTION.
 - Fenêtres : création (nom, largeur, hauteur, longueur ; le nom ne garde que minuscules, chiffres et `_`), renommage,
   confirmations de suppression (hub, ancre). Clavier : Tab, Entrée = valider, Échap = annuler.
 - Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, plus les routes de
