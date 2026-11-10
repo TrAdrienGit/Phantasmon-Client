@@ -129,4 +129,10 @@ Refonte des menus au niveau du menu de Cobblemon Battle Showtime (référence de
 - Routes : `GET /admin/hubs`, `GET /admin/hubs/{name}/anchors`, `POST /admin/hubs/{name}/rename`, création,
   suppression, relecture, schematic (`rest-api.md` du backend).
 
-Prochains lots de la refonte : lobby de combat, puis PC et éditeur, puis écran d'échange (même boîte à outils).
+**Lot 2 (2026-11-11) : PC, éditeur, échange, lobby de combat en V2.** Ces écrans gardent leur canevas 1600 × 900 et
+leur disposition (réglée en jeu), mais leur socle `PhantasmonCanvasScreen` dessine maintenant comme le menu : couleurs
+de la palette de `MenuUi` (Cobblemon ou V1), police `uniform`, relief (`raisedEdge`, `sunkenEdge`, `blackBorder`), fond
+pointillé (`dotGrid`), crochets d'accent (`cornerBrackets`) sur la vue 3D et les fenêtres, puces d'onglet en accent.
+`blitTexture` ne colle plus les textures de la première version pour le fond, les en-têtes, les rails, les fiches, la
+vue 3D et les fenêtres : il les dessine (`drawPanel`) ; seule l'ombre sous le modèle reste une texture. Plus de lueurs
+néon (`glowOutside` / `glowInside` ne gardent que l'ombre portée sombre).

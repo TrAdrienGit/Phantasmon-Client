@@ -743,9 +743,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	private void renderArrowButton(GuiGraphics g, int x, int y, String glyph, boolean hovered) {
 		int[] gradient = hovered ? STD_BUTTON_HOVER : STD_BUTTON;
+		blackBorder(g, x, y, NAV_W, NAV_H, PANEL_BORDER);
 		g.fillGradient(x, y, x + NAV_W, y + NAV_H, gradient[0], gradient[1]);
-		outline(g, x, y, NAV_W, NAV_H, CYAN);
-		drawCentered(g, glyph, x + NAV_W / 2f, y + (NAV_H - 14) / 2f, 2f, CYAN, false, 0f);
+		raisedEdge(g, x, y, NAV_W, NAV_H);
+		drawCentered(g, glyph, x + NAV_W / 2f, y + (NAV_H - 14) / 2f, 2f, WHITE, false, 0f);
 	}
 
 	private void renderFooter(GuiGraphics g, double mx, double my) {

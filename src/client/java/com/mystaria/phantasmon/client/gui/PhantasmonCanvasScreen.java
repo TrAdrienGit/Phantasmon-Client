@@ -120,54 +120,116 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	protected static int[] DANGER_BUTTON;
 	protected static int[] DANGER_BUTTON_HOVER;
 
-	/** Sets the colours above to the current {@link PhantasmonTheme}: V1 keeps the first look, Cobblemon its greys and teal. */
+	/**
+	 * Sets the colours above from the menu palette of the chosen look (redesign V2, 2026-11-10): the same colours as the
+	 * Phantasmon menu and Cobblemon Battle Showtime's — Cobblemon's greys and turquoise, or V1's cyan on navy.
+	 */
 	static void applyTheme() {
-		boolean c = PhantasmonTheme.cobblemon();
-		CYAN = c ? 0xFF38C4BC : 0xFF50E6FF;
-		CYAN2 = c ? 0xFF1F7F7A : 0xFF2FB7C9;
+		com.mystaria.phantasmon.client.gui.menu.MenuUi.Palette p = com.mystaria.phantasmon.client.gui.menu.MenuUi.p();
+		CYAN = p.accent();
+		CYAN2 = p.accentDim();
 		WHITE = 0xFFFFFFFF;
-		MUTED = c ? 0xFFC6C6C6 : 0xFF9FD9E6;
-		DIM = c ? 0xFF8D8D8D : 0xFF999999;
-		TITLE = c ? 0xFFFFFFFF : 0xFF5FE6F2;
-		TEXT2 = c ? 0xFFC6C6C6 : 0xFFCCCCCC;
+		MUTED = p.muted();
+		DIM = p.light();
+		TITLE = p.accent();
+		TEXT2 = p.muted();
 		IV_COLOR = 0xFF88CCFF;
 		EV_COLOR = 0xFFFFCC88;
-		STAT_HEAD = c ? 0xFF8D8D8D : 0xFF6C8C96;
-		SLOT_TOP = c ? 0xFFE6E6E6 : 0xFFCBEAF0;
+		STAT_HEAD = p.light();
+		SLOT_TOP = 0xFFE6E6E6;
 		MALE = 0xFF50BFFF;
 		FEMALE = 0xFFFF7594;
-		STAR = 0xFFFFDD33;
+		STAR = p.star();
 		ACCENT_LEFT = 0xFF50BFFF;
 		ACCENT_RIGHT = 0xFFFF6688;
-		READY_BORDER = 0xFF76FFB0;
+		READY_BORDER = p.good();
 		READY_TEXT = 0xFFBAFFD2;
-		DANGER_BORDER = 0xFFFF5078;
+		DANGER_BORDER = p.danger();
 		ERROR_TEXT = 0xFFFFAA66;
-		PANEL_FILL = c ? 0xE62F2F2F : 0x69081422;
-		PANEL_BORDER = c ? 0xFF676767 : 0xBF50E6FF;
-		PANEL_INNER = c ? 0x204B4B4B : 0x1F50E6FF;
-		RAIL_BORDER = c ? 0xFF676767 : 0x7A50E6FF;
-		LINE_12 = c ? 0x1FFFFFFF : 0x1F50E6FF;
-		LINE_20 = c ? 0x26FFFFFF : 0x3350E6FF;
-		LINE_25 = c ? 0x30FFFFFF : 0x4050E6FF;
-		LINE_28 = c ? 0x38FFFFFF : 0x4750E6FF;
-		LINE_30 = c ? 0x40FFFFFF : 0x4D50E6FF;
-		RAIL_FOOT_BG = c ? 0x40000000 : 0x33000000;
-		CARD_HEAD_BG = c ? 0xFF3D3D3D : 0x6B02080F;
-		INFO_BOX_BG = c ? 0xFF2A2A2A : 0x6100080F;
-		MOVE_BG = c ? 0xFF262626 : 0xFF07131F;
-		STAT_EVEN_BG = c ? 0x0CFFFFFF : 0x08FFFFFF;
-		FOOTER_BG = c ? 0xF0262626 : 0xD1030A14;
-		SLOT_BG = c ? 0xFF4B4B4B : 0x820E3C4E;
-		SLOT_BORDER = c ? 0xFF676767 : 0x5950E6FF;
-		SLOT_HOVER_BG = c ? 0x6038C4BC : 0x5950E6FF;
-		SLOT_SELECTED_BG = c ? 0x8538C4BC : 0x7350E6FF;
-		VEIL = c ? 0xD0101010 : 0xD100050A;
+		PANEL_FILL = p.dark();
+		PANEL_BORDER = p.black();
+		PANEL_INNER = p.light();
+		RAIL_BORDER = p.black();
+		LINE_12 = 0x1FFFFFFF;
+		LINE_20 = 0x26FFFFFF;
+		LINE_25 = 0x30FFFFFF;
+		LINE_28 = 0x38FFFFFF;
+		LINE_30 = 0x40FFFFFF;
+		RAIL_FOOT_BG = p.dark();
+		CARD_HEAD_BG = p.raised();
+		INFO_BOX_BG = p.dark();
+		MOVE_BG = p.panel();
+		STAT_EVEN_BG = 0x0CFFFFFF;
+		FOOTER_BG = p.panel();
+		SLOT_BG = p.panel();
+		SLOT_BORDER = p.black();
+		SLOT_HOVER_BG = p.raised();
+		SLOT_SELECTED_BG = p.accentDim();
+		VEIL = 0xD0101010;
 		BADGE_BORDER = 0x54000000;
-		STD_BUTTON = c ? new int[] { 0xFF4B4B4B, 0xFF3D3D3D } : new int[] { 0xFF18466B, 0xFF0D2A42 };
-		STD_BUTTON_HOVER = c ? new int[] { 0xFF5A5A5A, 0xFF4B4B4B } : new int[] { 0xFF205C8D, 0xFF123859 };
-		DANGER_BUTTON = c ? new int[] { 0xFF6B2A2A, 0xFF4A1C1C } : new int[] { 0xFF6B182A, 0xFF420D18 };
-		DANGER_BUTTON_HOVER = c ? new int[] { 0xFF8A3434, 0xFF5E2424 } : new int[] { 0xFF8D2038, 0xFF591222 };
+		STD_BUTTON = new int[] { p.edge(), p.raised() };
+		STD_BUTTON_HOVER = new int[] { p.light(), p.edge() };
+		DANGER_BUTTON = new int[] { lerpColor(p.danger(), p.dangerDim(), 0.5f), p.dangerDim() };
+		DANGER_BUTTON_HOVER = new int[] { p.danger(), p.dangerDim() };
+	}
+
+	/** Canvas px of one screen pixel, refreshed when the canvas is set up: relief edges are never thinner than that. */
+	private static int line = 1;
+
+	private static com.mystaria.phantasmon.client.gui.menu.MenuUi.Palette palette() {
+		return com.mystaria.phantasmon.client.gui.menu.MenuUi.p();
+	}
+
+	/** Light on top and left, shade below and right, {@link #line} thick: the shape stands out (V2). */
+	protected static void raisedEdge(GuiGraphics g, int x, int y, int w, int h) {
+		int t = line;
+		g.fill(x, y, x + w, y + t, 0x30FFFFFF);
+		g.fill(x, y + t, x + t, y + h, 0x30FFFFFF);
+		g.fill(x, y + h - t, x + w, y + h, 0x50000000);
+		g.fill(x + w - t, y, x + w, y + h - t, 0x50000000);
+	}
+
+	/** Shade on top and left, light below and right: the shape sinks in (V2). */
+	protected static void sunkenEdge(GuiGraphics g, int x, int y, int w, int h) {
+		int t = line;
+		g.fill(x, y, x + w, y + t, 0x50000000);
+		g.fill(x, y + t, x + t, y + h, 0x50000000);
+		g.fill(x, y + h - t, x + w, y + h, 0x30FFFFFF);
+		g.fill(x + w - t, y, x + w, y + h - t, 0x30FFFFFF);
+	}
+
+	/** A one-screen-pixel border around the box (outside it). */
+	protected static void blackBorder(GuiGraphics g, int x, int y, int w, int h, int color) {
+		int t = line;
+		g.fill(x - t, y - t, x + w + t, y, color);
+		g.fill(x - t, y + h, x + w + t, y + h + t, color);
+		g.fill(x - t, y, x, y + h, color);
+		g.fill(x + w, y, x + w + t, y + h, color);
+	}
+
+	/** A fine grid of dots, as on the Phantasmon menu's background. */
+	protected static void dotGrid(GuiGraphics g, int x, int y, int w, int h) {
+		int color = palette().dots();
+		int size = Math.max(line, 2);
+		for (int dy = 14; dy < h - 4; dy += 28) {
+			for (int dx = 14; dx < w - 4; dx += 28) {
+				g.fill(x + dx, y + dy, x + dx + size, y + dy + size, color);
+			}
+		}
+	}
+
+	/** Accent corner brackets around a box (previews and dialogs, like Showtime's bezel). */
+	protected static void cornerBrackets(GuiGraphics g, int x, int y, int w, int h, int color) {
+		int arm = 26;
+		int t = Math.max(line * 2, 4);
+		g.fill(x, y, x + arm, y + t, color);
+		g.fill(x, y, x + t, y + arm, color);
+		g.fill(x + w - arm, y, x + w, y + t, color);
+		g.fill(x + w - t, y, x + w, y + arm, color);
+		g.fill(x, y + h - t, x + arm, y + h, color);
+		g.fill(x, y + h - arm, x + t, y + h, color);
+		g.fill(x + w - arm, y + h - t, x + w, y + h, color);
+		g.fill(x + w - t, y + h - arm, x + w, y + h, color);
 	}
 
 	static {
@@ -219,6 +281,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		scale = s / 2f * MENU_SCALE;
 		originX = (this.width - CANVAS_W * scale) / 2f;
 		originY = (this.height - CANVAS_H * scale) / 2f;
+		line = hairline();
 	}
 
 	@Override
@@ -237,6 +300,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	protected void beginCanvas(GuiGraphics g) {
+		line = hairline();
 		PoseStack pose = g.pose();
 		pose.pushPose();
 		pose.translate(originX, originY, 0);
@@ -266,18 +330,6 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** Z01: page background, translucent fill, 2 px cyan border + 1 px inner line, the two neon bars across the top edge. */
 	protected void renderRootPanel(GuiGraphics g) {
 		blitTexture(g, TEX_BACKGROUND, 0, 0, CANVAS_W, CANVAS_H);
-		g.fill(0, 0, CANVAS_W, CANVAS_H, PANEL_FILL);
-		g.fill(0, 0, CANVAS_W, 2, PANEL_BORDER);
-		g.fill(0, CANVAS_H - 2, CANVAS_W, CANVAS_H, PANEL_BORDER);
-		g.fill(0, 2, 2, CANVAS_H - 2, PANEL_BORDER);
-		g.fill(CANVAS_W - 2, 2, CANVAS_W, CANVAS_H - 2, PANEL_BORDER);
-		outline(g, 2, 2, CANVAS_W - 4, CANVAS_H - 4, PANEL_INNER);
-		int barWidth = Math.round(CANVAS_W * 0.34f);
-		for (int barX : new int[] { 0, CANVAS_W - barWidth }) {
-			g.fillGradient(barX, -15, barX + barWidth, -2, 0x0050E6FF, 0x5550E6FF);
-			g.fill(barX, -2, barX + barWidth, 2, CYAN);
-			g.fillGradient(barX, 2, barX + barWidth, 15, 0x5550E6FF, 0x0050E6FF);
-		}
 	}
 
 	/** Z02 / Z04: the two outward-gradient header plates. */
@@ -291,9 +343,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	 */
 	protected void renderHeaderPlates(GuiGraphics g, int plateWidth) {
 		blitTexture(g, TEX_HEAD_LEFT, 15, 15, plateWidth, 48);
-		outline(g, 15, 15, plateWidth, 48, CYAN2);
 		blitTexture(g, TEX_HEAD_RIGHT, 1585 - plateWidth, 15, plateWidth, 48);
-		outline(g, 1585 - plateWidth, 15, plateWidth, 48, CYAN2);
 	}
 
 	/** IMPORTER + EXPORTER pair (PC and editor headers), centered on x=800 between narrower header plates. */
@@ -308,26 +358,33 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Z03-style primary action button (ÉCHANGER / IMPORTER): glow, gradient, cyan border. */
 	protected void renderPrimaryButtonFrame(GuiGraphics g, int x, int y, int w, int h, boolean hovered, boolean green) {
-		int[] gradient = hovered ? STD_BUTTON_HOVER : STD_BUTTON;
-		glowOutside(g, x, y, w, h, green ? 0x76FFB0 : 0x50E6FF, green ? 0.3f : 0.18f, 8);
-		g.fillGradient(x, y, x + w, y + h, gradient[0], gradient[1]);
-		outline(g, x, y, w, h, green ? READY_BORDER : CYAN);
+		// V2: the main action in accent (green when ready), raised; others in the standard grey.
+		var p = palette();
+		blackBorder(g, x, y, w, h, p.black());
+		if (green) {
+			g.fillGradient(x, y, x + w, y + h, hovered ? p.accentHot() : p.accent(), p.accentDim());
+		} else {
+			int[] gradient = hovered ? STD_BUTTON_HOVER : STD_BUTTON;
+			g.fillGradient(x, y, x + w, y + h, gradient[0], gradient[1]);
+		}
+		raisedEdge(g, x, y, w, h);
 	}
 
 	/** Rail frame (Z05): gradient, border, spaced uppercase title with its separator, and the 2-line hint box at the bottom (Z11). */
 	protected void renderRailFrame(GuiGraphics g, int x, int y, int w, int h, String title, Component hint) {
 		blitTexture(g, TEX_RAIL, x, y, w, h);
-		outline(g, x, y, w, h, RAIL_BORDER);
-		drawText(g, fitText(upper(title), w - 22, 1f, false, 2f), x + 13, y + 17, 1f, MUTED, false, 2f);
-		g.fill(x + 9, y + 36, x + w - 9, y + 36 + hairline(), LINE_25);
+		drawText(g, fitText(upper(title), w - 22, 1f, true, 2f), x + 13, y + 17, 1f, WHITE, true, 2f);
+		g.fill(x + 9, y + 34, x + w - 9, y + 34 + Math.max(line, 2), CYAN);
+		g.fill(x + 9, y + 34 + Math.max(line, 2), x + w - 9, y + 34 + 2 * Math.max(line, 2), palette().black());
 		if (hint == null) {
 			return;
 		}
 		int footY = y + h - 49;
 		g.fill(x + 9, footY, x + w - 9, footY + 40, RAIL_FOOT_BG);
-		outline(g, x + 9, footY, w - 18, 40, LINE_25);
+		sunkenEdge(g, x + 9, footY, w - 18, 40);
 		float lineScale = snapTextScale(1f);
-		List<FormattedCharSequence> lines = font.split(hint, (int) ((w - 32) / lineScale));
+		List<FormattedCharSequence> lines = font.split(hint.copy().withStyle(style -> style.withFont(UNIFORM_FONT)),
+				(int) ((w - 32) / lineScale));
 		int lineCount = Math.min(2, lines.size());
 		float lineHeight = 9 * lineScale;
 		float lineY = footY + (40 - lineCount * lineHeight) / 2f + 1;
@@ -362,24 +419,26 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** {@code details} false = team preview (battle lobby): model and name only — no gender icon, level or held item. */
 	protected void renderSlot(GuiGraphics g, int x, int y, int w, int h, PokemonDto pokemon, SlotLook look, SlotLayout layout,
 			boolean details) {
+		// V2: sunken cases like the menu's rows; the selected one in accent, with its bar on the left.
+		var p = palette();
+		blackBorder(g, x, y, w, h, p.black());
 		switch (look) {
 			case SELECTED -> {
-				g.fill(x, y, x + w, y + h, SLOT_SELECTED_BG);
-				glowInside(g, x, y, w, h, 0x50E6FF, 0.35f, 7);
-				outline(g, x, y, w, h, WHITE);
+				g.fillGradient(x, y, x + w, y + h, p.accentDim(), p.panel());
+				g.fill(x, y, x + Math.max(line * 3, 5), y + h, p.accent());
+				raisedEdge(g, x, y, w, h);
 			}
 			case HOVER -> {
-				g.fill(x, y, x + w, y + h, SLOT_HOVER_BG);
-				outline(g, x, y, w, h, CYAN);
+				g.fill(x, y, x + w, y + h, p.raised());
+				raisedEdge(g, x, y, w, h);
 			}
 			case DRAG_SOURCE -> {
-				g.fill(x, y, x + w, y + h, SLOT_BG);
-				glowInside(g, x, y, w, h, 0x50E6FF, 0.2f, 4);
-				outline(g, x, y, w, h, CYAN2);
+				g.fill(x, y, x + w, y + h, p.dark());
+				sunkenEdge(g, x, y, w, h);
 			}
 			default -> {
-				g.fill(x, y, x + w, y + h, SLOT_BG);
-				outline(g, x, y, w, h, SLOT_BORDER);
+				g.fill(x, y, x + w, y + h, p.panel());
+				sunkenEdge(g, x, y, w, h);
 			}
 		}
 		if (pokemon == null || look == SlotLook.DRAG_SOURCE) {
@@ -435,7 +494,6 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	protected void renderPokemonCard(GuiGraphics g, PokemonDto pokemon, String owner, int dx, int accent,
 			String emptyMessage, boolean showHiddenPower) {
 		blitTexture(g, TEX_CARD, CARD_X + dx, 72, 577, 758);
-		outline(g, CARD_X + dx, 72, 577, 758, CYAN2);
 		g.fill(CARD_X + dx, 72, 796 + dx, 75, accent);
 
 		if (pokemon == null) {
@@ -452,8 +510,8 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Z13: name + gender left, owner centered between them (flex space-between), "Nv. X" right. */
 	private void renderCardHead(GuiGraphics g, PokemonDto pokemon, Look info, String owner, int dx) {
-		g.fill(220 + dx, 75, 795 + dx, 117, CARD_HEAD_BG);
-		g.fill(220 + dx, 117 - hairline(), 795 + dx, 117, LINE_28);
+		g.fillGradient(220 + dx, 75, 795 + dx, 117, palette().edge(), palette().raised());
+		g.fill(220 + dx, 117 - Math.max(line, 2), 795 + dx, 117, palette().black());
 
 		String level = Component.translatable("phantasmon.trade.screen.level", pokemon.level()).getString();
 		// Not bold: the modpack's font renders bold wider than Minecraft measures it, which pushed this right-aligned text out of the card.
@@ -631,8 +689,10 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	protected void infoBox(GuiGraphics g, int x, int y, int w, int h, String labelKey) {
+		// V2: a sunken box, its label in accent.
+		blackBorder(g, x, y, w, h, palette().black());
 		g.fill(x, y, x + w, y + h, INFO_BOX_BG);
-		outline(g, x, y, w, h, LINE_20);
+		sunkenEdge(g, x, y, w, h);
 		drawText(g, upper(Component.translatable(labelKey).getString()), x + 9, y + 8, 1f, TITLE, true, 1.2f);
 	}
 
@@ -640,8 +700,11 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Z28: footer bar with an optional status line on the left (scale 2). */
 	protected void renderFooterBar(GuiGraphics g, String status, int statusColor, float statusMaxWidth) {
-		g.fill(15, 839, 1585, 886, FOOTER_BG);
-		outline(g, 15, 839, 1570, 47, LINE_30);
+		var p = palette();
+		blackBorder(g, 15, 839, 1570, 47, p.black());
+		g.fillGradient(15, 839, 1585, 886, p.raised(), p.panel());
+		g.fill(15, 839, 1585, 839 + line, p.light());
+		raisedEdge(g, 15, 839, 1570, 47);
 		if (status != null) {
 			drawText(g, fitText(status, statusMaxWidth, 2f, false, 0f), 27, 855.5f, 2f, statusColor, false, 0f);
 		}
@@ -654,8 +717,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** Same button with its label at {@code textScale} (2 for the PC's buttons). */
 	protected void renderButton(GuiGraphics g, int x, int y, int w, int h, String labelKey, boolean danger, boolean hovered, float textScale) {
 		int[] gradient = danger ? (hovered ? DANGER_BUTTON_HOVER : DANGER_BUTTON) : (hovered ? STD_BUTTON_HOVER : STD_BUTTON);
+		blackBorder(g, x, y, w, h, palette().black());
 		g.fillGradient(x, y, x + w, y + h, gradient[0], gradient[1]);
-		outline(g, x, y, w, h, danger ? DANGER_BORDER : CYAN);
+		raisedEdge(g, x, y, w, h);
 		String label = upper(Component.translatable(labelKey).getString());
 		float width = textWidth(label, textScale, true, 1.5f);
 		float height = 7 * snapTextScale(textScale);
@@ -665,8 +729,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** Square danger-style close button with a ✕ (same red as QUITTER / SUPPRIMER). */
 	protected void renderCloseButton(GuiGraphics g, int x, int y, int size, boolean hovered) {
 		int[] gradient = hovered ? DANGER_BUTTON_HOVER : DANGER_BUTTON;
+		blackBorder(g, x, y, size, size, palette().black());
 		g.fillGradient(x, y, x + size, y + size, gradient[0], gradient[1]);
-		outline(g, x, y, size, size, DANGER_BORDER);
+		raisedEdge(g, x, y, size, size);
 		drawCentered(g, "✕", x + size / 2f, y + (size - 7 * snapTextScale(2f)) / 2f, 2f, WHITE, false, 0f);
 	}
 
@@ -687,13 +752,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	protected void renderModalCard(GuiGraphics g, int x, int y, int w, int h, float fade) {
-		glowOutside(g, x, y, w, h, 0x50E6FF, 0.18f * fade, 14);
-		// Flush first: the shader color tint must only apply to this one blit, not to the pending batch.
-		g.flush();
-		RenderSystem.setShaderColor(1f, 1f, 1f, fade);
 		blitTexture(g, TEX_MODAL, x, y, w, h);
-		RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-		outline(g, x, y, w, h, withAlpha(CYAN, fade));
 	}
 
 	// =====================================================================
@@ -708,6 +767,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Stretched blit with blending on — flushes the pending fill/text batch first so code order stays draw order (see class javadoc). */
 	protected static void blitTexture(GuiGraphics g, Texture texture, int x, int y, int w, int h) {
+		if (drawPanel(g, texture, x, y, w, h)) {
+			return;
+		}
 		g.flush();
 		RenderSystem.enableBlend();
 		RenderSystem.defaultBlendFunc();
@@ -716,6 +778,66 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 				"textures/gui/" + PhantasmonTheme.current().textureFolder() + "/" + texture.location().getPath() + ".png");
 		g.blit(location, x, y, w, h, 0f, 0f, texture.width(), texture.height(), texture.width(), texture.height());
 		RenderSystem.disableBlend();
+	}
+
+	/**
+	 * V2 (2026-11-10): the screens' panels are drawn in the Phantasmon menu's relief instead of the first look's
+	 * textures — background, header plates, rails, cards, 3D viewports, dialogs. False for the others (the shadow).
+	 */
+	private static boolean drawPanel(GuiGraphics g, Texture texture, int x, int y, int w, int h) {
+		var p = palette();
+		if (texture == TEX_BACKGROUND) {
+			g.fill(x, y, x + w, y + h, p.dark());
+			dotGrid(g, x, y, w, h);
+			int t = line;
+			g.fill(x, y, x + w, y + t, p.light());
+			g.fill(x, y, x + t, y + h, p.light());
+			g.fill(x, y + h - t, x + w, y + h, p.black());
+			g.fill(x + w - t, y, x + w, y + h, p.black());
+			blackBorder(g, x, y, w, h, p.black());
+			return true;
+		}
+		if (texture == TEX_HEAD_LEFT || texture == TEX_HEAD_RIGHT) {
+			int t = Math.max(line, 2);
+			blackBorder(g, x, y, w, h, p.black());
+			g.fillGradient(x, y, x + w, y + h, p.edge(), p.raised());
+			g.fill(x, y, x + w, y + line, p.light());
+			g.fill(x, y + h - 2 * t, x + w, y + h - t, p.black());
+			g.fillGradient(x, y + h - t, x + w, y + h, p.accent(), p.accentDim());
+			if (texture == TEX_HEAD_RIGHT) {
+				// Showtime's hatching, at the right end of the header.
+				for (int i = 0; i < 12; i++) {
+					int hx = x + w - 120 - i * 14;
+					for (int step = 0; step < 18; step += t) {
+						g.fill(hx - step, y + 12 + step, hx - step + 2 * t, y + 12 + step + t, 0x50000000);
+					}
+				}
+			}
+			return true;
+		}
+		if (texture == TEX_RAIL || texture == TEX_CARD) {
+			blackBorder(g, x, y, w, h, p.black());
+			g.fillGradient(x, y, x + w, y + h, p.panel(), p.dark());
+			raisedEdge(g, x, y, w, h);
+			return true;
+		}
+		if (texture == TEX_VIEWPORT) {
+			g.fill(x, y, x + w, y + h, p.dark());
+			dotGrid(g, x, y, w, h);
+			sunkenEdge(g, x, y, w, h);
+			cornerBrackets(g, x, y, w, h, p.accent());
+			return true;
+		}
+		if (texture == TEX_MODAL) {
+			blackBorder(g, x, y, w, h, p.black());
+			g.fill(x, y, x + w, y + h, p.dark());
+			dotGrid(g, x, y, w, h);
+			g.fillGradient(x, y, x + w, y + 8, p.edge(), p.dark());
+			raisedEdge(g, x, y, w, h);
+			cornerBrackets(g, x - 2 * line, y - 2 * line, w + 4 * line, h + 4 * line, p.accent());
+			return true;
+		}
+		return false;
 	}
 
 	/** Screen pixels per canvas px (≈0.8-1 at usual resolutions/GUI scales, never an integer in general). */
@@ -746,6 +868,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Approximates a CSS outer {@code box-shadow} glow with fading rings. */
 	protected void glowOutside(GuiGraphics g, int x, int y, int w, int h, int rgb, float alpha, int size) {
+		if (rgb != 0x000000) {
+			return; // V2: no neon glow, the relief stands for it (a dark drop shadow stays)
+		}
 		int t = hairline();
 		for (int i = t; i <= size; i += t) {
 			float falloff = 1f - (i - t) / (float) size;
@@ -755,6 +880,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Same for an {@code inset} glow (selected slot). */
 	protected void glowInside(GuiGraphics g, int x, int y, int w, int h, int rgb, float alpha, int size) {
+		if (rgb == 0x50E6FF) {
+			return; // V2: no neon glow
+		}
 		int t = hairline();
 		for (int i = t; i <= size; i += t) {
 			float falloff = 1f - (i - t) / (float) size;
@@ -930,8 +1058,11 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		return result.stripTrailing() + ellipsis;
 	}
 
+	private static final ResourceLocation UNIFORM_FONT = ResourceLocation.withDefaultNamespace("uniform");
+
+	/** In the {@code uniform} font, as the Phantasmon menu and Cobblemon's own screens (V2). */
 	protected static MutableComponent styled(String text, boolean bold) {
-		MutableComponent component = Component.literal(text);
+		MutableComponent component = Component.literal(text).withStyle(style -> style.withFont(UNIFORM_FONT));
 		return bold ? component.withStyle(ChatFormatting.BOLD) : component;
 	}
 

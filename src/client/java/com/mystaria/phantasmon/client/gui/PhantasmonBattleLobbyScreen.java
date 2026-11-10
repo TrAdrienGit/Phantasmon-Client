@@ -336,8 +336,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			boolean locked = state.ownReady();
 			boolean hovered = !locked && inside(mx, my, x + 9, 716, 559, 48);
 			int[] gradient = hovered ? STD_BUTTON_HOVER : STD_BUTTON;
-			g.fillGradient(x + 9, 716, x + 568, 764, gradient[0], gradient[1]);
-			outline(g, x + 9, 716, 559, 48, locked ? LINE_30 : CYAN);
+			blackBorder(g, x + 9, 716, 559, 48, PANEL_BORDER);
+			g.fillGradient(x + 9, 716, x + 568, 764, locked ? MOVE_BG : gradient[0], locked ? MOVE_BG : gradient[1]);
+			raisedEdge(g, x + 9, 716, 559, 48);
 			String label = fitText(upper(Component.translatable("phantasmon.battle.lobby.switch_team", sourceLabel(!cobblemon)).getString()),
 					540, 2f, true, 1f);
 			drawCentered(g, label, x + 288, 733, 2f, locked ? DIM : WHITE, true, 1f);
