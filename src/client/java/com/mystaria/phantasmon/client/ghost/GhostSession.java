@@ -177,7 +177,15 @@ public final class GhostSession {
 		webSocketClient.connect(BackendConfig.BASE_URL, authSession.accessToken(), new PhantasmonWebSocketClient.Listener() {
 			@Override
 			public void onBinary(java.nio.ByteBuffer data) {
-				if (generation == connectionGeneration) {
+				if (generation != connectionGeneration || !data.hasRemaining()) {
+					return;
+				}
+				// 0x02: an emote's whole animation (Emotecraft, 2026-11-10); otherwise voice.
+				if (data.get(data.position()) == 0x02) {
+					if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emotecraft")) {
+						com.mystaria.phantasmon.client.compat.emotecraft.HubEmotes.onFrame(data);
+					}
+				} else {
 					com.mystaria.phantasmon.client.voice.HubVoice.onFrame(data);
 				}
 			}

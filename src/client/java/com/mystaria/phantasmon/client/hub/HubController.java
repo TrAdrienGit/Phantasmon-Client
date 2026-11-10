@@ -111,7 +111,11 @@ public final class HubController implements HubListener {
 		this.builds = new HubBuilds(hubClient, session);
 		if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("emotecraft")) {
 			// Our emotes go to the hub, played on our avatar by the others (Emotecraft, 2026-11-10).
-			com.mystaria.phantasmon.client.compat.emotecraft.HubEmotes.register(this::sendEmote);
+			com.mystaria.phantasmon.client.compat.emotecraft.HubEmotes.register(this::sendEmote, frame -> {
+				if (joinedAnchor != null) {
+					ghostSession.sendBinary(frame);
+				}
+			});
 		}
 	}
 
