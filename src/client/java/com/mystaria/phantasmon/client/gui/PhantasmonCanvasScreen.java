@@ -912,9 +912,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		float textX = x + (w - labelWidth(label, textScale)) / 2f;
 		float textY = y + (h - textHeight) / 2f;
 		if ((textColor & 0xFFFFFF) == 0xFFFFFF) {
-			drawText(g, label, textX + t, textY + t, textScale, 0x70000000, true, 0.5f);
+			drawText(g, label, textX + t, textY + t, textScale, 0x70000000, false, 0f);
 		}
-		drawText(g, label, textX, textY, textScale, textColor, true, 0.5f);
+		drawText(g, label, textX, textY, textScale, textColor, false, 0f);
 		return w;
 	}
 
@@ -923,12 +923,12 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	/**
-	 * A badge label's real width: bold as the font measures it, without {@link #textWidth}'s bold safety margin (a
-	 * pixel per glyph, for the modpack's chat font), which pushed every type name to the left (Adrien 2026-11-11).
+	 * A badge label's width. Badges are drawn without bold nor letter-spacing: their width is then exactly what the font
+	 * measures, so the label sits in the middle (Adrien 2026-11-11: with bold, the modpack's font draws wider than it
+	 * measures, and no margin fits every case — labels went left, then over the right edge).
 	 */
 	private float labelWidth(String label, float textScale) {
-		int glyphs = label.codePointCount(0, label.length());
-		return font.width(styled(label, true, uniformAt(textScale))) * snapTextScale(textScale) + snapSpacing(0.5f) * (glyphs - 1);
+		return font.width(styled(label, false, uniformAt(textScale))) * snapTextScale(textScale);
 	}
 
 	/** Physical orange, special blue, status grey — the colours of the games' category icons. */
