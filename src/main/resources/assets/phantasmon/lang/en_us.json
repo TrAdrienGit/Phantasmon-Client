@@ -507,5 +507,11 @@
   "phantasmon.pc.screen.box_now_loose": "Box %s: loose box.",
   "phantasmon.pc.screen.team_box_hint": "Team box: one team per row · double click a row: swap it with your team",
   "phantasmon.pc.screen.team_row_hint": "Team %s · double click: swap it with your team",
-  "phantasmon.pc.screen.team_swapped": "Team %s swapped with your team."
+  "phantasmon.pc.screen.team_swapped": "Team %s swapped with your team.",
+  "phantasmon.pc.screen.search_hint": "Search…",
+  "phantasmon.pc.screen.search_none": "No Pokémon matches the search.",
+  "phantasmon.pc.screen.search_found": "%s Pokémon found%s",
+  "phantasmon.pc.screen.search_boxes": " · boxes %s",
+  "phantasmon.pc.screen.shiny_word": "shiny",
+  "phantasmon.pc.screen.box_name_hint": "Box name…"
 }

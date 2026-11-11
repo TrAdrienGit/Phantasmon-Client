@@ -78,6 +78,13 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   le 1er de l'équipe et inversement), par les déplacements habituels du backend (D-04) envoyés l'un après l'autre.
   Le type de chaque boîte n'est gardé que côté client (`pokemon/PcBoxTypes`, `config/phantasmon-pc-boxes.json`, par
   propriétaire du PC) : rien sur le backend.
+- Recherche (TODO-38, 2026-11-11) : champ dans le bandeau droit de l'en-tête (clic ou Ctrl+F ; ✕ l'efface ; Échap /
+  Entrée rendent le clavier). Chaque mot doit se retrouver parmi les noms (surnom, espèce en français et en anglais),
+  les types et le type Téra, « shiny » / « chromatique », l'objet, le talent, la nature et les attaques, sans tenir
+  compte des majuscules ni des accents. Les Pokémon qui ne correspondent pas restent en place, grisés (équipe et
+  boîte) ; le pied de l'écran donne le nombre trouvé et les boîtes où ils sont. Pas de tri (Adrien).
+- Noms de boîtes (TODO-38) : clic sur le titre de la boîte pour la nommer (24 caractères ; vide = plus de nom ;
+  Entrée garde, Échap annule) ; le titre devient « nom · n/16 ». Gardés avec les types de boîte (`PcBoxTypes`).
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).
 
 **Éditeur**

@@ -77,6 +77,15 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	/** The box type switch, in the box header, left of ▶. */
 	private static final int TYPE_W = 170;
 	private static final int TYPE_X = NEXT_X - 10 - TYPE_W;
+	/** The search field (TODO-38), in the right header plate, left of the totals. */
+	private static final int SEARCH_X = 999;
+	private static final int SEARCH_Y = 21;
+	private static final int SEARCH_W = 232;
+	private static final int SEARCH_H = 36;
+	/** The box title, between ◀ and the type switch: a click names the box (TODO-38). */
+	private static final int TITLE_X = PREV_X + NAV_W + 10;
+	private static final int TITLE_W = TYPE_X - 10 - TITLE_X;
+
 	/** One colour per team row of a team box: teal, violet, amber, rose, green. */
 	private static final int[] TEAM_COLORS = { 0xFF38C4BC, 0xFF9B7BFF, 0xFFFFB347, 0xFFFF6B8B, 0xFF7BD86B };
 	/** Grid slots are shorter than the rail's: same layout logic; model ×2 after Adrien's capture (2026-10-02, too small). */
@@ -131,6 +140,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private UUID lastClickUuid;
 	private long lastClickTime;
 	private static final long DOUBLE_CLICK_MS = 350;
+
+	/** The search (TODO-38): its text, whether it has the keyboard, and each Pokémon's searchable words, cached. */
+	private String search = "";
+	private boolean searchFocused;
+	private final java.util.Map<UUID, String> searchText = new java.util.HashMap<>();
+	/** The box name being typed (click on the box title), or null. */
+	private String renaming;
 
 	private boolean loading;
 	private String statusMessage;
@@ -212,6 +228,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void recomputeSlots() {
+		searchText.clear();
 		Arrays.fill(boxSlots, null);
 		Arrays.fill(teamSlots, null);
 		for (PokemonDto pokemon : allPokemon) {
@@ -245,8 +262,117 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void changeBox(int delta) {
+		renaming = null;
 		currentBox = Math.floorMod(currentBox - 1 + delta, BOX_COUNT) + 1;
 		recomputeSlots();
+	}
+
+	// ---- Search (TODO-38) ----
+
+	/**
+	 * Whether {@code pokemon} answers the search: every word of it must be found among its names (nickname, species
+	 * in French and English), its types (and Tera type), "shiny" / "chromatique", its held item, ability, nature and
+	 * moves — case and accents aside. Those that don't stay in place, greyed (Adrien 2026-11-11).
+	 */
+	private boolean matches(PokemonDto pokemon) {
+		if (search.isBlank() || pokemon == null) {
+			return true;
+		}
+		String haystack = searchText.computeIfAbsent(pokemon.uuid(), uuid -> searchableText(pokemon));
+		for (String word : normalize(search).split("\\s+")) {
+			if (!word.isEmpty() && !haystack.contains(word)) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	private boolean searching() {
+		return !search.isBlank();
+	}
+
+	private static String searchableText(PokemonDto pokemon) {
+		StringBuilder text = new StringBuilder();
+		java.util.function.Consumer<Object> add = value -> {
+			if (value != null) {
+				text.append(' ').append(value);
+			}
+		};
+		add.accept(displayName(pokemon));
+		add.accept(pokemon.species());
+		var species = com.cobblemon.mod.common.api.pokemon.PokemonSpecies.INSTANCE.getByName(pokemon.species());
+		if (species != null) {
+			add.accept(species.getTranslatedName().getString());
+			add.accept(species.getName());
+		}
+		Look look = Look.of(pokemon);
+		for (var type : look.types()) {
+			add.accept(type.getDisplayName().getString());
+			add.accept(type.getName());
+		}
+		if (look.teraType() != null) {
+			add.accept("tera " + look.teraType().getDisplayName().getString() + " " + look.teraType().getName());
+		}
+		if (pokemon.isShiny()) {
+			add.accept("shiny chromatique " + Component.translatable("phantasmon.pc.screen.shiny_word").getString());
+		}
+		add.accept(PokemonGuiRendering.heldItemName(heldItemId(pokemon)));
+		add.accept(heldItemId(pokemon));
+		add.accept(abilityLabel(pokemon.ability()));
+		add.accept(pokemon.ability());
+		add.accept(com.mystaria.phantasmon.client.pokemon.NatureModifiers.displayName(pokemon.nature()));
+		add.accept(pokemon.nature());
+		for (Object move : asList(pokemon.data() == null ? null : pokemon.data().get("moves"))) {
+			add.accept(move);
+			var template = com.cobblemon.mod.common.api.moves.Moves.INSTANCE.getByName(String.valueOf(move));
+			if (template != null) {
+				add.accept(template.getDisplayName().getString());
+			}
+		}
+		return normalize(text.toString());
+	}
+
+	/** Lower case, without accents, so "électrik" finds "Electrik". */
+	private static String normalize(String text) {
+		return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "")
+				.toLowerCase(java.util.Locale.ROOT);
+	}
+
+	/** How many Pokémon answer the search, and in which boxes. */
+	private String searchSummary() {
+		int found = 0;
+		java.util.Set<Integer> boxes = new java.util.TreeSet<>();
+		for (PokemonDto pokemon : allPokemon) {
+			if (matches(pokemon)) {
+				found++;
+				if (pokemon.teamSlot() == null && pokemon.boxId() != null) {
+					boxes.add(pokemon.boxId());
+				}
+			}
+		}
+		if (found == 0) {
+			return Component.translatable("phantasmon.pc.screen.search_none").getString();
+		}
+		String where = boxes.isEmpty() ? "" : Component.translatable("phantasmon.pc.screen.search_boxes",
+				String.join(", ", boxes.stream().map(String::valueOf).toList())).getString();
+		return Component.translatable("phantasmon.pc.screen.search_found", found, where).getString();
+	}
+
+	/** A slot that doesn't answer the search: greyed over its model, above it (the model has depth). */
+	private void greyOut(GuiGraphics g, int x, int y, int w, int h) {
+		g.flush();
+		PoseStack pose = g.pose();
+		pose.pushPose();
+		pose.translate(0, 0, 300);
+		g.fill(x, y, x + w, y + h, 0xC0181818);
+		pose.popPose();
+	}
+
+	/** The box's title: its name and number, or "BOX n / 16". */
+	private String boxTitle() {
+		String name = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.name(pcOwner(), currentBox);
+		return name == null ? upper(Component.translatable("phantasmon.pc.screen.box", currentBox, BOX_COUNT).getString())
+				: name + "  ·  " + currentBox + "/" + BOX_COUNT;
 	}
 
 	private PokemonDto pokemonAt(SlotRef ref) {
@@ -522,6 +648,25 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			changeBox(1);
 			return true;
 		}
+		if (inside(x, y, SEARCH_X + SEARCH_W - 30, SEARCH_Y, 30, SEARCH_H) && !search.isEmpty()) {
+			search = "";
+			searchFocused = false;
+			return true;
+		}
+		boolean onSearch = inside(x, y, SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H);
+		searchFocused = onSearch;
+		if (onSearch) {
+			renaming = null;
+			return true;
+		}
+		if (renaming == null && inside(x, y, TITLE_X, NAV_Y, TITLE_W, NAV_H)) {
+			String name = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.name(pcOwner(), currentBox);
+			renaming = name == null ? "" : name;
+			return true;
+		}
+		if (renaming != null && !inside(x, y, TITLE_X, NAV_Y, TITLE_W, NAV_H)) {
+			saveBoxName();
+		}
 		if (inside(x, y, TYPE_X, NAV_Y, TYPE_W, NAV_H)) {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			boolean team = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.toggle(pcOwner(), currentBox);
@@ -625,8 +770,70 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
 	}
 
+	private void saveBoxName() {
+		com.mystaria.phantasmon.client.pokemon.PcBoxTypes.rename(pcOwner(), currentBox, renaming);
+		renaming = null;
+	}
+
+	@Override
+	public boolean charTyped(char chr, int modifiers) {
+		if (chr < 32 || chr == 127) {
+			return super.charTyped(chr, modifiers);
+		}
+		if (renaming != null) {
+			if (renaming.length() < com.mystaria.phantasmon.client.pokemon.PcBoxTypes.NAME_MAX) {
+				renaming += chr;
+			}
+			return true;
+		}
+		if (searchFocused) {
+			if (search.length() < 40) {
+				search += chr;
+			}
+			return true;
+		}
+		return super.charTyped(chr, modifiers);
+	}
+
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (!deleteConfirmOpen && renaming != null) {
+			switch (keyCode) {
+				case 256 -> renaming = null; // Escape: unchanged
+				case 257, 335 -> saveBoxName(); // Enter
+				case 259 -> {
+					if (!renaming.isEmpty()) {
+						renaming = renaming.substring(0, renaming.length() - 1);
+					}
+				}
+				default -> {
+				}
+			}
+			return true;
+		}
+		if (!deleteConfirmOpen && searchFocused) {
+			switch (keyCode) {
+				case 256, 257, 335 -> searchFocused = false; // Escape / Enter: the search stays, the keyboard goes back
+				case 259 -> {
+					if (!search.isEmpty()) {
+						search = hasControlDown() ? "" : search.substring(0, search.length() - 1);
+					}
+				}
+				case 86 -> {
+					if (hasControlDown()) {
+						String clip = Minecraft.getInstance().keyboardHandler.getClipboard().strip();
+						search = (search + clip).length() > 40 ? search : search + clip;
+					}
+				}
+				default -> {
+				}
+			}
+			return true;
+		}
+		if (!deleteConfirmOpen && keyCode == 70 && hasControlDown()) { // Ctrl+F
+			searchFocused = true;
+			return true;
+		}
 		if (deleteConfirmOpen) {
 			if (keyCode == 256) {
 				deleteConfirmOpen = false;
@@ -783,6 +990,35 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		drawText(g, plus, startX, IMPORT_Y + 17, 2f, CYAN, true, 0f);
 		drawText(g, label, startX + plusWidth + 8, IMPORT_Y + (IMPORT_H - 7 * labelScale) / 2f, labelScale, CYAN, true, 1f);
 		renderExportButton(g, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, inside(mx, my, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H));
+		renderSearchField(g, mx, my);
+	}
+
+	/** The search field (TODO-38): a click or Ctrl+F gives it the keyboard; ✕ clears it. */
+	private void renderSearchField(GuiGraphics g, double mx, double my) {
+		boolean hovered = inside(mx, my, SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H);
+		blackBorder(g, SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H, searchFocused ? CYAN : PANEL_BORDER);
+		g.fill(SEARCH_X, SEARCH_Y, SEARCH_X + SEARCH_W, SEARCH_Y + SEARCH_H, hovered || searchFocused ? MOVE_BG : INFO_BOX_BG);
+		sunkenEdge(g, SEARCH_X, SEARCH_Y, SEARCH_W, SEARCH_H);
+		float textY = SEARCH_Y + (SEARCH_H - 14) / 2f;
+		boolean clear = !search.isEmpty();
+		int textRight = SEARCH_X + SEARCH_W - (clear ? 34 : 10);
+		if (search.isEmpty() && !searchFocused) {
+			drawText(g, fitText(Component.translatable("phantasmon.pc.screen.search_hint").getString(), textRight - SEARCH_X - 12, 2f, false, 0f),
+					SEARCH_X + 10, textY, 2f, DIM, false, 0f);
+		} else {
+			String shown = search;
+			while (!shown.isEmpty() && textWidth(shown, 2f, false, 0f) > textRight - SEARCH_X - 26) {
+				shown = shown.substring(1);
+			}
+			drawText(g, shown, SEARCH_X + 10, textY, 2f, WHITE, false, 0f);
+			if (searchFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
+				drawText(g, "_", SEARCH_X + 12 + textWidth(shown, 2f, false, 0f), textY, 2f, CYAN, false, 0f);
+			}
+		}
+		if (clear) {
+			boolean clearHovered = inside(mx, my, SEARCH_X + SEARCH_W - 30, SEARCH_Y + 4, 26, SEARCH_H - 8);
+			drawCentered(g, "✕", SEARCH_X + SEARCH_W - 17, textY, 2f, clearHovered ? WHITE : MUTED, false, 0f);
+		}
 	}
 
 	private void renderTeamRail(GuiGraphics g, double mx, double my) {
@@ -791,6 +1027,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		for (int i = 0; i < TEAM_SIZE; i++) {
 			SlotRef ref = new SlotRef(SlotRef.Kind.TEAM, i);
 			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, 214, teamSlots[i], lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, 214), RAIL_SLOT);
+			if (searching() && !matches(teamSlots[i])) {
+				greyOut(g, teamSlotX(i), teamSlotY(i), 85, 214);
+			}
 		}
 	}
 
@@ -801,8 +1040,25 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 		renderArrowButton(g, PREV_X, NAV_Y, "◀", inside(mx, my, PREV_X, NAV_Y, NAV_W, NAV_H));
 		renderArrowButton(g, NEXT_X, NAV_Y, "▶", inside(mx, my, NEXT_X, NAV_Y, NAV_W, NAV_H));
-		String boxLabel = upper(Component.translatable("phantasmon.pc.screen.box", currentBox, BOX_COUNT).getString());
-		drawCentered(g, boxLabel, GRID_PANEL_X + GRID_PANEL_W / 2f, NAV_Y + 8, 2f, MUTED, true, 2f);
+		if (renaming != null) {
+			// Naming the box: a field in the title's place; Enter keeps it, Escape gives up, empty removes the name.
+			blackBorder(g, TITLE_X, NAV_Y, TITLE_W, NAV_H, CYAN);
+			g.fill(TITLE_X, NAV_Y, TITLE_X + TITLE_W, NAV_Y + NAV_H, INFO_BOX_BG);
+			sunkenEdge(g, TITLE_X, NAV_Y, TITLE_W, NAV_H);
+			String shown = renaming.isEmpty() ? Component.translatable("phantasmon.pc.screen.box_name_hint").getString() : renaming;
+			String fitted = fitText(shown, TITLE_W - 30, 2f, false, 0f);
+			drawText(g, fitted, TITLE_X + 10, NAV_Y + 8, 2f, renaming.isEmpty() ? DIM : WHITE, false, 0f);
+			if (!renaming.isEmpty() && (System.currentTimeMillis() / 500) % 2 == 0) {
+				drawText(g, "_", TITLE_X + 12 + textWidth(fitted, 2f, false, 0f), NAV_Y + 8, 2f, CYAN, false, 0f);
+			}
+		} else {
+			boolean titleHovered = inside(mx, my, TITLE_X, NAV_Y, TITLE_W, NAV_H);
+			String boxLabel = fitText(boxTitle(), TITLE_W - 20, 2f, true, 2f);
+			drawCentered(g, boxLabel, TITLE_X + TITLE_W / 2f, NAV_Y + 8, 2f, titleHovered ? WHITE : MUTED, true, 2f);
+			if (titleHovered) {
+				g.fill(TITLE_X + 20, NAV_Y + NAV_H - 3, TITLE_X + TITLE_W - 20, NAV_Y + NAV_H - 1, CYAN2);
+			}
+		}
 		g.fill(GRID_PANEL_X + 9, 117, GRID_PANEL_X + GRID_PANEL_W - 9, 117 + hairline(), LINE_25);
 
 		boolean team = teamBox();
@@ -836,6 +1092,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			int y = gridSlotY(i);
 			int h = gridSlotH();
 			renderSlot(g, x, y, GRID_SLOT_W, h, boxSlots[i], lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, h), GRID_SLOT);
+			if (searching() && !matches(boxSlots[i])) {
+				greyOut(g, x, y, GRID_SLOT_W, h);
+			}
 		}
 	}
 
@@ -873,6 +1132,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		} else if (statusMessage != null) {
 			status = statusMessage;
 			color = statusIsError ? ERROR_TEXT : READY_TEXT;
+		} else if (searching()) {
+			status = searchSummary();
+			color = CYAN;
 		} else if (teamBox()) {
 			int row = teamRowAt(mx, my);
 			status = row < 0 ? Component.translatable("phantasmon.pc.screen.team_box_hint").getString()

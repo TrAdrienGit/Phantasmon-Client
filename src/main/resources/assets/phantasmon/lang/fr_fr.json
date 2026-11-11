@@ -507,5 +507,11 @@
   "phantasmon.pc.screen.box_now_loose": "Boîte %s : boîte vrac.",
   "phantasmon.pc.screen.team_box_hint": "Boîte équipes : une équipe par ligne · double-clic sur une ligne : l'échanger avec ton équipe",
   "phantasmon.pc.screen.team_row_hint": "Équipe %s · double-clic : l'échanger avec ton équipe",
-  "phantasmon.pc.screen.team_swapped": "Équipe %s échangée avec ton équipe."
+  "phantasmon.pc.screen.team_swapped": "Équipe %s échangée avec ton équipe.",
+  "phantasmon.pc.screen.search_hint": "Rechercher…",
+  "phantasmon.pc.screen.search_none": "Aucun Pokémon ne correspond à la recherche.",
+  "phantasmon.pc.screen.search_found": "%s Pokémon trouvé(s)%s",
+  "phantasmon.pc.screen.search_boxes": " · boîtes %s",
+  "phantasmon.pc.screen.shiny_word": "brillant",
+  "phantasmon.pc.screen.box_name_hint": "Nom de la boîte…"
 }

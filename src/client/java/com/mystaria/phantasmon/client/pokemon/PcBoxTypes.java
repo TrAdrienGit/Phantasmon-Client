@@ -22,9 +22,10 @@ import com.google.gson.JsonObject;
 import net.fabricmc.loader.api.FabricLoader;
 
 /**
- * Which PC boxes are "team" boxes (TODO-36, Adrien 2026-11-11): a team box shows its rows apart, each row a team, and
- * a double click on a row swaps it with the player's team; the others stay "loose" boxes, sorted at will. Only how a
- * box looks and behaves here: kept in {@code config/phantasmon-pc-boxes.json}, per PC owner, nothing on the backend.
+ * The PC boxes' own settings, per PC owner (Adrien 2026-11-11): which are "team" boxes (TODO-36: a team box shows its
+ * rows apart, each row a team, and a double click on a row swaps it with the player's team; the others stay "loose"
+ * boxes) and their names (TODO-38: a format, a theme...). Only how a box looks here: kept in
+ * {@code config/phantasmon-pc-boxes.json}, nothing on the backend.
  */
 public final class PcBoxTypes {
 
@@ -32,6 +33,9 @@ public final class PcBoxTypes {
 	private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("phantasmon-pc-boxes.json");
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 	private static Map<String, Set<Integer>> teamBoxes;
+	private static Map<String, Map<Integer, String>> names;
+	/** A box name's longest length. */
+	public static final int NAME_MAX = 24;
 
 	private PcBoxTypes() {
 	}
@@ -51,40 +55,85 @@ public final class PcBoxTypes {
 		return team;
 	}
 
-	private static Set<Integer> boxes(UUID owner) {
-		if (teamBoxes == null) {
-			teamBoxes = load();
+	/** The box's name, or null if it has none. */
+	public static String name(UUID owner, int box) {
+		load();
+		Map<Integer, String> owned = names.get(String.valueOf(owner));
+		return owned == null ? null : owned.get(box);
+	}
+
+	/** Names the box; blank: its name goes. */
+	public static void rename(UUID owner, int box, String name) {
+		load();
+		Map<Integer, String> owned = names.computeIfAbsent(String.valueOf(owner), key -> new java.util.TreeMap<>());
+		String clean = name == null ? "" : name.strip();
+		if (clean.isEmpty()) {
+			owned.remove(box);
+		} else {
+			owned.put(box, clean.length() > NAME_MAX ? clean.substring(0, NAME_MAX) : clean);
 		}
+		save();
+	}
+
+	private static Set<Integer> boxes(UUID owner) {
+		load();
 		return teamBoxes.computeIfAbsent(String.valueOf(owner), key -> new TreeSet<>());
 	}
 
-	private static Map<String, Set<Integer>> load() {
-		Map<String, Set<Integer>> loaded = new HashMap<>();
+	/**
+	 * {@code {owner: {"team": [boxes], "names": {box: name}}}}; the first version's {@code {owner: [boxes]}} (team
+	 * boxes only) is still read.
+	 */
+	private static void load() {
+		if (teamBoxes != null) {
+			return;
+		}
+		teamBoxes = new HashMap<>();
+		names = new HashMap<>();
 		if (!Files.exists(FILE)) {
-			return loaded;
+			return;
 		}
 		try {
 			JsonObject json = GSON.fromJson(Files.readString(FILE, StandardCharsets.UTF_8), JsonObject.class);
 			if (json != null) {
 				for (Map.Entry<String, JsonElement> entry : json.entrySet()) {
 					Set<Integer> boxes = new TreeSet<>();
-					entry.getValue().getAsJsonArray().forEach(box -> boxes.add(box.getAsInt()));
-					loaded.put(entry.getKey(), boxes);
+					Map<Integer, String> boxNames = new java.util.TreeMap<>();
+					if (entry.getValue().isJsonArray()) {
+						entry.getValue().getAsJsonArray().forEach(box -> boxes.add(box.getAsInt()));
+					} else {
+						JsonObject owner = entry.getValue().getAsJsonObject();
+						if (owner.has("team")) {
+							owner.getAsJsonArray("team").forEach(box -> boxes.add(box.getAsInt()));
+						}
+						if (owner.has("names")) {
+							owner.getAsJsonObject("names").entrySet()
+									.forEach(name -> boxNames.put(Integer.parseInt(name.getKey()), name.getValue().getAsString()));
+						}
+					}
+					teamBoxes.put(entry.getKey(), boxes);
+					names.put(entry.getKey(), boxNames);
 				}
 			}
 		} catch (IOException | RuntimeException ex) {
-			LOG.warn("Unreadable {}: every box is a loose box", FILE, ex);
+			LOG.warn("Unreadable {}: every box is a loose box, without a name", FILE, ex);
 		}
-		return loaded;
 	}
 
 	private static void save() {
 		JsonObject json = new JsonObject();
-		teamBoxes.forEach((owner, boxes) -> {
+		java.util.Set<String> owners = new java.util.TreeSet<>(teamBoxes.keySet());
+		owners.addAll(names.keySet());
+		for (String owner : owners) {
+			JsonObject entry = new JsonObject();
 			JsonArray array = new JsonArray();
-			boxes.forEach(array::add);
-			json.add(owner, array);
-		});
+			teamBoxes.getOrDefault(owner, Set.of()).forEach(array::add);
+			entry.add("team", array);
+			JsonObject boxNames = new JsonObject();
+			names.getOrDefault(owner, Map.of()).forEach((box, name) -> boxNames.addProperty(String.valueOf(box), name));
+			entry.add("names", boxNames);
+			json.add(owner, entry);
+		}
 		try {
 			Files.writeString(FILE, GSON.toJson(json), StandardCharsets.UTF_8);
 		} catch (IOException ex) {
