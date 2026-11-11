@@ -498,5 +498,7 @@
   "phantasmon.menu.category.music": "Music",
   "phantasmon.menu.category.settings": "Settings",
   "phantasmon.hub_manager.schematic_pick": "Pick a file in the list.",
-  "phantasmon.move.stats": "Power %s  ·  Acc. %s  ·  PP %s"
+  "phantasmon.move.stats": "Power %s  ·  Acc. %s  ·  PP %s",
+  "phantasmon.hub_manager.online": "%s online",
+  "phantasmon.hub_manager.online_detail": "Players in the hub right now: %s"
 }

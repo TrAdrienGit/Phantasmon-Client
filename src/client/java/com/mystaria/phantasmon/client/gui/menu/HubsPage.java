@@ -763,7 +763,11 @@ final class HubsPage implements MenuPage {
 					hub.available() ? c.white() : c.edge());
 			g.fill(x + 2 + rowW - countW - 2, ry + 3, x + 2 + rowW - countW - 1, ry + 11, c.edge());
 			MenuUi.text(g, Component.literal(count), x + 2 + rowW - countW + 2, ry + 4, countW, hub.anchors() > 0 ? c.accent() : c.edge());
-			MenuUi.small(g, Component.literal(size(hub) + "  ·  " + build(hub)), x + 8, ry + 15, rowW - 12, c.muted());
+			// Players in the hub now (2026-11-11), on the right of the second line, green when someone is there.
+			Component online = Component.translatable("phantasmon.hub_manager.online", hub.online());
+			int onlineW = Minecraft.getInstance().font.width(online) + 4;
+			MenuUi.small(g, Component.literal(size(hub) + "  ·  " + build(hub)), x + 8, ry + 15, rowW - onlineW - 16, c.muted());
+			MenuUi.small(g, online, x + 2 + rowW - onlineW - 2, ry + 15, onlineW, hub.online() > 0 ? c.good() : c.edge());
 		}
 		g.disableScissor();
 		MenuUi.scrollbar(g, listRight() - 7, top + 2, view, total, hubScroll, false);
@@ -785,6 +789,7 @@ final class HubsPage implements MenuPage {
 		lines.add(Component.literal(Component.translatable("phantasmon.hub_manager.build", build(hub)).getString()
 				+ (hub.schematic() == null ? "" : "  ·  " + hub.schematic().format() + ", " + Math.max(1, hub.schematic().bytes() / 1024) + " Kio")));
 		lines.add(Component.literal(created(hub)));
+		lines.add(Component.translatable("phantasmon.hub_manager.online_detail", hub.online()));
 		currentTab().details(hub).forEach(lines::add);
 		int shown = Math.min(lines.size(), hub.available() ? 5 : 4);
 		for (int i = 0; i < shown; i++) {
