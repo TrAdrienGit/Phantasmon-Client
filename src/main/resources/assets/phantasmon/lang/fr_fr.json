@@ -452,6 +452,8 @@
   "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] Ce joueur est appairé dans un tournoi : il ne peut combattre que son adversaire de la ronde.",
   "phantasmon.battle.lobby.ambiance": "Ambiance : %s",
   "phantasmon.battle.lobby.ambiance.each": "chacun la sienne",
+  "phantasmon.battle.lobby.intro": "Intro : %s",
+  "phantasmon.battle.lobby.intro.each": "chacun la sienne",
   "phantasmon.admin.hub.muted": "%s est muet dans le chat des hubs jusqu'au %s.",
   "phantasmon.admin.hub.unmuted": "%s peut de nouveau écrire dans le chat des hubs.",
   "phantasmon.admin.hub.not_muted": "%s n'était pas muet.",

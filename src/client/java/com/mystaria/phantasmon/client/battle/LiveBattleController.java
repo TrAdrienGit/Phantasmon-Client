@@ -301,6 +301,25 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
+	/** A Showtime intro by name, or null: none imposed (empty, unknown, or an older backend's random index). */
+	private static BattleCinematic.Intro imposedIntro(Object name) {
+		if (!(name instanceof String text) || text.isEmpty()) {
+			return null;
+		}
+		try {
+			return BattleCinematic.Intro.valueOf(text);
+		} catch (IllegalArgumentException unknown) {
+			return null;
+		}
+	}
+
+	/** Battle intro, for both players; "" = each player's own. */
+	public void lobbySetIntro(String intro) {
+		if (lobby != null && intro != null && !intro.equals(lobby.intro())) {
+			send("BattleLobbySetIntro", Map.of("lobby_uuid", lobby.lobbyUuid(), "intro", intro));
+		}
+	}
+
 	/** The ambiance imposed on the Ghost battle being played or watched (from the lobby), or null: each player's own. */
 	public String battleAmbiance() {
 		String ambiance = battleUuid != null ? battleAmbiance : spectatingUuid != null ? spectatingAmbiance : null;
@@ -767,8 +786,11 @@ public final class LiveBattleController implements LiveBattleListener {
 		List<PokemonDto> opponentTeam = host ? team(data.get("opponent_team")) : List.of();
 		// TODO-26: the backend draws the intro, the same for both players (an older backend sends none: X/Y).
 		// Showtime plays the intro's music, then the battle music when the intro ends.
+		// The lobby's intro when one was picked there (or imposed by an event), the same for both; otherwise Phantasmon
+		// stays out of it and each player sees one of their own choices from Showtime's menu (2026-11-11).
+		BattleCinematic.Intro imposed = imposedIntro(data.get("intro"));
 		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize, team(data.get("own_team")).size(),
-				BattleCinematic.Intro.of(data.get("intro") instanceof Number number ? number.intValue() : 0), null);
+				imposed != null ? imposed : BattleCinematic.pickIntro(), null);
 		heldPackets.clear();
 		if (!host) {
 			// The host's engine will send us the battle through BattlePacket, once its intro is over too.

@@ -452,6 +452,8 @@
   "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] This player is paired in a tournament: they can only battle their round's opponent.",
   "phantasmon.battle.lobby.ambiance": "Ambiance: %s",
   "phantasmon.battle.lobby.ambiance.each": "each their own",
+  "phantasmon.battle.lobby.intro": "Intro: %s",
+  "phantasmon.battle.lobby.intro.each": "each their own",
   "phantasmon.admin.hub.muted": "%s is muted in the hubs' chat until %s.",
   "phantasmon.admin.hub.unmuted": "%s can write in the hubs' chat again.",
   "phantasmon.admin.hub.not_muted": "%s wasn't muted.",

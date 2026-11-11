@@ -50,14 +50,18 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	// ---- Battle format drop-down (TODO-24), bottom left; its list opens upward ----
 	private static final int FORMAT_X = 27;
-	private static final int FORMAT_W = 360;
+	private static final int FORMAT_W = 280;
 	private static final int FORMAT_ROW_H = 30;
 	// ---- Battle ambiance drop-down (Showtime A3), beside the format's; its list opens upward too ----
 	private static final int AMBIANCE_X = FORMAT_X + FORMAT_W + 10;
-	private static final int AMBIANCE_W = 320;
-	private static final int STATUS_X = AMBIANCE_X + AMBIANCE_W + 14;
+	private static final int AMBIANCE_W = 250;
+	// ---- Battle intro drop-down, beside the ambiance's (2026-11-11) ----
+	private static final int INTRO_X = AMBIANCE_X + AMBIANCE_W + 10;
+	private static final int INTRO_W = 250;
+	private static final int STATUS_X = INTRO_X + INTRO_W + 14;
 	private boolean formatListOpen;
 	private boolean ambianceListOpen;
+	private boolean introListOpen;
 	/** Issues of the own Pokémon under the cursor (footer explains them), refreshed every frame. */
 	private List<BattleLobbyState.Issue> hoveredIssues = List.of();
 
@@ -124,6 +128,17 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			ambianceListOpen = false;
 			return true;
 		}
+		if (introListOpen) {
+			List<String> intros = intros();
+			int top = formatListTop(intros.size());
+			for (int i = 0; i < intros.size(); i++) {
+				if (inside(x, y, INTRO_X, top + i * FORMAT_ROW_H, INTRO_W, FORMAT_ROW_H)) {
+					controller.lobbySetIntro(intros.get(i));
+				}
+			}
+			introListOpen = false;
+			return true;
+		}
 		if (quitConfirmOpen) {
 			if (inside(x, y, 695, 476, 103, 28)) {
 				quitConfirmOpen = false;
@@ -140,6 +155,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			formatListOpen = true;
 		} else if (inside(x, y, AMBIANCE_X, 849, AMBIANCE_W, 28)) {
 			ambianceListOpen = true;
+		} else if (inside(x, y, INTRO_X, 849, INTRO_W, 28)) {
+			introListOpen = true;
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
@@ -162,9 +179,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 		if (keyCode == 256) {
-			if (formatListOpen || ambianceListOpen) {
+			if (formatListOpen || ambianceListOpen || introListOpen) {
 				formatListOpen = false;
 				ambianceListOpen = false;
+				introListOpen = false;
 				return true;
 			}
 			// Échap = same as QUITTER: opens the confirmation, or closes it again.
@@ -203,8 +221,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (state == null) {
 			return;
 		}
-		double mx = quitConfirmOpen || formatListOpen || ambianceListOpen ? -1 : toCanvasX(mouseX);
-		double my = quitConfirmOpen || formatListOpen || ambianceListOpen ? -1 : toCanvasY(mouseY);
+		boolean listOpen = formatListOpen || ambianceListOpen || introListOpen;
+		double mx = quitConfirmOpen || listOpen ? -1 : toCanvasX(mouseX);
+		double my = quitConfirmOpen || listOpen ? -1 : toCanvasY(mouseY);
 		int hovered = slotAt(mx, my);
 		hoveredIssues = state.ownIssues(hovered);
 		double lookX = toCanvasX(mouseX);
@@ -224,6 +243,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		if (ambianceListOpen) {
 			renderAmbianceList(graphics, state, mouseX, mouseY);
+		}
+		if (introListOpen) {
+			renderIntroList(graphics, state, mouseX, mouseY);
 		}
 
 		if (quitConfirmOpen) {
@@ -465,6 +487,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		renderPrimaryButtonFrame(g, AMBIANCE_X, 849, AMBIANCE_W, 28, ambianceHovered, false);
 		String ambianceLabel = Component.translatable("phantasmon.battle.lobby.ambiance", ambianceName(state.ambiance())).getString() + "  ▲";
 		drawText(g, fitText(ambianceLabel, AMBIANCE_W - 16, 2f, false, 0f), AMBIANCE_X + 8, 856, 2f, CYAN, false, 0f);
+		boolean introHovered = inside(mx, my, INTRO_X, 849, INTRO_W, 28);
+		renderPrimaryButtonFrame(g, INTRO_X, 849, INTRO_W, 28, introHovered, false);
+		String introLabel = Component.translatable("phantasmon.battle.lobby.intro", introName(state.intro())).getString() + "  ▲";
+		drawText(g, fitText(introLabel, INTRO_W - 16, 2f, false, 0f), INTRO_X + 8, 856, 2f, CYAN, false, 0f);
 		renderButton(g, MUSIC_X, 849, MUSIC_W, 28, "phantasmon.music.button", false, inside(mx, my, MUSIC_X, 849, MUSIC_W, 28));
 		if (state.timerOn()) {
 			long left = state.timerSecondsLeft();
@@ -527,6 +553,44 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static String ambianceName(String id) {
 		return id == null || id.isEmpty() ? Component.translatable("phantasmon.battle.lobby.ambiance.each").getString()
 				: com.mystaria.showtime.ambiance.Ambiances.displayName(id).getString();
+	}
+
+	/** "" (each player's own), then every Showtime intro. */
+	private static List<String> intros() {
+		List<String> list = new java.util.ArrayList<>();
+		list.add("");
+		for (com.mystaria.showtime.battle.BattleCinematic.Intro each : com.mystaria.showtime.battle.BattleCinematic.Intro.values()) {
+			list.add(each.name());
+		}
+		return list;
+	}
+
+	private static String introName(String name) {
+		return name == null || name.isEmpty() ? Component.translatable("phantasmon.battle.lobby.intro.each").getString()
+				: Component.translatable("cobblemon_battle_showtime.intro.name." + name.toLowerCase(java.util.Locale.ROOT)).getString();
+	}
+
+	/** The intro list, like the ambiance's. */
+	private void renderIntroList(GuiGraphics g, BattleLobbyState state, int mouseX, int mouseY) {
+		beginModalLayer(g, 0f);
+		double mx = toCanvasX(mouseX);
+		double my = toCanvasY(mouseY);
+		List<String> intros = intros();
+		int top = formatListTop(intros.size());
+		g.fill(INTRO_X - 4, top - 4, INTRO_X + INTRO_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
+		outline(g, INTRO_X - 4, top - 4, INTRO_W + 8, 849 - top + 4, CYAN);
+		for (int i = 0; i < intros.size(); i++) {
+			String name = intros.get(i);
+			int rowY = top + i * FORMAT_ROW_H;
+			boolean selected = name.equals(state.intro());
+			boolean hovered = inside(mx, my, INTRO_X, rowY, INTRO_W, FORMAT_ROW_H);
+			if (hovered || selected) {
+				g.fill(INTRO_X, rowY, INTRO_X + INTRO_W, rowY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
+			}
+			drawText(g, fitText((selected ? "✔ " : "   ") + introName(name), INTRO_W - 16, 2f, false, 0f), INTRO_X + 8,
+					rowY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+		}
+		endModalLayer(g);
 	}
 
 	/** The ambiance list, like the format's: above everything, on the canvas transform. */
