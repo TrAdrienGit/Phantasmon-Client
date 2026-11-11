@@ -495,5 +495,6 @@
   "phantasmon.menu.category.hubs": "Hubs",
   "phantasmon.menu.category.music": "Musiques",
   "phantasmon.menu.category.settings": "Paramètres",
-  "phantasmon.hub_manager.schematic_pick": "Choisis un fichier dans la liste."
+  "phantasmon.hub_manager.schematic_pick": "Choisis un fichier dans la liste.",
+  "phantasmon.move.stats": "Puiss. %s  ·  Préc. %s  ·  PP %s"
 }

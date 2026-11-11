@@ -383,8 +383,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		g.fill(x + 9, footY, x + w - 9, footY + 40, RAIL_FOOT_BG);
 		sunkenEdge(g, x + 9, footY, w - 18, 40);
 		float lineScale = snapTextScale(1f);
-		List<FormattedCharSequence> lines = font.split(hint.copy().withStyle(style -> style.withFont(UNIFORM_FONT)),
-				(int) ((w - 32) / lineScale));
+		List<FormattedCharSequence> lines = font.split(hint, (int) ((w - 32) / lineScale));
 		int lineCount = Math.min(2, lines.size());
 		float lineHeight = 9 * lineScale;
 		float lineY = footY + (40 - lineCount * lineHeight) / 2f + 1;
@@ -629,24 +628,14 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			int rowY = 512 + i * 76;
 			int rowH = 68;
 			g.fill(237 + dx, rowY, 522 + dx, rowY + rowH, MOVE_BG);
-			outline(g, 237 + dx, rowY, 285, rowH, LINE_12);
+			sunkenEdge(g, 237 + dx, rowY, 285, rowH);
 			if (i >= moves.size()) {
 				continue;
 			}
-			// Name on top, its type badge (same size as the other badges) underneath — side by side the badge
-			// had to stay tiny to leave room for the name (Adrien 2026-10-02).
 			String moveId = moves.get(i).toString();
 			MoveTemplate template = Moves.INSTANCE.getByName(moveId);
 			ElementalType type = moveType(moveId, template, asMap(data.get("ivs")));
-			boolean hasType = type != null;
-			int badgeHeight = typeBadgeHeight(VALUE_SCALE);
-			float nameHeight = 7 * snapTextScale(VALUE_SCALE);
-			float blockTop = rowY + (rowH - nameHeight - (hasType ? 6 + badgeHeight : 0)) / 2f;
-			String move = fitText(template != null ? template.getDisplayName().getString() : moveId, 265, VALUE_SCALE, false, 0f);
-			drawText(g, move, 247 + dx, blockTop, VALUE_SCALE, TEXT2, false, 0f);
-			if (hasType) {
-				drawTypeBadge(g, type, 247 + dx, blockTop + nameHeight + 6, VALUE_SCALE);
-			}
+			renderMoveDetails(g, 237 + dx, rowY, 285, rowH, moveId, template, type, WHITE, 0);
 		}
 
 		// Z24-Z25 IV / EV
@@ -804,10 +793,10 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			g.fill(x, y, x + w, y + line, p.light());
 			g.fill(x, y + h - 2 * t, x + w, y + h - t, p.black());
 			g.fillGradient(x, y + h - t, x + w, y + h, p.accent(), p.accentDim());
-			if (texture == TEX_HEAD_RIGHT) {
-				// Showtime's hatching, at the right end of the header.
+			if (texture == TEX_HEAD_LEFT && w > 400) {
+				// Showtime's hatching, at the free right end of the title plate (the right plate holds counters).
 				for (int i = 0; i < 12; i++) {
-					int hx = x + w - 120 - i * 14;
+					int hx = x + w - 30 - i * 14;
 					for (int step = 0; step < 18; step += t) {
 						g.fill(hx - step, y + 12 + step, hx - step + 2 * t, y + 12 + step + t, 0x50000000);
 					}
@@ -897,21 +886,83 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Same badge with its text at {@code textScale} (2 for the enlarged Téracristal value); height grows with it. */
 	protected int drawTypeBadge(GuiGraphics g, ElementalType type, float xf, float yf, float textScale) {
+		return drawBadge(g, upper(type.getDisplayName().getString()), typeColor(type), xf, yf, textScale);
+	}
+
+	/**
+	 * A badge (types, move categories), V2: a lit gradient of its colour, rounded corners, a shine on top and a shade
+	 * below, a dark rim; black or white text by luminance, with a soft shadow on white. Returns its width.
+	 */
+	protected int drawBadge(GuiGraphics g, String label, int bg, float xf, float yf, float textScale) {
 		int x = Math.round(xf);
 		int y = Math.round(yf);
-		String label = upper(type.getDisplayName().getString());
-		int w = typeBadgeWidth(type, textScale);
+		int w = badgeWidth(label, textScale);
 		int h = typeBadgeHeight(textScale);
-		int bg = typeColor(type);
-		int t = hairline();
-		g.fill(x + t, y + t, x + w - t, y + h - t, bg);
-		g.fill(x + t, y, x + w - t, y + t, BADGE_BORDER);
-		g.fill(x + t, y + h - t, x + w - t, y + h, BADGE_BORDER);
-		g.fill(x, y + t, x + t, y + h - t, BADGE_BORDER);
-		g.fill(x + w - t, y + t, x + w, y + h - t, BADGE_BORDER);
+		int t = line;
+		int rim = 0xB0000000;
+		g.fill(x + t, y, x + w - t, y + t, rim);
+		g.fill(x + t, y + h - t, x + w - t, y + h, rim);
+		g.fill(x, y + t, x + t, y + h - t, rim);
+		g.fill(x + w - t, y + t, x + w, y + h - t, rim);
+		g.fillGradient(x + t, y + t, x + w - t, y + h - t, lerpColor(bg, 0xFFFFFFFF, 0.22f) | 0xFF000000, lerpColor(bg, 0xFF000000, 0.18f) | 0xFF000000);
+		g.fill(x + t, y + t, x + w - t, y + 2 * t, 0x50FFFFFF);
+		g.fill(x + t, y + h - 2 * t, x + w - t, y + h - t, 0x40000000);
+		int textColor = 0xFF000000 | PokemonGuiRendering.readableTextColor(bg);
 		float textHeight = 7 * snapTextScale(textScale);
-		drawText(g, label, x + 8, y + (h - textHeight) / 2f, textScale, 0xFF000000 | PokemonGuiRendering.readableTextColor(bg), false, 0.5f);
+		float textX = x + (w - textWidth(label, textScale, true, 0.5f)) / 2f;
+		float textY = y + (h - textHeight) / 2f;
+		if ((textColor & 0xFFFFFF) == 0xFFFFFF) {
+			drawText(g, label, textX + t, textY + t, textScale, 0x70000000, true, 0.5f);
+		}
+		drawText(g, label, textX, textY, textScale, textColor, true, 0.5f);
 		return w;
+	}
+
+	protected int badgeWidth(String label, float textScale) {
+		return Math.round(textWidth(label, textScale, true, 0.5f)) + 18;
+	}
+
+	/** Physical orange, special blue, status grey — the colours of the games' category icons. */
+	protected static int categoryColor(String category) {
+		return switch (category == null ? "" : category.toLowerCase(Locale.ROOT)) {
+			case "physical" -> 0xFFE8743B;
+			case "special" -> 0xFF4E79C9;
+			default -> 0xFF8C8C8C;
+		};
+	}
+
+	/**
+	 * A move's row content (V2, Adrien 2026-11-11: the move boxes were half empty): its name, under it its power,
+	 * accuracy and PP; on the right its type badge and, under it, its category. {@code name} null: the move's own name.
+	 */
+	protected void renderMoveDetails(GuiGraphics g, int x, int y, int w, int h, String moveId, MoveTemplate template, ElementalType type,
+			int nameColor, int rightReserve) {
+		String name = template != null ? template.getDisplayName().getString() : moveId;
+		int right = x + w - rightReserve;
+		int badgeW = type == null ? 0 : typeBadgeWidth(type, VALUE_SCALE);
+		int badgeH = typeBadgeHeight(VALUE_SCALE);
+		boolean compact = h < 90;
+		float nameHeight = 7 * snapTextScale(VALUE_SCALE);
+		float statsHeight = 7 * snapTextScale(1f);
+		float block = nameHeight + 8 + statsHeight;
+		float top = y + (h - block) / 2f;
+		drawText(g, fitText(name, right - x - badgeW - 24, VALUE_SCALE, false, 0f), x + 10, top, VALUE_SCALE, nameColor, false, 0f);
+		if (template != null) {
+			String power = template.getPower() > 0 ? String.valueOf((int) template.getPower()) : "—";
+			String accuracy = template.getAccuracy() > 0 ? (int) template.getAccuracy() + "%" : "—";
+			String stats = Component.translatable("phantasmon.move.stats", power, accuracy, template.getMaxPp()).getString();
+			drawText(g, fitText(stats, right - x - badgeW - 24, 1f, false, 0f), x + 10, top + nameHeight + 8, 1f, MUTED, false, 0f);
+		}
+		if (type != null) {
+			float badgeY = template == null ? y + (h - badgeH) / 2f : y + (compact ? 6 : h / 2f - badgeH - 3);
+			drawTypeBadge(g, type, right - 10 - badgeW, badgeY, VALUE_SCALE);
+			if (template != null) {
+				String category = template.getDamageCategory().getDisplayName().getString();
+				int categoryW = badgeWidth(upper(category), 1f);
+				drawBadge(g, upper(category), categoryColor(template.getDamageCategory().getName()), right - 10 - categoryW,
+						badgeY + badgeH + (compact ? 4 : 6), 1f);
+			}
+		}
 	}
 
 	protected int typeBadgeHeight(float textScale) {
@@ -939,7 +990,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	protected int typeBadgeWidth(ElementalType type, float textScale) {
-		return Math.round(textWidth(upper(type.getDisplayName().getString()), textScale, false, 0.5f)) + 16;
+		return badgeWidth(upper(type.getDisplayName().getString()), textScale);
 	}
 
 	protected void drawGender(GuiGraphics g, PokemonGender gender, float x, float y, float textScale) {
@@ -996,12 +1047,13 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		}
 		float effectiveScale = snapTextScale(textScale);
 		float effectiveSpacing = snapSpacing(spacing);
+		boolean uniform = uniformAt(textScale);
 		PoseStack pose = g.pose();
 		pose.pushPose();
 		pose.translate(snapX(x), snapY(y), 0);
 		pose.scale(effectiveScale, effectiveScale, 1f);
 		if (effectiveSpacing <= 0f) {
-			g.drawString(font, styled(text, bold), 0, 0, color, false);
+			g.drawString(font, styled(text, bold, uniform), 0, 0, color, false);
 		} else {
 			float cursor = 0f;
 			int i = 0;
@@ -1010,9 +1062,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 				String glyph = new String(Character.toChars(codePoint));
 				pose.pushPose();
 				pose.translate(cursor, 0, 0);
-				g.drawString(font, styled(glyph, bold), 0, 0, color, false);
+				g.drawString(font, styled(glyph, bold, uniform), 0, 0, color, false);
 				pose.popPose();
-				cursor += font.width(styled(glyph, bold)) + effectiveSpacing / effectiveScale;
+				cursor += font.width(styled(glyph, bold, uniform)) + effectiveSpacing / effectiveScale;
 				i += Character.charCount(codePoint);
 			}
 		}
@@ -1042,7 +1094,8 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		int glyphs = text.codePointCount(0, text.length());
 		// Bold safety margin: some modpack fonts draw bold one font pixel wider per glyph than font.width() reports.
 		int boldMargin = bold ? glyphs : 0;
-		return (font.width(styled(text, bold)) + boldMargin) * snapTextScale(textScale) + snapSpacing(spacing) * (glyphs - 1);
+		return (font.width(styled(text, bold, uniformAt(textScale))) + boldMargin) * snapTextScale(textScale)
+				+ snapSpacing(spacing) * (glyphs - 1);
 	}
 
 	/** Truncates with "…" so the text fits in {@code maxWidth} canvas px (no overflowing text). */
@@ -1060,10 +1113,26 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	private static final ResourceLocation UNIFORM_FONT = ResourceLocation.withDefaultNamespace("uniform");
 
-	/** In the {@code uniform} font, as the Phantasmon menu and Cobblemon's own screens (V2). */
 	protected static MutableComponent styled(String text, boolean bold) {
-		MutableComponent component = Component.literal(text).withStyle(style -> style.withFont(UNIFORM_FONT));
+		return styled(text, bold, false);
+	}
+
+	/**
+	 * {@code uniform}: in Cobblemon's {@code uniform} font, as the Phantasmon menu (V2). It is only readable from two
+	 * screen pixels per font pixel; smaller text keeps Minecraft's font, sharp at one (Adrien 2026-11-11: small V2 texts
+	 * were unreadable).
+	 */
+	protected static MutableComponent styled(String text, boolean bold, boolean uniform) {
+		MutableComponent component = Component.literal(text);
+		if (uniform) {
+			component = component.withStyle(style -> style.withFont(UNIFORM_FONT));
+		}
 		return bold ? component.withStyle(ChatFormatting.BOLD) : component;
+	}
+
+	/** Whether text drawn at {@code textScale} gets the uniform font (two screen pixels per font pixel or more). */
+	protected boolean uniformAt(float textScale) {
+		return snapTextScale(textScale) * pixelsPerCanvasPx() >= 1.9f;
 	}
 
 	protected static String upper(String text) {

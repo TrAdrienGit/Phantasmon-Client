@@ -45,10 +45,10 @@ final class HubsPage implements MenuPage {
 	private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm").withZone(ZoneId.systemDefault());
 	static final Path SCHEMATICS_DIR = FabricLoader.getInstance().getGameDir().resolve("schematics");
 	private static final int CHIP_H = 14;
-	private static final int HUB_H = 22;
-	private static final int HUB_PITCH = 24;
-	private static final int ANCHOR_H = 20;
-	private static final int ANCHOR_PITCH = 22;
+	private static final int HUB_H = 26;
+	private static final int HUB_PITCH = 28;
+	private static final int ANCHOR_H = 25;
+	private static final int ANCHOR_PITCH = 27;
 	private static final int BUTTON_H = 16;
 
 	private final PhantasmonMenuScreen screen;
@@ -683,7 +683,7 @@ final class HubsPage implements MenuPage {
 	}
 
 	private int actionsY() {
-		return listTop() + 62;
+		return listTop() + 74;
 	}
 
 	private int actionW() {
@@ -759,11 +759,11 @@ final class HubsPage implements MenuPage {
 			}
 			String count = String.valueOf(hub.anchors());
 			int countW = Minecraft.getInstance().font.width(count) + 12;
-			MenuUi.text(g, Component.literal(hub.name()), x + 8, ry + 3, rowW - countW - 10,
+			MenuUi.text(g, Component.literal(hub.name()), x + 8, ry + 4, rowW - countW - 10,
 					hub.available() ? c.white() : c.edge());
 			g.fill(x + 2 + rowW - countW - 2, ry + 3, x + 2 + rowW - countW - 1, ry + 11, c.edge());
-			MenuUi.text(g, Component.literal(count), x + 2 + rowW - countW + 2, ry + 3, countW, hub.anchors() > 0 ? c.accent() : c.edge());
-			MenuUi.small(g, Component.literal(size(hub) + "  ·  " + build(hub)), x + 8, ry + 13, rowW - 12, c.muted());
+			MenuUi.text(g, Component.literal(count), x + 2 + rowW - countW + 2, ry + 4, countW, hub.anchors() > 0 ? c.accent() : c.edge());
+			MenuUi.small(g, Component.literal(size(hub) + "  ·  " + build(hub)), x + 8, ry + 15, rowW - 12, c.muted());
 		}
 		g.disableScissor();
 		MenuUi.scrollbar(g, listRight() - 7, top + 2, view, total, hubScroll, false);
@@ -783,14 +783,15 @@ final class HubsPage implements MenuPage {
 		List<Component> lines = new ArrayList<>();
 		lines.add(Component.literal(Component.translatable("phantasmon.hub_manager.kind", kindLabel(hub)).getString() + "  ·  " + size(hub)));
 		lines.add(Component.literal(Component.translatable("phantasmon.hub_manager.build", build(hub)).getString()
-				+ (hub.schematic() == null ? "" : "  ·  " + hub.schematic().format() + ", " + hub.schematic().bytes() / 1024 + " Kio")));
+				+ (hub.schematic() == null ? "" : "  ·  " + hub.schematic().format() + ", " + Math.max(1, hub.schematic().bytes() / 1024) + " Kio")));
 		lines.add(Component.literal(created(hub)));
 		currentTab().details(hub).forEach(lines::add);
-		for (int i = 0; i < lines.size() && i < 4; i++) {
-			MenuUi.small(g, lines.get(i), dx + 8, top + 16 + i * 9, w - 12, c.muted());
+		int shown = Math.min(lines.size(), hub.available() ? 5 : 4);
+		for (int i = 0; i < shown; i++) {
+			MenuUi.small(g, lines.get(i), dx + 8, top + 17 + i * 10, w - 12, c.muted());
 		}
 		if (!hub.available()) {
-			MenuUi.small(g, Component.translatable("phantasmon.hub_manager.unavailable"), dx + 8, top + 16 + 4 * 9, w - 12, c.danger());
+			MenuUi.small(g, Component.translatable("phantasmon.hub_manager.unavailable"), dx + 8, top + 17 + 4 * 10, w - 12, c.danger());
 		}
 
 		List<HubManagerTab.Action> actions = actions(hub);
@@ -828,7 +829,7 @@ final class HubsPage implements MenuPage {
 			MenuUi.row(g, dx, ry, rowW, ANCHOR_H, false);
 			String owner = anchor.ownerName() == null ? anchor.ownerUuid().toString() : anchor.ownerName();
 			String role = "NORMAL".equals(anchor.role()) ? "" : "  [" + anchor.role() + "]";
-			MenuUi.text(g, Component.literal(anchor.name() + role + "  ·  " + owner), dx + 6, ry + 2, rowW - 32, c.white());
+			MenuUi.text(g, Component.literal(anchor.name() + role + "  ·  " + owner), dx + 6, ry + 3, rowW - 32, c.white());
 			String server = anchor.serverFingerprint().equals(here)
 					? Component.translatable("phantasmon.hub_manager.this_server").getString()
 					: Component.translatable("phantasmon.hub_manager.other_server",
@@ -836,10 +837,10 @@ final class HubsPage implements MenuPage {
 			String dimension = anchor.dimension() != null && anchor.dimension().startsWith("minecraft:")
 					? anchor.dimension().substring("minecraft:".length()) : anchor.dimension();
 			MenuUi.small(g, Component.literal(server + "  ·  " + dimension + "  ·  " + Math.round(anchor.x()) + " " + Math.round(anchor.y())
-					+ " " + Math.round(anchor.z()) + (anchor.createdAt() == null ? "" : "  ·  " + date(anchor.createdAt()))), dx + 6, ry + 12,
+					+ " " + Math.round(anchor.z()) + (anchor.createdAt() == null ? "" : "  ·  " + date(anchor.createdAt()))), dx + 6, ry + 14,
 					rowW - 32, c.muted());
 			int del = dx + rowW - 22;
-			MenuUi.mini(g, del, ry + 3, Component.literal("✕"), MenuUi.inside(mouseX, mouseY, del, ry + 3, 18, 14), true, c.white());
+			MenuUi.mini(g, del, ry + 5, Component.literal("✕"), MenuUi.inside(mouseX, mouseY, del, ry + 5, 18, 14), true, c.white());
 		}
 		g.disableScissor();
 		MenuUi.scrollbar(g, right - 5, listTop, view, total, anchorScroll, false);
@@ -895,7 +896,7 @@ final class HubsPage implements MenuPage {
 		for (int i = 0; i < anchors.size(); i++) {
 			int ry = listTop + i * ANCHOR_PITCH - anchorScroll;
 			int del = detailX() + rowW - 22;
-			if (ry >= listTop - 3 && ry < bottom && MenuUi.inside(mouseX, mouseY, del, ry + 3, 18, 14)) {
+			if (ry >= listTop - 5 && ry < bottom && MenuUi.inside(mouseX, mouseY, del, ry + 5, 18, 14)) {
 				MenuUi.click();
 				deleteAnchorDialog(anchors.get(i));
 				return true;

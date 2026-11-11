@@ -1109,21 +1109,20 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			int rowW = COL2_W - 18;
 			boolean open = openPicker == Picker.MOVE && activeMoveSlot == i;
 			boolean hovered = inside(mx, my, rowX, rowY, rowW, MOVE_ROW_H);
-			g.fill(rowX, rowY, rowX + rowW, rowY + MOVE_ROW_H, MOVE_BG);
-			outline(g, rowX, rowY, rowW, MOVE_ROW_H, open ? CYAN : hovered ? CYAN2 : LINE_12);
+			g.fill(rowX, rowY, rowX + rowW, rowY + MOVE_ROW_H, hovered || open ? SLOT_HOVER_BG : MOVE_BG);
+			sunkenEdge(g, rowX, rowY, rowW, MOVE_ROW_H);
+			if (open) {
+				outline(g, rowX, rowY, rowW, MOVE_ROW_H, CYAN);
+			}
 			drawText(g, "▾", rowX + rowW - 24, rowY + (MOVE_ROW_H - 14) / 2f, VALUE_SCALE, open ? CYAN : MUTED, false, 0f);
 
 			String moveId = moveIds[i] == null ? "" : moveIds[i];
 			MoveTemplate template = moveId.isEmpty() ? null : Moves.getByName(moveId);
 			ElementalType moveType = moveType(moveId, template, liveIvs());
-			boolean hasType = moveType != null;
-			int badgeHeight = typeBadgeHeight(VALUE_SCALE);
-			float nameHeight = 7 * snapTextScale(VALUE_SCALE);
-			float blockTop = rowY + (MOVE_ROW_H - nameHeight - (hasType ? 8 + badgeHeight : 0)) / 2f;
-			drawText(g, fitText(moveDisplayName(moveId), rowW - 60, VALUE_SCALE, false, 0f), rowX + 12, blockTop,
-					VALUE_SCALE, moveId.isEmpty() ? DIM : TEXT2, false, 0f);
-			if (hasType) {
-				drawTypeBadge(g, moveType, rowX + 12, blockTop + nameHeight + 8, VALUE_SCALE);
+			if (moveId.isEmpty()) {
+				drawText(g, moveDisplayName(moveId), rowX + 12, rowY + (MOVE_ROW_H - 14) / 2f, VALUE_SCALE, DIM, false, 0f);
+			} else {
+				renderMoveDetails(g, rowX, rowY, rowW, MOVE_ROW_H, moveId, template, moveType, WHITE, 36);
 			}
 		}
 	}

@@ -305,8 +305,9 @@ public final class MenuUi {
 		draw(g, text, x, y, maxWidth, color, false, 1f);
 	}
 
+	/** Secondary text: same size (a smaller uniform font is blurred and unreadable, Adrien 2026-11-11), its colour tells it apart. */
 	public static void small(GuiGraphics g, Component text, int x, int y, int maxWidth, int color) {
-		draw(g, text, x, y, maxWidth, color, false, 0.75f);
+		draw(g, text, x, y, maxWidth, color, false, 1f);
 	}
 
 	public static void centered(GuiGraphics g, Component text, int centerX, int y, int maxWidth, int color) {
