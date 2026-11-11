@@ -25,7 +25,8 @@
 		"BattleExtrasOpponentSlotsMixin",
 		"EntityRendererVoiceIconMixin",
 		"VaryingModelRepositoryLookMixin",
-		"RenderTypeLookMixin"
+		"RenderTypeLookMixin",
+		"PosableEntityModelLookMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1
