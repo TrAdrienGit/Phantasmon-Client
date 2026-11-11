@@ -16,7 +16,8 @@ import com.mystaria.phantasmon.client.hub.HubController;
 
 /**
  * The Phantasmon menu (redesign, Adrien 2026-11-10), built like Cobblemon Battle Showtime's: a header, a sidebar of
- * categories — Hubs (the hub manager), Music, Settings — and the selected category's page. Opened by H (Hubs), Mod Menu
+ * categories — Hubs (the hub manager), the add-ons' pages ({@code PhantasmonApi.registerMenuPage}: Phantasmon Events'
+ * Tournaments), Rewards, Music, Settings — and the selected category's page. Opened by H (Hubs), Mod Menu
  * (Settings) and the battle lobby or Showtime's N key (Music). Colours from the chosen look ({@link MenuUi#p()}).
  */
 public final class PhantasmonMenuScreen extends Screen {
@@ -34,10 +35,19 @@ public final class PhantasmonMenuScreen extends Screen {
 
 	private static HubAccess hubAccess;
 
+	/** A sidebar entry: one of Phantasmon's categories, or an add-on's page. */
+	private record Nav(Category builtIn, com.mystaria.phantasmon.client.api.PhantasmonApi.MenuPageEntry addon) {
+
+		String key() {
+			return builtIn != null ? builtIn.name() : "addon:" + addon.id();
+		}
+	}
+
 	private final Screen parent;
-	private final List<Category> categories = new ArrayList<>();
-	private final java.util.Map<Category, MenuPage> pages = new java.util.EnumMap<>(Category.class);
-	private Category category;
+	private final List<Nav> categories = new ArrayList<>();
+	private final java.util.Map<String, MenuPage> pages = new java.util.HashMap<>();
+	private Nav category;
+	private final Host host = new Host();
 	private MenuDialog dialog;
 	private Component status = Component.empty();
 	private int statusColor;
@@ -52,20 +62,35 @@ public final class PhantasmonMenuScreen extends Screen {
 	}
 
 	public PhantasmonMenuScreen(Screen parent, Category start) {
+		this(parent, start.name());
+	}
+
+	private PhantasmonMenuScreen(Screen parent, String startKey) {
 		super(Component.translatable("phantasmon.menu.title"));
 		this.parent = parent;
 		boolean hubs = hubAccess != null && hubAccess.session().isAuthenticated()
 				&& net.minecraft.client.Minecraft.getInstance().player != null;
 		if (hubs) {
-			categories.add(Category.HUBS);
-			if (AdminSession.isAdmin()) {
-				categories.add(Category.REWARDS); // admins give the looks (TODO-37)
+			categories.add(new Nav(Category.HUBS, null));
+		}
+		for (var addon : com.mystaria.phantasmon.client.api.PhantasmonApi.menuPages()) {
+			if (addon.visible().getAsBoolean()) {
+				categories.add(new Nav(null, addon));
 			}
 		}
-		categories.add(Category.MUSIC);
-		categories.add(Category.SETTINGS);
-		category = categories.contains(start) ? start : Category.SETTINGS;
+		if (hubs && AdminSession.isAdmin()) {
+			categories.add(new Nav(Category.REWARDS, null)); // admins give the looks (TODO-37)
+		}
+		categories.add(new Nav(Category.MUSIC, null));
+		categories.add(new Nav(Category.SETTINGS, null));
+		category = categories.stream().filter(nav -> nav.key().equals(startKey)).findFirst()
+				.orElse(categories.get(categories.size() - 1));
 		statusColor = MenuUi.p().muted();
+	}
+
+	/** The menu opened on an add-on's page ({@code PhantasmonApi.openMenu}). */
+	public static Screen onPage(Screen parent, String addonId) {
+		return new PhantasmonMenuScreen(parent, "addon:" + addonId);
 	}
 
 	/** Mod Menu and the music hooks take a {@code Screen -> Screen}. */
@@ -77,8 +102,8 @@ public final class PhantasmonMenuScreen extends Screen {
 		return new PhantasmonMenuScreen(parent, Category.MUSIC);
 	}
 
-	private MenuPage page(Category each) {
-		return pages.computeIfAbsent(each, key -> switch (key) {
+	private MenuPage page(Nav each) {
+		return pages.computeIfAbsent(each.key(), key -> each.addon() != null ? each.addon().factory().apply(host) : switch (each.builtIn()) {
 			case HUBS -> new HubsPage(this, hubAccess.client(), hubAccess.session(), hubAccess.controller(), AdminSession.isAdmin());
 			case REWARDS -> new RewardsPage(this);
 			case MUSIC -> new MusicPage();
@@ -118,8 +143,9 @@ public final class PhantasmonMenuScreen extends Screen {
 
 	@Override
 	protected void init() {
-		int w = Math.min(width - 16, 520);
-		int h = Math.min(height - 16, 320);
+		boolean wide = page().wide();
+		int w = Math.min(width - 16, wide ? 640 : 520);
+		int h = Math.min(height - 16, wide ? 360 : 320);
 		left = (width - w) / 2;
 		top = (height - h) / 2;
 		right = left + w;
@@ -142,10 +168,14 @@ public final class PhantasmonMenuScreen extends Screen {
 		page().layout(contentX(), top + HEADER_H + 24, right - 10, bottom - 6 - STATUS_H);
 	}
 
-	private void select(Category chosen) {
+	private void select(Nav chosen) {
 		if (chosen != category) {
 			page().close();
+			boolean wasWide = page().wide();
 			category = chosen;
+			if (page().wide() != wasWide) {
+				rebuildWidgets(); // the frame changes size
+			}
 			status(Component.empty(), MenuUi.p().muted());
 		}
 	}
@@ -213,8 +243,65 @@ public final class PhantasmonMenuScreen extends Screen {
 		}
 	}
 
-	private Component categoryName(Category each) {
-		return Component.translatable("phantasmon.menu.category." + each.name().toLowerCase(java.util.Locale.ROOT));
+	private Component categoryName(Nav each) {
+		return each.addon() != null ? each.addon().title()
+				: Component.translatable("phantasmon.menu.category." + each.builtIn().name().toLowerCase(java.util.Locale.ROOT));
+	}
+
+	/** The menu as add-on pages see it: the footer and the dialogs. */
+	private final class Host implements com.mystaria.phantasmon.client.api.MenuHost {
+
+		@Override
+		public void status(Component message, boolean error) {
+			PhantasmonMenuScreen.this.status(message, error ? MenuUi.p().danger() : MenuUi.p().muted());
+		}
+
+		@Override
+		public void confirm(Component title, List<Component> lines, Component confirmLabel, boolean danger, Runnable onConfirm) {
+			MenuDialog opened = new MenuDialog(title, confirmLabel, danger, values -> {
+				closeDialog();
+				onConfirm.run();
+			});
+			lines.forEach(opened::line);
+			openDialog(opened);
+		}
+
+		@Override
+		public void ask(Component title, List<Component> labels, List<String> values, Component confirmLabel,
+				java.util.function.Consumer<List<String>> onConfirm) {
+			MenuDialog opened = new MenuDialog(title, confirmLabel, false, typed -> {
+				dialog.busy = true;
+				dialog.error = null;
+				onConfirm.accept(typed);
+			});
+			for (int i = 0; i < labels.size(); i++) {
+				opened.input(labels.get(i), MenuDialog.Kind.TEXT, 64, i < values.size() ? values.get(i) : "", null);
+			}
+			openDialog(opened);
+		}
+
+		@Override
+		public void dialogError(Component message) {
+			if (dialog != null) {
+				dialog.busy = false;
+				dialog.error = message;
+			}
+		}
+
+		@Override
+		public void closeDialog() {
+			PhantasmonMenuScreen.this.closeDialog();
+		}
+
+		@Override
+		public boolean dialogOpen() {
+			return dialog != null;
+		}
+
+		@Override
+		public void closeMenu() {
+			onClose();
+		}
 	}
 
 	private void navigation(GuiGraphics g, int mouseX, int mouseY) {

@@ -155,6 +155,12 @@ Refonte des menus au niveau du menu de Cobblemon Battle Showtime (référence de
   chacune) et PLACER UNE ANCRE : nom facultatif, puis le menu se ferme et `hub/HubPlacement` montre la zone du hub à
   la position du joueur, tournée au quart de tour selon son regard, verte si libre, rouge sinon ; boutons du chat
   [Accepter] / [Annuler] ; H abandonne aussi. Route : `GET /hubs/overview`.
+- **Pages d'add-ons** (2026-11-11) : `PhantasmonApi.registerMenuPage(MenuPageEntry)` ajoute une catégorie au menu,
+  après Hubs (Phantasmon Events : « Tournois ») ; la page implémente `MenuPage` (publique), dessine avec `MenuUi`
+  (publics aussi : `width`, `paragraph` pour un texte qui passe à la ligne) et reçoit un `MenuHost` (ligne d'état,
+  confirmation, petit formulaire). `MenuPage.wide()` agrandit le menu à 640 × 360. `PhantasmonApi.openMenu(id)`
+  ouvre le menu sur une page ; `PhantasmonApi.drawPlayerHead` dessine la tête d'un joueur (skin du serveur, sinon
+  Mojang, gardé pour la session).
 - **Admin** : puces d'onglets « Hubs », ceux des add-ons (`PhantasmonApi.registerHubManagerTab`, interface
   `api/HubManagerTab` : hubs montrés, lignes de détail, boutons en plus, bouton de création ; un bouton peut déclarer
   des champs `Field`, demandés dans un `MenuDialog` ; Phantasmon Events y ajoute « Hubs Event »), puis « Autres »

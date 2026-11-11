@@ -6,6 +6,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+
 import com.mystaria.phantasmon.client.auth.AuthSession;
 import com.mystaria.phantasmon.client.ghost.GhostSession;
 import com.mystaria.phantasmon.client.hub.HubAnchorDto;
@@ -179,6 +182,40 @@ public final class PhantasmonApi {
 	/** The add-ons' hub manager tabs, in registration order. */
 	public static List<HubManagerTab> hubManagerTabs() {
 		return List.copyOf(HUB_MANAGER_TABS);
+	}
+
+	/**
+	 * A page an add-on adds to the Phantasmon menu (Phantasmon Events: Tournaments): its sidebar {@code id} and
+	 * {@code title}, whether it shows now ({@code visible}, asked each time the menu opens), and the page itself, made
+	 * once per menu with the menu's {@link MenuHost}. Draw it with {@link com.mystaria.phantasmon.client.gui.menu.MenuUi}.
+	 */
+	public record MenuPageEntry(String id, Component title, java.util.function.BooleanSupplier visible,
+			java.util.function.Function<MenuHost, com.mystaria.phantasmon.client.gui.menu.MenuPage> factory) {
+	}
+
+	private static final List<MenuPageEntry> MENU_PAGES = new CopyOnWriteArrayList<>();
+
+	/** Adds a page to the Phantasmon menu, after Hubs. */
+	public static void registerMenuPage(MenuPageEntry page) {
+		MENU_PAGES.add(page);
+	}
+
+	public static List<MenuPageEntry> menuPages() {
+		return List.copyOf(MENU_PAGES);
+	}
+
+	/** Opens the Phantasmon menu on an add-on's page ({@link #registerMenuPage}), or its first page if hidden. */
+	public static void openMenu(String pageId) {
+		Minecraft mc = Minecraft.getInstance();
+		mc.setScreen(com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.onPage(mc.screen, pageId));
+	}
+
+	/**
+	 * A player's face, hat layer included, {@code size} pixels square at {@code (x, y)}: their skin from this server,
+	 * else from Mojang (fetched once, kept for the session), Steve or Alex meanwhile.
+	 */
+	public static void drawPlayerHead(net.minecraft.client.gui.GuiGraphics g, java.util.UUID player, int x, int y, int size) {
+		net.minecraft.client.gui.components.PlayerFaceRenderer.draw(g, com.mystaria.phantasmon.client.hub.HubAvatars.skinOf(player), x, y, size);
 	}
 
 	/** Phantasmon's WebSocket received an {@code Events*} message (client thread). */

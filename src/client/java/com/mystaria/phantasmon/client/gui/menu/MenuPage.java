@@ -7,7 +7,7 @@ import net.minecraft.network.chat.Component;
  * One category of the Phantasmon menu (Hubs, Music, Settings): it draws and handles its content area, from
  * {@code (x, y)} to {@code (right, bottom)}, set by {@link #layout} before every frame. GUI pixels, client thread.
  */
-interface MenuPage {
+public interface MenuPage {
 
 	Component title();
 
@@ -38,6 +38,11 @@ interface MenuPage {
 	}
 
 	default void tick() {
+	}
+
+	/** Whether the menu grows for this page (up to 640 × 360 instead of 520 × 320): tables, brackets. */
+	default boolean wide() {
+		return false;
 	}
 
 	/** Leaving the page or the menu. */

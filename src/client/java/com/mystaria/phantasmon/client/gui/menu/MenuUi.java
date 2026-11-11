@@ -320,6 +320,29 @@ public final class MenuUi {
 				center, true, null, null);
 	}
 
+	/** A text's width in the menu's font. */
+	public static int width(Component text) {
+		return Minecraft.getInstance().font.width(text.copy().withStyle(s -> s.withFont(UNIFORM)));
+	}
+
+	/**
+	 * A paragraph in the menu's font, wrapped to {@code maxWidth}; returns its height (10 per line). Long texts wrap
+	 * here instead of shrinking as {@link #text} does.
+	 */
+	public static int paragraph(GuiGraphics g, Component text, int x, int y, int maxWidth, int color) {
+		var font = Minecraft.getInstance().font;
+		var lines = font.split(text.copy().withStyle(s -> s.withFont(UNIFORM)), Math.max(10, maxWidth));
+		for (int i = 0; i < lines.size(); i++) {
+			g.drawString(font, lines.get(i), x, y + i * 10, color, true);
+		}
+		return lines.size() * 10;
+	}
+
+	/** {@link #paragraph}'s height without drawing it. */
+	public static int paragraphHeight(Component text, int maxWidth) {
+		return Minecraft.getInstance().font.split(text.copy().withStyle(s -> s.withFont(UNIFORM)), Math.max(10, maxWidth)).size() * 10;
+	}
+
 	public static boolean inside(double mouseX, double mouseY, int x, int y, int w, int h) {
 		return mouseX >= x && mouseX < x + w && mouseY >= y && mouseY < y + h;
 	}

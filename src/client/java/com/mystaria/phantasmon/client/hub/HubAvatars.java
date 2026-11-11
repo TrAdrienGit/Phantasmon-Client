@@ -317,6 +317,27 @@ public final class HubAvatars {
 		return anchor.originY();
 	}
 
+	/**
+	 * Any player's skin, for their face in a menu: this server's if they are connected, else Mojang's (asked once, then
+	 * kept), the default skin meanwhile.
+	 */
+	public static PlayerSkin skinOf(UUID playerUuid) {
+		Minecraft mc = Minecraft.getInstance();
+		net.minecraft.client.multiplayer.PlayerInfo info = mc.getConnection() == null ? null : mc.getConnection().getPlayerInfo(playerUuid);
+		if (info != null) {
+			return info.getSkin();
+		}
+		PlayerSkin known = SKINS.get(playerUuid);
+		if (known != null) {
+			return known;
+		}
+		Long retry = SKIN_RETRY_AT.get(playerUuid);
+		if (retry == null || System.currentTimeMillis() >= retry) {
+			loadSkin(playerUuid);
+		}
+		return net.minecraft.client.resources.DefaultPlayerSkin.get(playerUuid);
+	}
+
 	/** Mojang profile (with its textures) then the skin itself, both off the client thread; default skin meanwhile. */
 	private static void loadSkin(UUID playerUuid) {
 		if (SKINS.containsKey(playerUuid) || !SKINS_LOADING.add(playerUuid)) {
