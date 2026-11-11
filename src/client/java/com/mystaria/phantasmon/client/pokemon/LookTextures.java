@@ -80,19 +80,20 @@ public final class LookTextures {
 				b = 255 - b;
 			}
 			case "obscure" -> {
-				// Shadow Pokémon: mostly drained of colour, darkened, pulled toward a deep purple.
-				float grey = luminance * 0.45f;
-				r = clamp(Math.round(grey * 0.85f + r * 0.12f + 18));
-				g = clamp(Math.round(grey * 0.55f + g * 0.08f));
-				b = clamp(Math.round(grey * 1.05f + b * 0.15f + 30));
+				// Shadow Pokémon (Adrien 2026-11-11: darker): almost black, a deep purple left in the light parts;
+				// the violet smoke of its shell does the rest.
+				float grey = luminance * 0.22f;
+				r = clamp(Math.round(grey * 0.9f + 10));
+				g = clamp(Math.round(grey * 0.45f + 2));
+				b = clamp(Math.round(grey * 1.25f + 22));
 			}
 			case "holographic" -> {
-				// Cyan light, brighter, every third row dimmed: scan lines over the model.
-				float light = 40 + luminance * 0.85f;
-				float line = y % 3 == 2 ? 0.55f : 1f;
-				r = clamp(Math.round(light * 0.25f * line));
-				g = clamp(Math.round((light + 30) * line));
-				b = clamp(Math.round((light + 70) * line));
+				// Cyan light, see-through (drawn translucent); the moving scan lines are its shell's.
+				float light = 50 + luminance * 0.8f;
+				r = clamp(Math.round(light * 0.3f));
+				g = clamp(Math.round(light + 35));
+				b = clamp(Math.round(light + 80));
+				a = Math.min(a, 140);
 			}
 			default -> {
 				return abgr;
@@ -103,6 +104,27 @@ public final class LookTextures {
 
 	private static int clamp(int value) {
 		return Math.max(0, Math.min(255, value));
+	}
+
+	/** The shell a menu is drawing now (second pass of a Pokémon's model), or null. Render thread. */
+	private static LookShells.Shell guiShell;
+
+	public static void guiShell(LookShells.Shell shell) {
+		guiShell = shell;
+	}
+
+	/**
+	 * The render type a Pokémon texture takes ({@code RenderTypeLookMixin}): the shell's while a menu draws one, a
+	 * translucent one for a holographic copy, else null (unchanged).
+	 */
+	public static net.minecraft.client.renderer.RenderType renderType(ResourceLocation texture) {
+		if (guiShell != null) {
+			return guiShell.type();
+		}
+		if (texture != null && "phantasmon".equals(texture.getNamespace()) && texture.getPath().startsWith("look/holographic/")) {
+			return net.minecraft.client.renderer.RenderType.entityTranslucent(texture);
+		}
+		return null;
 	}
 
 	/** Resource packs reloaded (F3+T): the copies are made again from the new textures. */

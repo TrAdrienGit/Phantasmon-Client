@@ -105,6 +105,18 @@ public final class PokemonGuiRendering {
 					0,
 					65416,
 					null);
+			// The look's glowing shell (TODO-37): the model once more, in the shell's moving additive light.
+			com.mystaria.phantasmon.client.pokemon.LookShells.Shell shell = com.mystaria.phantasmon.client.pokemon.LookShells.of(look);
+			if (shell != null) {
+				com.mystaria.phantasmon.client.pokemon.LookTextures.guiShell(shell);
+				try {
+					drawProfilePokemonDefault().invoke(null, renderable, poseStack, rotation, null, new FloatingState(), 0f,
+							ICON_INNER_SCALE, null, false, 0f, 0f, 0f, 0f, 0f, 0f, 0, 65416, null);
+					graphics.flush();
+				} finally {
+					com.mystaria.phantasmon.client.pokemon.LookTextures.guiShell(null);
+				}
+			}
 		} catch (Exception ex) {
 			// Anything here (reflection failure, a bad argument, a Cobblemon-side
 			// rendering error) must not propagate: an unbalanced pushPose/popPose

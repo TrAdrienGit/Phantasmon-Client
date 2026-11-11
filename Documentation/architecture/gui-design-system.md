@@ -92,9 +92,16 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   aux Pokémon de combat Ghost (aspects forcés par `GhostBattlePokemonFactory`, donc dans les paquets de combat, chez
   les deux joueurs et les spectateurs) et aux modèles des menus. **Filtres** : `VaryingModelRepositoryLookMixin`
   remplace la texture choisie par Cobblemon par une copie recolorée (`pokemon/LookTextures`, faite une fois par
-  texture, refaite après F3+T) — une vraie texture, donc compatible Iris. **Auras** : particules de Minecraft autour
-  du corps (`pokemon/LookAuras`, entités de Phantasmon seulement). **Taille** : attribut `scale` de Minecraft
-  (appliqué par le rendu). Les Pokémon normaux de Cobblemon ne portent jamais ces aspects.
+  texture, refaite après F3+T) — une vraie texture, donc compatible Iris. **Coques lumineuses** (refaites le
+  2026-11-11 : les particules ne valaient pas une récompense, Adrien) : le modèle posé redessiné par-dessus, un peu
+  plus grand, en lumière additive avec un motif qui défile — la technique de Minecraft pour le creeper chargé
+  (`RenderType.energySwirl`), donc tenue avec les shaders. Super Saiyan : flammes dorées qui montent ; Électrique :
+  arcs bleu-blanc qui sautent ; Holographique : lignes de balayage qui descendent et scintillement, sur un modèle
+  vraiment transparent (texture translucide) ; Obscur : fumée violette sur un modèle presque noir
+  (`pokemon/LookShells`, motifs générés au lancement). Dans le monde : couche ajoutée au rendu des Pokémon de
+  Cobblemon (`LookShellLayer`) ; dans les menus (PC, éditeur, échange) : second passage du modèle
+  (`PokemonGuiRendering`, `RenderTypeLookMixin`). **Taille** : attribut `scale` de Minecraft (`LookAuras`). Les
+  Pokémon normaux de Cobblemon ne portent jamais ces aspects.
 - Noms de boîtes (TODO-38) : clic sur le titre de la boîte pour la nommer (24 caractères ; vide = plus de nom ;
   Entrée garde, Échap annule) ; le titre devient « nom · n/16 ». Gardés avec les types de boîte (`PcBoxTypes`).
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).
