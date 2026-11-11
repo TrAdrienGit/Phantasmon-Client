@@ -30,6 +30,8 @@ public final class ShowtimeBridge {
 		TrainerProfiles.register();
 		// The ambiance picked in the lobby, the same for both players (Showtime A3).
 		ShowtimeHooks.setAmbianceOverride(controller::battleAmbiance);
+		// Reserved intros and ambiances (TODO-37): only those the player won.
+		com.mystaria.phantasmon.client.pokemon.RewardContent.register();
 		// Once on, the timer button becomes the countdown (Adrien 2026-10-05).
 		ShowtimeHooks.addButton(new BattleButton(BattleButton.CAMERA_ORDER + 10, BattleVisuals::filmed,
 				() -> {

@@ -301,16 +301,9 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
-	/** A Showtime intro by name, or null: none imposed (empty, unknown, or an older backend's random index). */
-	private static BattleCinematic.Intro imposedIntro(Object name) {
-		if (!(name instanceof String text) || text.isEmpty()) {
-			return null;
-		}
-		try {
-			return BattleCinematic.Intro.valueOf(text);
-		} catch (IllegalArgumentException unknown) {
-			return null;
-		}
+	/** The intro imposed by the lobby, by name, or null: none (empty, or an older backend's random index). */
+	private static String imposedIntro(Object name) {
+		return name instanceof String text && !text.isEmpty() ? text : null;
 	}
 
 	/** Battle intro, for both players; "" = each player's own. */
@@ -788,9 +781,24 @@ public final class LiveBattleController implements LiveBattleListener {
 		// Showtime plays the intro's music, then the battle music when the intro ends.
 		// The lobby's intro when one was picked there (or imposed by an event), the same for both; otherwise Phantasmon
 		// stays out of it and each player sees one of their own choices from Showtime's menu (2026-11-11).
-		BattleCinematic.Intro imposed = imposedIntro(data.get("intro"));
-		BattleCinematic.startIntro(opponentUuid, opponentName, host ? opponentTeam.size() : lastOpponentTeamSize, team(data.get("own_team")).size(),
-				imposed != null ? imposed : BattleCinematic.pickIntro(), null);
+		// A reserved intro imposed by the lobby plays even for an opponent who never won it; one this client doesn't
+		// have (an add-on's intro, the add-on missing) falls back to one of the player's own, then to X/Y.
+		String imposed = imposedIntro(data.get("intro"));
+		int theirs = host ? opponentTeam.size() : lastOpponentTeamSize;
+		int mine = team(data.get("own_team")).size();
+		// Whoever picked it in the lobby is its star: a gym leader's intro shows the gym leader on both screens.
+		UUID star = null;
+		if (data.get("intro_by") instanceof String by && !by.isEmpty()) {
+			try {
+				star = UUID.fromString(by);
+			} catch (IllegalArgumentException ignored) {
+				// none
+			}
+		}
+		if ((imposed == null || !BattleCinematic.startIntro(opponentUuid, opponentName, theirs, mine, imposed, star, null))
+				&& !BattleCinematic.startIntro(opponentUuid, opponentName, theirs, mine, String.valueOf(BattleCinematic.pickIntroName()), (Runnable) null)) {
+			BattleCinematic.startIntro(opponentUuid, opponentName, theirs, mine, BattleCinematic.Intro.XY, null);
+		}
 		heldPackets.clear();
 		if (!host) {
 			// The host's engine will send us the battle through BattlePacket, once its intro is over too.

@@ -102,6 +102,12 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   Cobblemon (`LookShellLayer`) ; dans les menus (PC, éditeur, échange) : second passage du modèle
   (`PokemonGuiRendering`, `RenderTypeLookMixin`). **Taille** : attribut `scale` de Minecraft (`LookAuras`). Les
   Pokémon normaux de Cobblemon ne portent jamais ces aspects.
+- Intros et ambiances réservées (TODO-37, étape 3, 2026-11-11) : récompenses `INTRO` / `AMBIANCE` données sur la page
+  Récompenses (puces « Intro » et « Ambiance », la liste vient du contenu réservé des mods installés ; aucune espèce).
+  `pokemon/RewardContent` lit `/rewards/mine` à la connexion et à l'ouverture du lobby, et répond à Showtime
+  (`ShowtimeHooks.setUnlocks`) ; un admin voit tout. Le lobby liste `BattleCinematic.introNames()` et
+  `Ambiances.usableIds()` ; l'intro imposée se joue par son nom (`startIntro(..., intro, star, ...)`), sa vedette est
+  `intro_by` (celui qui l'a choisie), et une intro inconnue de ce client retombe sur une des siennes.
 - Noms de boîtes (TODO-38) : clic sur le titre de la boîte pour la nommer (24 caractères ; vide = plus de nom ;
   Entrée garde, Échap annule) ; le titre devient « nom · n/16 ». Gardés avec les types de boîte (`PcBoxTypes`).
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).

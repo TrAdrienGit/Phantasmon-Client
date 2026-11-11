@@ -46,6 +46,8 @@ public class PhantasmonClient implements ClientModInitializer {
 			ghostSession.start();
 			// Admin (TODO-25): the backend says whether this player may use /phantasmon admin.
 			com.mystaria.phantasmon.client.admin.AdminSession.refresh(adminClient, authSession);
+			// Reserved intros and ambiances won (TODO-37), shown by Showtime only to their owners.
+			com.mystaria.phantasmon.client.pokemon.RewardContent.refresh();
 		});
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
@@ -69,6 +71,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
 			com.mystaria.showtime.audio.BattleMusic.stop();
 			com.mystaria.phantasmon.client.admin.AdminSession.clear();
+			com.mystaria.phantasmon.client.pokemon.RewardContent.clear();
 			com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
 			authSession.clear();
 		});

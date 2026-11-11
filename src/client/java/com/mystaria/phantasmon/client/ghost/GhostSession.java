@@ -423,6 +423,8 @@ public final class GhostSession {
 				}
 			});
 			case "Error" -> report(BackendErrorMessages.translationKey(String.valueOf(data.get("error_code"))));
+			// An admin gave or took back a reward (TODO-37): won intros and ambiances show at once in the menus.
+			case "RewardsChanged" -> Minecraft.getInstance().execute(com.mystaria.phantasmon.client.pokemon.RewardContent::refresh);
 			case "TradeProposed" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeProposed(data));
 			case "TradeAccepted" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeAccepted(data));
 			case "TradeCancelled" -> Minecraft.getInstance().execute(() -> tradeListener.onTradeCancelled(data));

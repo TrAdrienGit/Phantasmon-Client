@@ -23,7 +23,9 @@ import com.mystaria.phantasmon.client.pokemon.PokemonLook;
  * Rewards, admins only (TODO-37, Adrien 2026-11-11): looks are won, not picked. An admin loads a player by name, sees
  * what they won, gives a filter, an aura or the right to resize — for all their Pokémon or one species — with a note
  * (the event, the tournament), and takes one back. A look sealed on one Pokémon is set in that Pokémon's editor
- * (admin PC). The player then picks among their rewards in the editor's LOOK window.
+ * (admin PC). The player then picks among their rewards in the editor's LOOK window. A reward may also be a reserved
+ * battle intro or ambiance, among those the installed mods bring (Phantasmon Events): the player then finds it in
+ * Showtime's menu and the battle lobby.
  */
 final class RewardsPage implements MenuPage {
 
@@ -68,8 +70,16 @@ final class RewardsPage implements MenuPage {
 					+ PokemonLook.label("FILTER", reward.value()).getString();
 			case "AURA" -> Component.translatable("phantasmon.look.aura").getString() + " · "
 					+ PokemonLook.label("AURA", reward.value()).getString();
+			case "INTRO" -> Component.translatable("phantasmon.rewards.kind.intro").getString() + " · "
+					+ com.mystaria.showtime.battle.BattleCinematic.introDisplayName(reward.value()).getString();
+			case "AMBIANCE" -> Component.translatable("phantasmon.rewards.kind.ambiance").getString() + " · "
+					+ com.mystaria.showtime.ambiance.Ambiances.displayName(reward.value()).getString();
 			default -> Component.translatable("phantasmon.look.size").getString();
 		};
+		if (content(reward.kind())) {
+			String note = reward.note() == null ? "" : "  ·  " + reward.note();
+			return what + note;
+		}
 		String scope = reward.species() == null ? Component.translatable("phantasmon.rewards.all_species").getString()
 				: speciesName(reward.species());
 		String note = reward.note() == null ? "" : "  ·  " + reward.note();
@@ -141,6 +151,23 @@ final class RewardsPage implements MenuPage {
 		return null;
 	}
 
+	/** A reserved intro or ambiance: for the player, never one species. */
+	private static boolean content(String kind) {
+		return "INTRO".equals(kind) || "AMBIANCE".equals(kind);
+	}
+
+	private static Component valueLabel(String kind, String value) {
+		return switch (kind) {
+			case "INTRO" -> com.mystaria.showtime.battle.BattleCinematic.introDisplayName(value);
+			case "AMBIANCE" -> com.mystaria.showtime.ambiance.Ambiances.displayName(value);
+			default -> PokemonLook.label(kind, value);
+		};
+	}
+
+	private static final String[] KINDS = { "FILTER", "AURA", "SCALE", "INTRO", "AMBIANCE" };
+	private static final String[] KIND_KEYS = { "phantasmon.look.filter", "phantasmon.look.aura", "phantasmon.look.size",
+			"phantasmon.rewards.kind.intro", "phantasmon.rewards.kind.ambiance" };
+
 	/** GIVE: the kind (chips), which one (chips), for all species or one, and a note. */
 	private final class GrantDialog extends MenuDialog {
 
@@ -166,26 +193,39 @@ final class RewardsPage implements MenuPage {
 			return switch (kind) {
 				case "FILTER" -> PokemonLook.FILTERS;
 				case "AURA" -> PokemonLook.AURAS;
+				case "INTRO" -> com.mystaria.showtime.battle.BattleCinematic.reservedIntroNames();
+				case "AMBIANCE" -> com.mystaria.showtime.ambiance.Ambiances.reservedIds();
 				default -> List.of();
 			};
 		}
 
+		/** Values per row: the long names of intros and ambiances get two. */
+		private int columns() {
+			return content(kind) ? 2 : 3;
+		}
+
+		/** The kinds' two rows of chips. */
+		private static final int KINDS_H = 2 * CHIP_H + 4;
+
 		@Override
 		int bodyHeight() {
-			int rows = (values().size() + 2) / 3;
-			return 14 + CHIP_H + 8 + (rows == 0 ? 0 : 12 + rows * (CHIP_H + 4));
+			int rows = (values().size() + columns() - 1) / columns();
+			boolean empty = values().isEmpty() && content(kind);
+			return 14 + KINDS_H + 8 + (rows == 0 ? empty ? 22 : 0 : 12 + rows * (CHIP_H + 4));
 		}
 
 		/** Each chip of the body, recomputed from the layout: kinds, then values. */
 		private List<int[]> chipRects(int bx, int by, int bRight) {
 			List<int[]> rects = new ArrayList<>();
 			int w = (bRight - bx - 8) / 3;
-			for (int i = 0; i < 3; i++) {
-				rects.add(new int[] { bx + i * (w + 4), by + 12, w, CHIP_H });
+			for (int i = 0; i < KINDS.length; i++) {
+				rects.add(new int[] { bx + (i % 3) * (w + 4), by + 12 + (i / 3) * (CHIP_H + 4), w, CHIP_H });
 			}
 			List<String> values = values();
+			int columns = columns();
+			int vw = (bRight - bx - 4 * (columns - 1)) / columns;
 			for (int i = 0; i < values.size(); i++) {
-				rects.add(new int[] { bx + (i % 3) * (w + 4), by + 12 + CHIP_H + 20 + (i / 3) * (CHIP_H + 4), w, CHIP_H });
+				rects.add(new int[] { bx + (i % columns) * (vw + 4), by + 12 + KINDS_H + 20 + (i / columns) * (CHIP_H + 4), vw, CHIP_H });
 			}
 			return rects;
 		}
@@ -202,22 +242,23 @@ final class RewardsPage implements MenuPage {
 		@Override
 		void renderBody(GuiGraphics g, int bx, int by, int bRight, int mouseX, int mouseY) {
 			MenuUi.Palette c = MenuUi.p();
-			String[] kinds = { "FILTER", "AURA", "SCALE" };
-			String[] kindKeys = { "phantasmon.look.filter", "phantasmon.look.aura", "phantasmon.look.size" };
 			MenuUi.text(g, Component.translatable("phantasmon.rewards.kind"), bx, by, bRight - bx, c.muted());
 			List<int[]> rects = chipRects(bx, by, bRight);
-			for (int i = 0; i < 3; i++) {
+			for (int i = 0; i < KINDS.length; i++) {
 				int[] r = rects.get(i);
-				MenuUi.chip(g, r[0], r[1], r[2], r[3], Component.translatable(kindKeys[i]), kinds[i].equals(kind),
+				MenuUi.chip(g, r[0], r[1], r[2], r[3], Component.translatable(KIND_KEYS[i]), KINDS[i].equals(kind),
 						MenuUi.inside(mouseX, mouseY, r[0], r[1], r[2], r[3]));
 			}
 			List<String> values = values();
 			if (!values.isEmpty()) {
-				MenuUi.text(g, Component.translatable("phantasmon.rewards.which"), bx, by + 12 + CHIP_H + 8, bRight - bx, c.muted());
+				MenuUi.text(g, Component.translatable("phantasmon.rewards.which"), bx, by + 12 + KINDS_H + 8, bRight - bx, c.muted());
+			} else if (content(kind)) {
+				// Reserved intros and ambiances come from add-ons (Phantasmon Events): none installed, none to give.
+				MenuUi.text(g, Component.translatable("phantasmon.rewards.no_content"), bx, by + 12 + KINDS_H + 8, bRight - bx, c.muted());
 			}
 			for (int i = 0; i < values.size(); i++) {
-				int[] r = rects.get(3 + i);
-				MenuUi.filter(g, r[0], r[1], r[2], r[3], PokemonLook.label(kind, values.get(i)), values.get(i).equals(value),
+				int[] r = rects.get(KINDS.length + i);
+				MenuUi.filter(g, r[0], r[1], r[2], r[3], valueLabel(kind, values.get(i)), values.get(i).equals(value),
 						MenuUi.inside(mouseX, mouseY, r[0], r[1], r[2], r[3]));
 			}
 		}
@@ -226,17 +267,17 @@ final class RewardsPage implements MenuPage {
 		boolean clickBody(double mouseX, double mouseY) {
 			int bx = left + 12;
 			List<int[]> rects = chipRects(bx, bodyTop(), right - 12);
-			String[] kinds = { "FILTER", "AURA", "SCALE" };
 			for (int i = 0; i < rects.size(); i++) {
 				int[] r = rects.get(i);
 				if (MenuUi.inside(mouseX, mouseY, r[0], r[1], r[2], r[3])) {
 					MenuUi.click();
-					if (i < 3) {
-						kind = kinds[i];
-						value = values().isEmpty() ? "size" : values().get(0);
+					if (i < KINDS.length) {
+						kind = KINDS[i];
+						value = values().isEmpty() ? "SCALE".equals(kind) ? "size" : "" : values().get(0);
+						error = null;
 						layout(Minecraft.getInstance().getWindow().getGuiScaledWidth(), Minecraft.getInstance().getWindow().getGuiScaledHeight());
 					} else {
-						value = values().get(i - 3);
+						value = values().get(i - KINDS.length);
 					}
 					return true;
 				}
@@ -251,7 +292,16 @@ final class RewardsPage implements MenuPage {
 			}
 			String typed = inputs.get(0).value.strip();
 			String species = null;
-			if (!typed.isEmpty()) {
+			if (content(kind)) {
+				if (value.isEmpty()) {
+					error = Component.translatable("phantasmon.rewards.no_content");
+					return;
+				}
+				if (!typed.isEmpty()) {
+					error = Component.translatable("phantasmon.rewards.content_all_species");
+					return;
+				}
+			} else if (!typed.isEmpty()) {
 				species = speciesId(typed);
 				if (species == null) {
 					error = Component.translatable("phantasmon.rewards.unknown_species", typed);

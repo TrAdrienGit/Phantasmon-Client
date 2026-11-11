@@ -71,6 +71,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	public PhantasmonBattleLobbyScreen(LiveBattleController controller) {
 		super(Component.translatable("phantasmon.battle.lobby.title"));
 		this.controller = controller;
+		// Intros and ambiances won since the login (TODO-37) show in the lists.
+		com.mystaria.phantasmon.client.pokemon.RewardContent.refresh();
 	}
 
 	@Override
@@ -546,7 +548,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static List<String> ambiances() {
 		List<String> list = new java.util.ArrayList<>();
 		list.add("");
-		list.addAll(com.mystaria.showtime.ambiance.Ambiances.ids());
+		// Reserved ones (TODO-37) only once won: Showtime asks Phantasmon's rewards.
+		list.addAll(com.mystaria.showtime.ambiance.Ambiances.usableIds());
 		return list;
 	}
 
@@ -555,19 +558,17 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 				: com.mystaria.showtime.ambiance.Ambiances.displayName(id).getString();
 	}
 
-	/** "" (each player's own), then every Showtime intro. */
+	/** "" (each player's own), then every Showtime intro, add-ons' included, reserved ones only once won (TODO-37). */
 	private static List<String> intros() {
 		List<String> list = new java.util.ArrayList<>();
 		list.add("");
-		for (com.mystaria.showtime.battle.BattleCinematic.Intro each : com.mystaria.showtime.battle.BattleCinematic.Intro.values()) {
-			list.add(each.name());
-		}
+		list.addAll(com.mystaria.showtime.battle.BattleCinematic.introNames());
 		return list;
 	}
 
 	private static String introName(String name) {
 		return name == null || name.isEmpty() ? Component.translatable("phantasmon.battle.lobby.intro.each").getString()
-				: Component.translatable("cobblemon_battle_showtime.intro.name." + name.toLowerCase(java.util.Locale.ROOT)).getString();
+				: com.mystaria.showtime.battle.BattleCinematic.introDisplayName(name).getString();
 	}
 
 	/** The intro list, like the ambiance's. */
