@@ -912,9 +912,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		float textX = x + (w - labelWidth(label, textScale)) / 2f;
 		float textY = y + (h - textHeight) / 2f;
 		if ((textColor & 0xFFFFFF) == 0xFFFFFF) {
-			drawText(g, label, textX + t, textY + t, textScale, 0x70000000, false, 0f);
+			drawBadgeLabel(g, label, textX + t, textY + t, textScale, 0x70000000);
 		}
-		drawText(g, label, textX, textY, textScale, textColor, false, 0f);
+		drawBadgeLabel(g, label, textX, textY, textScale, textColor);
 		return w;
 	}
 
@@ -928,7 +928,21 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	 * measures, and no margin fits every case — labels went left, then over the right edge).
 	 */
 	private float labelWidth(String label, float textScale) {
-		return font.width(styled(label, false, uniformAt(textScale))) * snapTextScale(textScale);
+		return font.width(styled(label, false, false)) * snapTextScale(textScale);
+	}
+
+	/**
+	 * A badge's label, always in Minecraft's own font: its measured width is the drawn one, so the label is centred
+	 * (in Cobblemon's uniform font, the drawn label came out narrower than measured, pushed left — Adrien 2026-11-11).
+	 */
+	private void drawBadgeLabel(GuiGraphics g, String label, float x, float y, float textScale, int color) {
+		float effectiveScale = snapTextScale(textScale);
+		PoseStack pose = g.pose();
+		pose.pushPose();
+		pose.translate(snapX(x), snapY(y), 0);
+		pose.scale(effectiveScale, effectiveScale, 1f);
+		g.drawString(font, styled(label, false, false), 0, 0, color, false);
+		pose.popPose();
 	}
 
 	/** Physical orange, special blue, status grey — the colours of the games' category icons. */
