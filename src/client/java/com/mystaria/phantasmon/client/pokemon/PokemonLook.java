@@ -1,0 +1,91 @@
+package com.mystaria.phantasmon.client.pokemon;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import net.minecraft.network.chat.Component;
+
+/**
+ * A Pokémon's look (TODO-37, Adrien 2026-11-11), in its data's {@code look}: a filter over its colours, an aura around
+ * it, its size (50 to 200 %), and whether an admin sealed it. Purely cosmetic. Looks are won (events, tournaments)
+ * or given by an admin: a player picks only among their rewards ({@link Reward}).
+ */
+public record PokemonLook(String filter, String aura, int scale, boolean sealed) {
+
+	public static final PokemonLook NONE = new PokemonLook(null, null, 100, false);
+	public static final int SCALE_MIN = 50;
+	public static final int SCALE_MAX = 200;
+
+	/** The filters this version draws (step 1 of TODO-37); others may come later. */
+	public static final List<String> FILTERS = List.of("obscure", "black_white", "negative", "holographic");
+	public static final List<String> AURAS = List.of("super_saiyan", "electric");
+
+	public static PokemonLook of(PokemonDto pokemon) {
+		Object look = pokemon == null || pokemon.data() == null ? null : pokemon.data().get("look");
+		if (!(look instanceof Map<?, ?> map)) {
+			return NONE;
+		}
+		int scale = map.get("scale") instanceof Number number ? number.intValue() : 100;
+		return new PokemonLook(map.get("filter") instanceof String text ? text : null,
+				map.get("aura") instanceof String text ? text : null, scale, Boolean.TRUE.equals(map.get("sealed")));
+	}
+
+	public boolean empty() {
+		return filter == null && aura == null && scale == 100 && !sealed;
+	}
+
+	/** As the data's {@code look}, or null when there is none. */
+	public Map<String, Object> toData() {
+		if (empty()) {
+			return null;
+		}
+		Map<String, Object> data = new HashMap<>();
+		if (filter != null) {
+			data.put("filter", filter);
+		}
+		if (aura != null) {
+			data.put("aura", aura);
+		}
+		if (scale != 100) {
+			data.put("scale", scale);
+		}
+		if (sealed) {
+			data.put("sealed", true);
+		}
+		return data;
+	}
+
+	public PokemonLook withFilter(String value) {
+		return new PokemonLook(value, aura, scale, sealed);
+	}
+
+	public PokemonLook withAura(String value) {
+		return new PokemonLook(filter, value, scale, sealed);
+	}
+
+	public PokemonLook withScale(int value) {
+		return new PokemonLook(filter, aura, Math.max(SCALE_MIN, Math.min(SCALE_MAX, value)), sealed);
+	}
+
+	public PokemonLook withSealed(boolean value) {
+		return new PokemonLook(filter, aura, scale, value);
+	}
+
+	/** A filter's or aura's name; an id this version doesn't know shows as it is. */
+	public static Component label(String kind, String id) {
+		return Component.translatableWithFallback("phantasmon.look." + kind.toLowerCase(java.util.Locale.ROOT) + "." + id, id);
+	}
+
+	/** A reward as the backend gives it ({@code GET /rewards/mine}): what kind, which one, for which species (null: all). */
+	public record Reward(String uuid, String kind, String value, String species, String note, String grantedAt) {
+
+		public boolean covers(String pokemonSpecies) {
+			return species == null || species.equalsIgnoreCase(pokemonSpecies);
+		}
+	}
+
+	/** An admin's view of a player's rewards ({@code GET /admin/players/{name}/rewards}). */
+	public record PlayerRewards(String playerUuid, String playerName, Reward[] rewards) {
+	}
+}

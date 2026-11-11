@@ -21,7 +21,7 @@ final class RowList {
 	static final int PITCH = 20;
 	private static final int BAR_W = 5;
 
-	enum Style { NOTE, HEADER, SELECT, SWITCH, BUTTONS, FIELD }
+	enum Style { NOTE, HEADER, SELECT, SWITCH, BUTTONS, FIELD, ITEM }
 
 	/** A button of a {@link Style#BUTTONS} row. */
 	record Button(Component label, boolean primary, boolean danger, Runnable action) {
@@ -84,6 +84,11 @@ final class RowList {
 
 	void buttons(Button... buttons) {
 		rows.add(new Row(Style.BUTTONS, Component.empty(), false, null, null, null, null, false, List.of(buttons), null));
+	}
+
+	/** A line with a ✕ on its right (an entry to delete): {@code delete} runs on the ✕. */
+	void item(Component text, Runnable delete) {
+		rows.add(new Row(Style.ITEM, text, false, null, delete, null, null, false, null, null));
 	}
 
 	void field(Component label, Field field) {
@@ -183,6 +188,14 @@ final class RowList {
 						}
 					}
 				}
+				case ITEM -> {
+					boolean hovered = MenuUi.inside(mouseX, mouseY, x, rowTop, w, ROW_H);
+					MenuUi.row(g, x, rowTop, w, ROW_H, hovered);
+					MenuUi.text(g, row.text(), x + 7, rowTop + 5, w - 34, c.white());
+					int del = x + w - 22;
+					MenuUi.mini(g, del, rowTop + 2, Component.literal("✕"), MenuUi.inside(mouseX, mouseY, del, rowTop, 18, ROW_H), true,
+							c.white());
+				}
 				case FIELD -> {
 					Field field = row.field();
 					MenuUi.field(g, x + 1, rowTop + 11, w - 2, ROW_H, row.text(), field.value, field.placeholder, field == focused,
@@ -241,6 +254,11 @@ final class RowList {
 				case FIELD -> {
 					focused = row.field();
 					return true;
+				}
+				case ITEM -> {
+					if (MenuUi.inside(mouseX, mouseY, x + w - 22, rowTop, 18, ROW_H)) {
+						action = row.side();
+					}
 				}
 				default -> {
 				}

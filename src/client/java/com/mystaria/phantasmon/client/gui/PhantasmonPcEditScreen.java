@@ -163,6 +163,23 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private final StringBuilder searchQuery = new StringBuilder();
 
 	private boolean dirty;
+
+	// ---- Look (TODO-37): won or given, never free — a player picks among their rewards ----
+	private static final int LOOK_X = 999;
+	private static final int LOOK_Y = 21;
+	private static final int LOOK_W = 232;
+	private static final int LOOK_H = 36;
+	private static final int LOOK_CARD_X = 400;
+	private static final int LOOK_CARD_Y = 220;
+	private static final int LOOK_CARD_W = 800;
+	private static final int LOOK_CARD_H = 470;
+	private com.mystaria.phantasmon.client.pokemon.PokemonLook look;
+	private List<com.mystaria.phantasmon.client.pokemon.PokemonLook.Reward> rewards = List.of();
+	private boolean lookOpen;
+
+	/** One clickable choice of the look window. */
+	private record LookChip(int x, int y, int w, int h, String label, boolean selected, boolean enabled, Runnable action) {
+	}
 	private boolean quitConfirmOpen;
 	private boolean saving;
 	private String statusMessage;
@@ -174,6 +191,11 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		this.session = session;
 		this.original = pokemon;
 		this.parent = parent;
+		this.look = com.mystaria.phantasmon.client.pokemon.PokemonLook.of(pokemon);
+		com.mystaria.phantasmon.client.api.PhantasmonApi.get("/rewards/mine",
+						com.mystaria.phantasmon.client.pokemon.PokemonLook.Reward[].class)
+				.thenAccept(won -> Minecraft.getInstance().execute(() -> rewards = won == null ? List.of() : List.of(won)))
+				.exceptionally(ex -> null);
 	}
 
 	@Override
@@ -326,6 +348,12 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			} else {
 				data.put("gender", gender);
 			}
+		}
+		Map<String, Object> lookData = look.toData();
+		if (lookData == null) {
+			data.remove("look");
+		} else {
+			data.put("look", lookData);
 		}
 		return data;
 	}
@@ -627,6 +655,25 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			}
 			return true;
 		}
+		if (lookOpen) {
+			for (LookChip chip : lookChips()) {
+				if (chip.enabled() && inside(x, y, chip.x(), chip.y(), chip.w(), chip.h())) {
+					com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+					chip.action().run();
+					return true;
+				}
+			}
+			if (!inside(x, y, LOOK_CARD_X, LOOK_CARD_Y, LOOK_CARD_W, LOOK_CARD_H)) {
+				lookOpen = false;
+			}
+			return true;
+		}
+		if (openPicker == Picker.NONE && inside(x, y, LOOK_X, LOOK_Y, LOOK_W, LOOK_H)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+			focusedField = -1;
+			lookOpen = true;
+			return true;
+		}
 		if (openPicker != Picker.NONE) {
 			PickerGeometry geo = pickerGeometry();
 			if (inside(x, y, geo.x(), geo.listY(), geo.w(), geo.visible() * DROPDOWN_ROW_H)) {
@@ -762,6 +809,12 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (lookOpen) {
+			if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+				lookOpen = false;
+			}
+			return true;
+		}
 		if (quitConfirmOpen) {
 			if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
 				quitConfirmOpen = false;
@@ -851,7 +904,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
 		renderWorldBackdrop(graphics, mouseX, mouseY, partialTick);
-		boolean blocked = quitConfirmOpen || openPicker != Picker.NONE;
+		boolean blocked = quitConfirmOpen || lookOpen || openPicker != Picker.NONE;
 		double mx = blocked ? -1 : toCanvasX(mouseX);
 		double my = blocked ? -1 : toCanvasY(mouseY);
 
@@ -865,6 +918,9 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 
 		if (openPicker != Picker.NONE) {
 			renderPicker(graphics, mouseX, mouseY);
+		}
+		if (lookOpen) {
+			renderLookModal(graphics, mouseX, mouseY);
 		}
 		if (quitConfirmOpen) {
 			renderQuitModal(graphics, mouseX, mouseY);
@@ -894,6 +950,143 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		drawText(g, plus, startX, 32, 2f, CYAN, true, 0f);
 		drawText(g, label, startX + plusWidth + 8, 32, 2f, CYAN, true, 1f);
 		renderExportButton(g, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48, inside(mx, my, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48));
+		boolean lookHovered = inside(mx, my, LOOK_X, LOOK_Y, LOOK_W, LOOK_H);
+		renderPrimaryButtonFrame(g, LOOK_X, LOOK_Y, LOOK_W, LOOK_H, lookHovered, !look.empty());
+		String lookLabel = upper(Component.translatable("phantasmon.look.button").getString());
+		drawCentered(g, fitText(lookLabel, LOOK_W - 16, 2f, true, 1f), LOOK_X + LOOK_W / 2f, LOOK_Y + (LOOK_H - 14) / 2f, 2f, WHITE, true, 1f);
+	}
+
+	// ---- Look window (TODO-37) ----
+
+	private boolean lookAdmin() {
+		return com.mystaria.phantasmon.client.admin.AdminSession.isAdmin();
+	}
+
+	/** Whether the player may change the look: an admin always; otherwise not when an admin sealed it. */
+	private boolean lookEditable() {
+		return lookAdmin() || !com.mystaria.phantasmon.client.pokemon.PokemonLook.of(original).sealed();
+	}
+
+	/** The filters or auras the player may pick for this species: every one for an admin, else their rewards (and the current one). */
+	private List<String> lookChoices(String kind, List<String> catalog, String current) {
+		List<String> choices = new ArrayList<>();
+		for (String id : catalog) {
+			boolean owned = lookAdmin() || rewards.stream().anyMatch(reward -> reward.kind().equals(kind) && reward.value().equals(id)
+					&& reward.covers(original.species()));
+			if (owned || id.equals(current)) {
+				choices.add(id);
+			}
+		}
+		if (!lookAdmin()) {
+			rewards.stream().filter(reward -> reward.kind().equals(kind) && reward.covers(original.species()) && !choices.contains(reward.value()))
+					.forEach(reward -> choices.add(reward.value()));
+		}
+		return choices;
+	}
+
+	private boolean scaleAllowed() {
+		return lookAdmin() || rewards.stream().anyMatch(reward -> reward.kind().equals("SCALE") && reward.covers(original.species()));
+	}
+
+	/** The window's choices: a row of filters, a row of auras, the size, and the seal for an admin. */
+	private List<LookChip> lookChips() {
+		List<LookChip> chips = new ArrayList<>();
+		boolean editable = lookEditable();
+		int x0 = LOOK_CARD_X + 30;
+		int maxX = LOOK_CARD_X + LOOK_CARD_W - 30;
+		int[] rowYs = { LOOK_CARD_Y + 92, LOOK_CARD_Y + 184 };
+		String[] kinds = { "FILTER", "AURA" };
+		List<List<String>> catalogs = List.of(com.mystaria.phantasmon.client.pokemon.PokemonLook.FILTERS,
+				com.mystaria.phantasmon.client.pokemon.PokemonLook.AURAS);
+		for (int row = 0; row < 2; row++) {
+			String kind = kinds[row];
+			String current = row == 0 ? look.filter() : look.aura();
+			List<String> options = new ArrayList<>();
+			options.add(null);
+			options.addAll(lookChoices(kind, catalogs.get(row), current));
+			int x = x0;
+			int y = rowYs[row];
+			for (String id : options) {
+				String label = id == null ? Component.translatable("phantasmon.look.none").getString()
+						: com.mystaria.phantasmon.client.pokemon.PokemonLook.label(kind, id).getString();
+				int w = Math.round(textWidth(upper(label), 1f, true, 1f)) + 36;
+				if (x + w > maxX) {
+					x = x0;
+					y += 44;
+				}
+				boolean isFilter = row == 0;
+				chips.add(new LookChip(x, y, w, 36, upper(label), java.util.Objects.equals(id, current), editable, () -> {
+					look = isFilter ? look.withFilter(id) : look.withAura(id);
+					edited();
+				}));
+				x += w + 10;
+			}
+		}
+		int sizeY = LOOK_CARD_Y + 286;
+		boolean scale = editable && scaleAllowed();
+		chips.add(new LookChip(x0, sizeY, 44, 36, "-", false, scale, () -> {
+			look = look.withScale(look.scale() - 10);
+			edited();
+		}));
+		chips.add(new LookChip(x0 + 54 + 120 + 10, sizeY, 44, 36, "+", false, scale, () -> {
+			look = look.withScale(look.scale() + 10);
+			edited();
+		}));
+		chips.add(new LookChip(x0 + 54 + 120 + 64, sizeY, 110, 36, "100 %", look.scale() == 100, scale, () -> {
+			look = look.withScale(100);
+			edited();
+		}));
+		if (lookAdmin()) {
+			chips.add(new LookChip(maxX - 200, sizeY, 200, 36,
+					upper(Component.translatable(look.sealed() ? "phantasmon.look.sealed_on" : "phantasmon.look.sealed_off").getString()),
+					look.sealed(), true, () -> {
+						look = look.withSealed(!look.sealed());
+						edited();
+					}));
+		}
+		chips.add(new LookChip(800 - 100, LOOK_CARD_Y + LOOK_CARD_H - 60, 200, 37,
+				upper(Component.translatable("phantasmon.music.screen.close").getString()), false, true, () -> lookOpen = false));
+		return chips;
+	}
+
+	private void renderLookModal(GuiGraphics g, int mouseX, int mouseY) {
+		beginModalLayer(g, 1f);
+		double mx = toCanvasX(mouseX);
+		double my = toCanvasY(mouseY);
+		renderModalCard(g, LOOK_CARD_X, LOOK_CARD_Y, LOOK_CARD_W, LOOK_CARD_H, 1f);
+		drawCentered(g, upper(Component.translatable("phantasmon.look.title", displayName(original)).getString()), 800, LOOK_CARD_Y + 22,
+				2f, TITLE, true, 2f);
+		int x0 = LOOK_CARD_X + 30;
+		drawText(g, upper(Component.translatable("phantasmon.look.filter").getString()), x0, LOOK_CARD_Y + 72, 1f, CYAN, true, 1.2f);
+		drawText(g, upper(Component.translatable("phantasmon.look.aura").getString()), x0, LOOK_CARD_Y + 164, 1f, CYAN, true, 1.2f);
+		drawText(g, upper(Component.translatable("phantasmon.look.size").getString()), x0, LOOK_CARD_Y + 266, 1f, CYAN, true, 1.2f);
+		if (lookAdmin()) {
+			drawText(g, upper(Component.translatable("phantasmon.look.seal").getString()), LOOK_CARD_X + LOOK_CARD_W - 230, LOOK_CARD_Y + 266, 1f,
+					CYAN, true, 1.2f);
+		}
+		String size = look.scale() + " %";
+		drawCentered(g, size, x0 + 54 + 60, LOOK_CARD_Y + 286 + 11, 2f, scaleAllowed() ? WHITE : DIM, false, 0f);
+		String hint;
+		if (!lookEditable()) {
+			hint = Component.translatable("phantasmon.look.sealed_hint").getString();
+		} else if (lookAdmin()) {
+			hint = Component.translatable("phantasmon.look.admin_hint").getString();
+		} else {
+			hint = Component.translatable("phantasmon.look.player_hint").getString();
+		}
+		drawCentered(g, fitText(hint, LOOK_CARD_W - 60, 1f, false, 0f), 800, LOOK_CARD_Y + 350, 1f, lookEditable() ? DIM : ERROR_TEXT, false, 0f);
+		for (LookChip chip : lookChips()) {
+			boolean hovered = chip.enabled() && inside(mx, my, chip.x(), chip.y(), chip.w(), chip.h());
+			if (chip.enabled()) {
+				renderPrimaryButtonFrame(g, chip.x(), chip.y(), chip.w(), chip.h(), hovered, chip.selected());
+			} else {
+				blackBorder(g, chip.x(), chip.y(), chip.w(), chip.h(), PANEL_BORDER);
+				g.fill(chip.x(), chip.y(), chip.x() + chip.w(), chip.y() + chip.h(), MOVE_BG);
+			}
+			int color = !chip.enabled() ? DIM : chip.selected() ? READY_TEXT : WHITE;
+			drawCentered(g, chip.label(), chip.x() + chip.w() / 2f, chip.y() + (chip.h() - 7) / 2f, 1f, color, true, 1f);
+		}
+		endModalLayer(g);
 	}
 
 	private void renderForm(GuiGraphics g, double mx, double my) {

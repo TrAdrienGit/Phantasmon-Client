@@ -21,7 +21,7 @@ import com.mystaria.phantasmon.client.hub.HubController;
  */
 public final class PhantasmonMenuScreen extends Screen {
 
-	public enum Category { HUBS, MUSIC, SETTINGS }
+	public enum Category { HUBS, REWARDS, MUSIC, SETTINGS }
 
 	private static final int HEADER_H = 24;
 	private static final int SIDEBAR_W = 92;
@@ -58,6 +58,9 @@ public final class PhantasmonMenuScreen extends Screen {
 				&& net.minecraft.client.Minecraft.getInstance().player != null;
 		if (hubs) {
 			categories.add(Category.HUBS);
+			if (AdminSession.isAdmin()) {
+				categories.add(Category.REWARDS); // admins give the looks (TODO-37)
+			}
 		}
 		categories.add(Category.MUSIC);
 		categories.add(Category.SETTINGS);
@@ -77,6 +80,7 @@ public final class PhantasmonMenuScreen extends Screen {
 	private MenuPage page(Category each) {
 		return pages.computeIfAbsent(each, key -> switch (key) {
 			case HUBS -> new HubsPage(this, hubAccess.client(), hubAccess.session(), hubAccess.controller(), AdminSession.isAdmin());
+			case REWARDS -> new RewardsPage(this);
 			case MUSIC -> new MusicPage();
 			case SETTINGS -> new SettingsPage(this);
 		});

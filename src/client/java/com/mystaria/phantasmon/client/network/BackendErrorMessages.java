@@ -100,7 +100,13 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_HUB_KIND_UNAVAILABLE", "phantasmon.hub.error.kind_unavailable"),
 			Map.entry("ERROR_HUB_SCHEMATIC_KIND", "phantasmon.hub.error.schematic_kind"),
 			Map.entry("ERROR_HUB_SCHEMATIC_NAME", "phantasmon.hub.error.schematic_name"),
-			Map.entry("ERROR_HUB_SCHEMATIC_TOO_LARGE", "phantasmon.hub.error.schematic_too_large"));
+			Map.entry("ERROR_HUB_SCHEMATIC_TOO_LARGE", "phantasmon.hub.error.schematic_too_large"),
+			Map.entry("ERROR_LOOK_NOT_OWNED", "phantasmon.look.error.not_owned"),
+			Map.entry("ERROR_LOOK_SEALED", "phantasmon.look.error.sealed"),
+			Map.entry("ERROR_LOOK_INVALID", "phantasmon.look.error.invalid"),
+			Map.entry("ERROR_REWARD_INVALID", "phantasmon.rewards.error.invalid"),
+			Map.entry("ERROR_REWARD_DUPLICATE", "phantasmon.rewards.error.duplicate"),
+			Map.entry("ERROR_REWARD_NOT_FOUND", "phantasmon.rewards.error.not_found"));
 
 	private BackendErrorMessages() {
 	}

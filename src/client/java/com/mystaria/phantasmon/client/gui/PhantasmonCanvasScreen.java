@@ -549,6 +549,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			g.flush();
 			g.blitSprite(SPRITE_STAR, 795 + dx - 10 - 18, 125, 18, 18);
 		}
+		renderLookBadges(g, pokemon, 229 + dx, 117 + 235 - 8);
 
 		float t = (System.currentTimeMillis() - openedAt) % FLOAT_PERIOD_MS / FLOAT_PERIOD_MS;
 		float ease = (1f - (float) Math.cos(t * 2 * Math.PI)) / 2f;
@@ -566,6 +567,40 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		PokemonGuiRendering.renderModel(g, pokemon.species(), pokemon.form(), pokemon.isShiny(), PokemonGuiRendering.storedGender(pokemon), 0, 0, CARD_MODEL_SCALE);
 		pose.popPose();
 		g.disableScissor();
+	}
+
+	/**
+	 * The Pokémon's look (TODO-37), as an information on its card: a badge per part — filter, aura, size, seal — at the
+	 * bottom left of the 3D view, {@code bottom} being their baseline.
+	 */
+	protected void renderLookBadges(GuiGraphics g, PokemonDto pokemon, int x, int bottom) {
+		var look = com.mystaria.phantasmon.client.pokemon.PokemonLook.of(pokemon);
+		if (look.empty()) {
+			return;
+		}
+		List<String> labels = new java.util.ArrayList<>();
+		List<Integer> colors = new java.util.ArrayList<>();
+		if (look.filter() != null) {
+			labels.add(upper(com.mystaria.phantasmon.client.pokemon.PokemonLook.label("FILTER", look.filter()).getString()));
+			colors.add(0xFF7A5CC8);
+		}
+		if (look.aura() != null) {
+			labels.add(upper(com.mystaria.phantasmon.client.pokemon.PokemonLook.label("AURA", look.aura()).getString()));
+			colors.add(0xFFE0A030);
+		}
+		if (look.scale() != 100) {
+			labels.add(look.scale() + " %");
+			colors.add(0xFF5A8FA8);
+		}
+		if (look.sealed()) {
+			labels.add(upper(Component.translatable("phantasmon.look.sealed_badge").getString()));
+			colors.add(0xFF8A2A27);
+		}
+		int h = typeBadgeHeight(1f);
+		float cursor = x;
+		for (int i = 0; i < labels.size(); i++) {
+			cursor += drawBadge(g, labels.get(i), colors.get(i), cursor, bottom - h, 1f) + 6;
+		}
 	}
 
 	/**

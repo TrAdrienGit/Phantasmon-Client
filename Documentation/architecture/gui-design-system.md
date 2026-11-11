@@ -83,6 +83,10 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   les types et le type Téra, « shiny » / « chromatique », l'objet, le talent, la nature et les attaques, sans tenir
   compte des majuscules ni des accents. Les Pokémon qui ne correspondent pas restent en place, grisés (équipe et
   boîte) ; le pied de l'écran donne le nombre trouvé et les boîtes où ils sont. Pas de tri (Adrien).
+- Apparence (TODO-37, étape 1, 2026-11-11) : la fiche montre des badges en bas à gauche de la vue 3D (filtre,
+  aura, taille, scellée). Dans l'éditeur, le bouton ✦ APPARENCE ouvre une fenêtre : filtre, aura, taille (−/+ par
+  10 %, de 50 à 200 %) ; un joueur n'y voit que ce que ses récompenses couvrent pour cette espèce (`GET /rewards/mine`),
+  un admin tout, plus SCELLÉE. Enregistré avec le reste (`data.look`). Le rendu des effets vient à l'étape 2.
 - Noms de boîtes (TODO-38) : clic sur le titre de la boîte pour la nommer (24 caractères ; vide = plus de nom ;
   Entrée garde, Échap annule) ; le titre devient « nom · n/16 ». Gardés avec les types de boîte (`PcBoxTypes`).
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).
@@ -117,6 +121,8 @@ Refonte des menus au niveau du menu de Cobblemon Battle Showtime (référence de
 - `RowList` : liste à lignes de Showtime (note, sous-titre, choix, interrupteur avec écoute et étoile, rangée de
   boutons, champ texte), défilement à la molette ou à la barre.
 - `MenuDialog` : fenêtre de saisie ou de confirmation (rouge si destructive), Tab / Entrée / Échap.
+- `RewardsPage` (admins) : charger un joueur par son pseudo, voir ses récompenses (✕ pour en retirer une), + DONNER : type
+  (filtre, aura, taille), lequel, espèce (nom français, anglais ou identifiant ; vide = toutes), note.
 - Pages : `SettingsPage` (adresse du backend : Tester `GET /health`, Par défaut, Enregistrer pour le prochain
   lancement ; apparence), `MusicPage` (comme Showtime : dossiers, génération, favoris, écoute, textes de Showtime),
   `HubsPage` (le gestionnaire des hubs, ci-dessous).
