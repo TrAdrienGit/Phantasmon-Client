@@ -77,6 +77,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	/** The box type switch, in the box header, left of ▶. */
 	private static final int TYPE_W = 170;
 	private static final int TYPE_X = NEXT_X - 10 - TYPE_W;
+	/** One colour per team row of a team box: teal, violet, amber, rose, green. */
+	private static final int[] TEAM_COLORS = { 0xFF38C4BC, 0xFF9B7BFF, 0xFFFFB347, 0xFFFF6B8B, 0xFF7BD86B };
 	/** Grid slots are shorter than the rail's: same layout logic; model ×2 after Adrien's capture (2026-10-02, too small). */
 	private static final SlotLayout GRID_SLOT = new SlotLayout(16, 92, SLOT_MODEL_SCALE * 88 / 142f * 2f, 112, GRID_SLOT_W - 24, 84, 18);
 
@@ -816,10 +818,16 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				int h = TEAM_SLOT_H + 10;
 				int left = GRID_PANEL_X + 6;
 				int w = GRID_PANEL_W - 12;
-				blackBorder(g, left, top, w, h, PANEL_BORDER);
-				g.fillGradient(left, top, left + w, top + h, row == hoveredRow ? CYAN2 : CARD_HEAD_BG, MOVE_BG);
+				// Each team its own colour (Adrien 2026-11-11: the rows must stand apart): a tinted band, a coloured rim
+				// and bar; brighter under the mouse.
+				int hue = TEAM_COLORS[row % TEAM_COLORS.length];
+				boolean lit = row == hoveredRow;
+				blackBorder(g, left - line(), top - line(), w + 2 * line(), h + 2 * line(), PANEL_BORDER);
+				blackBorder(g, left, top, w, h, withAlpha(hue, lit ? 1f : 0.7f));
+				g.fillGradient(left, top, left + w, top + h, lerpColor(MOVE_BG, hue, lit ? 0.45f : 0.28f) | 0xFF000000,
+						lerpColor(MOVE_BG, hue, lit ? 0.18f : 0.08f) | 0xFF000000);
 				raisedEdge(g, left, top, w, h);
-				g.fill(left, top, left + 5, top + h, row == hoveredRow ? CYAN : DIM);
+				g.fill(left, top, left + 7, top + h, hue);
 			}
 		}
 		for (int i = 0; i < SLOTS_PER_BOX; i++) {

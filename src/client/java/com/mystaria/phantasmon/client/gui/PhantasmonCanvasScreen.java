@@ -176,6 +176,11 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** Canvas px of one screen pixel, refreshed when the canvas is set up: relief edges are never thinner than that. */
 	private static int line = 1;
 
+	/** {@link #line} for the screens: a relief edge's thickness in canvas px. */
+	protected static int line() {
+		return line;
+	}
+
 	private static com.mystaria.phantasmon.client.gui.menu.MenuUi.Palette palette() {
 		return com.mystaria.phantasmon.client.gui.menu.MenuUi.p();
 	}
