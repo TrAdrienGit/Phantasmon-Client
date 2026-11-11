@@ -277,7 +277,7 @@ public final class HubAvatars {
 		hubGhosts.spawn(avatar.getUUID(), species, ghost.get("form") instanceof String form ? form : null,
 				Boolean.TRUE.equals(ghost.get("is_shiny")), ghost.get("gender"), (int) number(ghost.get("level")),
 				ghost.get("nickname") instanceof String nickname ? nickname : null,
-				avatar.getX(), avatar.getY(), avatar.getZ());
+				avatar.getX(), avatar.getY(), avatar.getZ(), com.mystaria.phantasmon.client.pokemon.PokemonLook.fromMap(ghost.get("look")));
 	}
 
 	private void despawn(UUID playerUuid) {

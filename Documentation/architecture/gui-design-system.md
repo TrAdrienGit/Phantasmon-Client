@@ -86,7 +86,15 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
 - Apparence (TODO-37, étape 1, 2026-11-11) : la fiche montre des badges en bas à gauche de la vue 3D (filtre,
   aura, taille, scellée). Dans l'éditeur, le bouton ✦ APPARENCE ouvre une fenêtre : filtre, aura, taille (−/+ par
   10 %, de 50 à 200 %) ; un joueur n'y voit que ce que ses récompenses couvrent pour cette espèce (`GET /rewards/mine`),
-  un admin tout, plus SCELLÉE. Enregistré avec le reste (`data.look`). Le rendu des effets vient à l'étape 2.
+  un admin tout, plus SCELLÉE. Enregistré avec le reste (`data.look`).
+- Rendu de l'apparence (TODO-37, étape 2, 2026-11-11) : l'apparence voyage en aspects Cobblemon
+  (`phantasmon_filter_<id>`, `phantasmon_aura_<id>`, `phantasmon_scale_<n>`) : ajoutés aux Ghost (payload `look`),
+  aux Pokémon de combat Ghost (aspects forcés par `GhostBattlePokemonFactory`, donc dans les paquets de combat, chez
+  les deux joueurs et les spectateurs) et aux modèles des menus. **Filtres** : `VaryingModelRepositoryLookMixin`
+  remplace la texture choisie par Cobblemon par une copie recolorée (`pokemon/LookTextures`, faite une fois par
+  texture, refaite après F3+T) — une vraie texture, donc compatible Iris. **Auras** : particules de Minecraft autour
+  du corps (`pokemon/LookAuras`, entités de Phantasmon seulement). **Taille** : attribut `scale` de Minecraft
+  (appliqué par le rendu). Les Pokémon normaux de Cobblemon ne portent jamais ces aspects.
 - Noms de boîtes (TODO-38) : clic sur le titre de la boîte pour la nommer (24 caractères ; vide = plus de nom ;
   Entrée garde, Échap annule) ; le titre devient « nom · n/16 ». Gardés avec les types de boîte (`PcBoxTypes`).
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).

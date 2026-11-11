@@ -1164,7 +1164,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		pose.translate(0, 0, 400);
 		float modelScale = GRID_SLOT.modelScale() * 1.15f;
 		PokemonGuiRendering.renderModel(g, dragged.species(), dragged.form(), dragged.isShiny(), PokemonGuiRendering.storedGender(dragged),
-				(float) cursorX, slotModelAnchorY((float) cursorY, modelScale), modelScale);
+				(float) cursorX, slotModelAnchorY((float) cursorY, modelScale), modelScale, com.mystaria.phantasmon.client.pokemon.PokemonLook.of(dragged));
 		pose.popPose();
 	}
 

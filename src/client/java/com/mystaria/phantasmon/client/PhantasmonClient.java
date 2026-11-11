@@ -83,6 +83,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			liveBattle.tick();
 			hub.tick();
 			com.mystaria.phantasmon.client.hub.HubPlacement.tick();
+			com.mystaria.phantasmon.client.pokemon.LookAuras.tick();
 			com.mystaria.phantasmon.client.voice.HubVoice.tick();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.tick();
 			ghostPartyHud.tick();
@@ -100,6 +101,19 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.battle.GhostVirtualItems.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
+		// Look filters (TODO-37): the recoloured copies are made again from the new textures after F3+T.
+		net.fabricmc.fabric.api.resource.ResourceManagerHelper.get(net.minecraft.server.packs.PackType.CLIENT_RESOURCES)
+				.registerReloadListener(new net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener() {
+					@Override
+					public net.minecraft.resources.ResourceLocation getFabricId() {
+						return net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("phantasmon", "look_textures");
+					}
+
+					@Override
+					public void onResourceManagerReload(net.minecraft.server.packs.resources.ResourceManager manager) {
+						com.mystaria.phantasmon.client.pokemon.LookTextures.clear();
+					}
+				});
 		com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.bindHubs(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.HubAccess(hubClient, authSession, hub));
 		com.mystaria.phantasmon.client.hub.HubPlacement.register();
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);

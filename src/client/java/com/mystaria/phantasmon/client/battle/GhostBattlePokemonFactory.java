@@ -64,7 +64,8 @@ public final class GhostBattlePokemonFactory {
 		if (nature != null) {
 			pokemon.setNature(nature);
 		}
-		AbilityTemplate ability = dto.ability() == null ? null : Abilities.get(com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(dto.ability()));  // Cobblemon's ids are "roughskin"; imports used to store "rough_skin"
+		AbilityTemplate ability = dto.ability() == null ? null : Abilities.get(com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(dto.ability()));
+  // Cobblemon's ids are "roughskin"; imports used to store "rough_skin"
 		if (ability != null) {
 			pokemon.updateAbility(ability.create(true, Priority.NORMAL));
 		} else if (dto.ability() != null) {
@@ -137,6 +138,14 @@ public final class GhostBattlePokemonFactory {
 			pokemon.setForcedAspects(forced);
 		}
 		pokemon.updateAspects();
+		com.mystaria.phantasmon.client.pokemon.PokemonLook look = com.mystaria.phantasmon.client.pokemon.PokemonLook.fromMap(data.get("look"));
+		if (!look.empty()) {
+			// The look (TODO-37) rides on aspects: they reach both clients and the viewers in the battle packets.
+			Set<String> forced = new HashSet<>(pokemon.getAspects());
+			forced.addAll(look.aspects());
+			pokemon.setForcedAspects(forced);
+			pokemon.updateAspects();
+		}
 		pokemon.heal();
 		return pokemon;
 	}

@@ -22,13 +22,60 @@ public record PokemonLook(String filter, String aura, int scale, boolean sealed)
 	public static final List<String> AURAS = List.of("super_saiyan", "electric");
 
 	public static PokemonLook of(PokemonDto pokemon) {
-		Object look = pokemon == null || pokemon.data() == null ? null : pokemon.data().get("look");
+		return fromMap(pokemon == null || pokemon.data() == null ? null : pokemon.data().get("look"));
+	}
+
+	/** Cobblemon aspects carrying the look to the renderer (they travel with the entity and in battle packets). */
+	public static final String ASPECT_FILTER = "phantasmon_filter_";
+	public static final String ASPECT_AURA = "phantasmon_aura_";
+	public static final String ASPECT_SCALE = "phantasmon_scale_";
+
+	/** The look of a {@code look} map as the data and the Ghost payloads carry it. */
+	public static PokemonLook fromMap(Object look) {
 		if (!(look instanceof Map<?, ?> map)) {
 			return NONE;
 		}
 		int scale = map.get("scale") instanceof Number number ? number.intValue() : 100;
 		return new PokemonLook(map.get("filter") instanceof String text ? text : null,
 				map.get("aura") instanceof String text ? text : null, scale, Boolean.TRUE.equals(map.get("sealed")));
+	}
+
+	/** The aspects to add to a Pokémon wearing this look (none for no look). */
+	public java.util.Set<String> aspects() {
+		java.util.Set<String> aspects = new java.util.HashSet<>();
+		if (filter != null) {
+			aspects.add(ASPECT_FILTER + filter);
+		}
+		if (aura != null) {
+			aspects.add(ASPECT_AURA + aura);
+		}
+		if (scale != 100) {
+			aspects.add(ASPECT_SCALE + scale);
+		}
+		return aspects;
+	}
+
+	/** The look carried by a Pokémon's aspects (render side). */
+	public static PokemonLook fromAspects(java.util.Collection<String> aspects) {
+		String filter = null;
+		String aura = null;
+		int scale = 100;
+		if (aspects != null) {
+			for (String aspect : aspects) {
+				if (aspect.startsWith(ASPECT_FILTER)) {
+					filter = aspect.substring(ASPECT_FILTER.length());
+				} else if (aspect.startsWith(ASPECT_AURA)) {
+					aura = aspect.substring(ASPECT_AURA.length());
+				} else if (aspect.startsWith(ASPECT_SCALE)) {
+					try {
+						scale = Integer.parseInt(aspect.substring(ASPECT_SCALE.length()));
+					} catch (NumberFormatException ignored) {
+						// not ours
+					}
+				}
+			}
+		}
+		return new PokemonLook(filter, aura, scale, false);
 	}
 
 	public boolean empty() {

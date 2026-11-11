@@ -303,6 +303,8 @@ public final class BattleVisuals {
 		// The renderer reads the entity's synched ASPECTS, normally filled by Cobblemon's server delegate; a
 		// client-only entity has none, so special forms rendered as the base model (TODO-12). Same as the Ghosts.
 		entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), new HashSet<>(dto.getAspects()));
+		// The look's size (TODO-37), carried by an aspect; its filter and aura are read from the aspects when drawn.
+		com.mystaria.phantasmon.client.pokemon.LookAuras.applyScale(entity, com.mystaria.phantasmon.client.pokemon.PokemonLook.fromAspects(dto.getAspects()));
 		// Same for the label's level (default 1).
 		entity.getEntityData().set(PokemonEntity.Companion.getLABEL_LEVEL(), pokemon.getLevel());
 		entity.setNoAi(true);

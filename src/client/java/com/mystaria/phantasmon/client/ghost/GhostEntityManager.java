@@ -170,6 +170,12 @@ public final class GhostEntityManager {
 
 	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, Object storedGender, int level, String nickname,
 			double x, double y, double z) {
+		spawn(ownerUuid, species, form, shiny, storedGender, level, nickname, x, y, z, com.mystaria.phantasmon.client.pokemon.PokemonLook.NONE);
+	}
+
+	/** Same, wearing its look (TODO-37): filter and aura as aspects, size as the entity's scale. */
+	public void spawn(UUID ownerUuid, String species, String form, boolean shiny, Object storedGender, int level, String nickname,
+			double x, double y, double z, com.mystaria.phantasmon.client.pokemon.PokemonLook look) {
 		ClientLevel clientLevel = Minecraft.getInstance().level;
 		if (clientLevel == null) {
 			return;
@@ -234,6 +240,12 @@ public final class GhostEntityManager {
 		entity.setYBodyRot(anchorYaw);
 		entity.setYHeadRot(anchorYaw);
 		syncAspects(entity, pokemon, shiny, genderAspect);
+		if (!look.empty()) {
+			java.util.Set<String> aspects = new HashSet<>(entity.getEntityData().get(PokemonEntity.Companion.getASPECTS()));
+			aspects.addAll(look.aspects());
+			entity.getEntityData().set(PokemonEntity.Companion.getASPECTS(), aspects);
+			com.mystaria.phantasmon.client.pokemon.LookAuras.applyScale(entity, look);
+		}
 		// The label's level is synched entity data too (default 1, normally filled by the server delegate).
 		entity.getEntityData().set(PokemonEntity.Companion.getLABEL_LEVEL(), pokemon.getLevel());
 		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), anchorYaw);

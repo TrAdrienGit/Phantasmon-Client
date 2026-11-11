@@ -60,6 +60,12 @@ public final class PokemonGuiRendering {
 	 */
 	public static void renderModel(GuiGraphics graphics, String speciesId, String form, boolean shiny, Object storedGender,
 			float centerX, float anchorY, float outerScale) {
+		renderModel(graphics, speciesId, form, shiny, storedGender, centerX, anchorY, outerScale, null);
+	}
+
+	/** Same, wearing {@code look} (TODO-37): its filter's aspect makes Cobblemon draw the recoloured texture. */
+	public static void renderModel(GuiGraphics graphics, String speciesId, String form, boolean shiny, Object storedGender,
+			float centerX, float anchorY, float outerScale, com.mystaria.phantasmon.client.pokemon.PokemonLook look) {
 		Species species = PokemonSpecies.INSTANCE.getByName(speciesId);
 		if (species == null) {
 			return;
@@ -73,6 +79,9 @@ public final class PokemonGuiRendering {
 		String genderAspect = genderAspect(species, form, storedGender);
 		if (genderAspect != null) {
 			aspects.add(genderAspect);
+		}
+		if (look != null) {
+			aspects.addAll(look.aspects());
 		}
 		RenderablePokemon renderable = new RenderablePokemon(species, aspects, ItemStack.EMPTY);
 

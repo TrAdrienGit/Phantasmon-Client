@@ -460,7 +460,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		g.flush();
 		enableCanvasScissor(g, x + 1, modelTop, w - 2, layout.modelHeight());
 		PokemonGuiRendering.renderModel(g, pokemon.species(), pokemon.form(), pokemon.isShiny(), PokemonGuiRendering.storedGender(pokemon),
-				x + w / 2f, slotModelAnchorY(modelTop + layout.modelHeight() / 2f, layout.modelScale()), layout.modelScale());
+				x + w / 2f, slotModelAnchorY(modelTop + layout.modelHeight() / 2f, layout.modelScale()), layout.modelScale(), com.mystaria.phantasmon.client.pokemon.PokemonLook.of(pokemon));
 		g.disableScissor();
 
 		String starPrefix = pokemon.isShiny() ? "★ " : "";
@@ -564,7 +564,8 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		pose.translate(centerX, anchorY - 5f * ease, 0);
 		float grow = 1f + 0.015f * ease;
 		pose.scale(grow, grow, 1f);
-		PokemonGuiRendering.renderModel(g, pokemon.species(), pokemon.form(), pokemon.isShiny(), PokemonGuiRendering.storedGender(pokemon), 0, 0, CARD_MODEL_SCALE);
+		PokemonGuiRendering.renderModel(g, pokemon.species(), pokemon.form(), pokemon.isShiny(), PokemonGuiRendering.storedGender(pokemon), 0, 0, CARD_MODEL_SCALE,
+				com.mystaria.phantasmon.client.pokemon.PokemonLook.of(pokemon));
 		pose.popPose();
 		g.disableScissor();
 	}

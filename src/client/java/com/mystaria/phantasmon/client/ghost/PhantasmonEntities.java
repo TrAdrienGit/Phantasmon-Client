@@ -25,4 +25,9 @@ public final class PhantasmonEntities {
 	public static boolean isPhantasmon(PokemonEntity entity) {
 		return ENTITIES.contains(entity);
 	}
+
+	/** A snapshot of the live ones (auras, TODO-37). */
+	public static java.util.List<PokemonEntity> all() {
+		return java.util.List.copyOf(ENTITIES);
+	}
 }
