@@ -500,5 +500,12 @@
   "phantasmon.hub_manager.schematic_pick": "Choisis un fichier dans la liste.",
   "phantasmon.move.stats": "Puiss. %s  ·  Préc. %s  ·  PP %s",
   "phantasmon.hub_manager.online": "%s en ligne",
-  "phantasmon.hub_manager.online_detail": "Joueurs dans le hub en ce moment : %s"
+  "phantasmon.hub_manager.online_detail": "Joueurs dans le hub en ce moment : %s",
+  "phantasmon.pc.screen.box_loose": "Boîte vrac",
+  "phantasmon.pc.screen.box_team": "Boîte équipes",
+  "phantasmon.pc.screen.box_now_team": "Boîte %s : boîte équipes, une équipe par ligne.",
+  "phantasmon.pc.screen.box_now_loose": "Boîte %s : boîte vrac.",
+  "phantasmon.pc.screen.team_box_hint": "Boîte équipes : une équipe par ligne · double-clic sur une ligne : l'échanger avec ton équipe",
+  "phantasmon.pc.screen.team_row_hint": "Équipe %s · double-clic : l'échanger avec ton équipe",
+  "phantasmon.pc.screen.team_swapped": "Équipe %s échangée avec ton équipe."
 }

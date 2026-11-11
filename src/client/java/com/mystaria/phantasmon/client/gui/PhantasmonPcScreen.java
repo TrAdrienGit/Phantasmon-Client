@@ -71,6 +71,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final int GRID_SLOT_W = 119;
 	private static final int GRID_SLOT_H = 132;
 	private static final int GRID_GAP = 8;
+	/** Team boxes (TODO-36): shorter slots, wider gaps between the rows, the same overall height. */
+	private static final int TEAM_SLOT_H = 124;
+	private static final int TEAM_ROW_GAP = 18;
+	/** The box type switch, in the box header, left of ▶. */
+	private static final int TYPE_W = 170;
+	private static final int TYPE_X = NEXT_X - 10 - TYPE_W;
 	/** Grid slots are shorter than the rail's: same layout logic; model ×2 after Adrien's capture (2026-10-02, too small). */
 	private static final SlotLayout GRID_SLOT = new SlotLayout(16, 92, SLOT_MODEL_SCALE * 88 / 142f * 2f, 112, GRID_SLOT_W - 24, 84, 18);
 
@@ -288,6 +294,47 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		setStatus(Component.translatable("phantasmon.pc.screen.pc_full").getString(), true);
 	}
 
+	/**
+	 * Team box (TODO-36): the row {@code row} and the team trade places, column by column — the row's 1st Pokémon
+	 * becomes the team's 1st, the team's 1st takes its place in the row, and so on. Each column is one move the backend
+	 * already knows (onto an occupied slot it swaps the two, D-04), sent one after the other.
+	 */
+	private void swapTeamRow(int row) {
+		List<java.util.function.Supplier<java.util.concurrent.CompletableFuture<?>>> moves = new ArrayList<>();
+		for (int column = 0; column < BOX_COLUMNS; column++) {
+			PokemonDto inRow = boxSlots[row * BOX_COLUMNS + column];
+			PokemonDto inTeam = column < TEAM_SIZE ? teamSlots[column] : null;
+			int teamSlot = column + 1;
+			int pcSlot = row * BOX_COLUMNS + column + 1;
+			int box = currentBox;
+			if (inRow != null) {
+				moves.add(() -> pokemonClient.update(session.accessToken(), inRow.uuid(),
+						PokemonUpdateRequestDto.movingToTeamSlot(teamSlot)));
+			} else if (inTeam != null) {
+				moves.add(() -> pokemonClient.update(session.accessToken(), inTeam.uuid(),
+						PokemonUpdateRequestDto.movingToPcSlot(box, pcSlot)));
+			}
+		}
+		if (moves.isEmpty()) {
+			return;
+		}
+		loading = true;
+		java.util.concurrent.CompletableFuture<?> chain = java.util.concurrent.CompletableFuture.completedFuture(null);
+		for (var next : moves) {
+			chain = chain.thenCompose(ignored -> next.get());
+		}
+		chain.thenAccept(done -> Minecraft.getInstance().execute(() -> {
+			setStatus(Component.translatable("phantasmon.pc.screen.team_swapped", row + 1).getString(), false);
+			refresh();
+		})).exceptionally(ex -> {
+			Minecraft.getInstance().execute(() -> {
+				setStatus(errorMessage(ex), true);
+				refresh(); // what already moved shows as it is
+			});
+			return null;
+		});
+	}
+
 	private void move(PokemonDto moving, PokemonUpdateRequestDto request) {
 		loading = true;
 		pokemonClient.update(session.accessToken(), moving.uuid(), request)
@@ -473,6 +520,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			changeBox(1);
 			return true;
 		}
+		if (inside(x, y, TYPE_X, NAV_Y, TYPE_W, NAV_H)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+			boolean team = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.toggle(pcOwner(), currentBox);
+			setStatus(Component.translatable(team ? "phantasmon.pc.screen.box_now_team" : "phantasmon.pc.screen.box_now_loose",
+					currentBox).getString(), false);
+			return true;
+		}
 		if (selectedPokemon() != null) {
 			if (inside(x, y, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H)) {
 				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
@@ -495,7 +549,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				dragSource = null;
 				dragging = false;
 				if (!loading) {
-					quickMove(pokemon, ref);
+					if (teamBox() && ref.kind() == SlotRef.Kind.PC) {
+						swapTeamRow(ref.index() / BOX_COLUMNS);
+					} else {
+						quickMove(pokemon, ref);
+					}
 				}
 				return true;
 			}
@@ -607,7 +665,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			}
 		}
 		for (int i = 0; i < SLOTS_PER_BOX; i++) {
-			if (inside(x, y, gridSlotX(i), gridSlotY(i), GRID_SLOT_W, GRID_SLOT_H)) {
+			if (inside(x, y, gridSlotX(i), gridSlotY(i), GRID_SLOT_W, gridSlotH())) {
 				return new SlotRef(SlotRef.Kind.PC, i);
 			}
 		}
@@ -627,8 +685,37 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		return GRID_X + (index % BOX_COLUMNS) * (GRID_SLOT_W + GRID_GAP);
 	}
 
-	private static int gridSlotY(int index) {
-		return GRID_Y + (index / BOX_COLUMNS) * (GRID_SLOT_H + GRID_GAP);
+	private int gridSlotY(int index) {
+		return teamBox() ? GRID_Y + (index / BOX_COLUMNS) * (TEAM_SLOT_H + TEAM_ROW_GAP)
+				: GRID_Y + (index / BOX_COLUMNS) * (GRID_SLOT_H + GRID_GAP);
+	}
+
+	private int gridSlotH() {
+		return teamBox() ? TEAM_SLOT_H : GRID_SLOT_H;
+	}
+
+	/** Whose PC: its owner's own box types. */
+	private UUID pcOwner() {
+		return ownerUuid != null ? ownerUuid : session.playerUuid();
+	}
+
+	/** The current box is a team box: one team per row (TODO-36). */
+	private boolean teamBox() {
+		return com.mystaria.phantasmon.client.pokemon.PcBoxTypes.isTeamBox(pcOwner(), currentBox);
+	}
+
+	/** The team row under the cursor in a team box, or -1. */
+	private int teamRowAt(double x, double y) {
+		if (!teamBox()) {
+			return -1;
+		}
+		for (int row = 0; row < BOX_ROWS; row++) {
+			int top = gridSlotY(row * BOX_COLUMNS) - 5;
+			if (inside(x, y, GRID_PANEL_X + 4, top, GRID_PANEL_W - 8, TEAM_SLOT_H + 10)) {
+				return row;
+			}
+		}
+		return -1;
 	}
 
 	// =====================================================================
@@ -716,11 +803,31 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		drawCentered(g, boxLabel, GRID_PANEL_X + GRID_PANEL_W / 2f, NAV_Y + 8, 2f, MUTED, true, 2f);
 		g.fill(GRID_PANEL_X + 9, 117, GRID_PANEL_X + GRID_PANEL_W - 9, 117 + hairline(), LINE_25);
 
+		boolean team = teamBox();
+		boolean typeHovered = inside(mx, my, TYPE_X, NAV_Y, TYPE_W, NAV_H);
+		renderPrimaryButtonFrame(g, TYPE_X, NAV_Y, TYPE_W, NAV_H, typeHovered, team);
+		String type = upper(Component.translatable(team ? "phantasmon.pc.screen.box_team" : "phantasmon.pc.screen.box_loose").getString());
+		drawCentered(g, fitText(type, TYPE_W - 12, 1f, true, 1.5f), TYPE_X + TYPE_W / 2f, NAV_Y + (NAV_H - 7) / 2f, 1f, WHITE, true, 1.5f);
+		if (team) {
+			// One band per team row, the hovered one lit: a double click there swaps it with the team.
+			int hoveredRow = loading ? -1 : teamRowAt(mx, my);
+			for (int row = 0; row < BOX_ROWS; row++) {
+				int top = gridSlotY(row * BOX_COLUMNS) - 5;
+				int h = TEAM_SLOT_H + 10;
+				int left = GRID_PANEL_X + 6;
+				int w = GRID_PANEL_W - 12;
+				blackBorder(g, left, top, w, h, PANEL_BORDER);
+				g.fillGradient(left, top, left + w, top + h, row == hoveredRow ? CYAN2 : CARD_HEAD_BG, MOVE_BG);
+				raisedEdge(g, left, top, w, h);
+				g.fill(left, top, left + 5, top + h, row == hoveredRow ? CYAN : DIM);
+			}
+		}
 		for (int i = 0; i < SLOTS_PER_BOX; i++) {
 			SlotRef ref = new SlotRef(SlotRef.Kind.PC, i);
 			int x = gridSlotX(i);
 			int y = gridSlotY(i);
-			renderSlot(g, x, y, GRID_SLOT_W, GRID_SLOT_H, boxSlots[i], lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, GRID_SLOT_H), GRID_SLOT);
+			int h = gridSlotH();
+			renderSlot(g, x, y, GRID_SLOT_W, h, boxSlots[i], lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, h), GRID_SLOT);
 		}
 	}
 
@@ -758,6 +865,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		} else if (statusMessage != null) {
 			status = statusMessage;
 			color = statusIsError ? ERROR_TEXT : READY_TEXT;
+		} else if (teamBox()) {
+			int row = teamRowAt(mx, my);
+			status = row < 0 ? Component.translatable("phantasmon.pc.screen.team_box_hint").getString()
+					: Component.translatable("phantasmon.pc.screen.team_row_hint", row + 1).getString();
+			color = row < 0 ? DIM : CYAN;
 		} else {
 			status = Component.translatable("phantasmon.pc.screen.idle_hint").getString();
 			color = DIM;

@@ -500,5 +500,12 @@
   "phantasmon.hub_manager.schematic_pick": "Pick a file in the list.",
   "phantasmon.move.stats": "Power %s  ·  Acc. %s  ·  PP %s",
   "phantasmon.hub_manager.online": "%s online",
-  "phantasmon.hub_manager.online_detail": "Players in the hub right now: %s"
+  "phantasmon.hub_manager.online_detail": "Players in the hub right now: %s",
+  "phantasmon.pc.screen.box_loose": "Loose box",
+  "phantasmon.pc.screen.box_team": "Team box",
+  "phantasmon.pc.screen.box_now_team": "Box %s: team box, one team per row.",
+  "phantasmon.pc.screen.box_now_loose": "Box %s: loose box.",
+  "phantasmon.pc.screen.team_box_hint": "Team box: one team per row · double click a row: swap it with your team",
+  "phantasmon.pc.screen.team_row_hint": "Team %s · double click: swap it with your team",
+  "phantasmon.pc.screen.team_swapped": "Team %s swapped with your team."
 }

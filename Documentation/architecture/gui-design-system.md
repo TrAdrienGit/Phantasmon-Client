@@ -72,6 +72,12 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   les deux bandeaux d'en-tête sont raccourcis d'autant (598 px au lieu de 688), même marge de 12 px qu'autour du
   bouton unique de l'écran d'échange (`renderHeaderPlates(g, largeur)`, constantes `HEADER_*`).
 - SUPPRIMER (ou touche Suppr) : fenêtre de confirmation.
+- Types de boîte (TODO-36, 2026-11-11) : bouton BOÎTE VRAC / BOÎTE ÉQUIPES dans l'en-tête de la boîte. Une boîte
+  équipes montre ses 5 lignes séparées (bandeaux en relief, cases un peu moins hautes), chaque ligne = une équipe ; un
+  double-clic sur un Pokémon de la ligne échange la ligne et l'équipe, colonne par colonne (le 1er de la ligne devient
+  le 1er de l'équipe et inversement), par les déplacements habituels du backend (D-04) envoyés l'un après l'autre.
+  Le type de chaque boîte n'est gardé que côté client (`pokemon/PcBoxTypes`, `config/phantasmon-pc-boxes.json`, par
+  propriétaire du PC) : rien sur le backend.
 - Après chaque action, la liste complète des Pokémon du joueur est rechargée (480 au maximum).
 
 **Éditeur**
