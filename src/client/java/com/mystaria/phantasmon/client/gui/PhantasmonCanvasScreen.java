@@ -909,7 +909,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		g.fill(x + t, y + h - 2 * t, x + w - t, y + h - t, 0x40000000);
 		int textColor = 0xFF000000 | PokemonGuiRendering.readableTextColor(bg);
 		float textHeight = 7 * snapTextScale(textScale);
-		float textX = x + (w - textWidth(label, textScale, true, 0.5f)) / 2f;
+		float textX = x + (w - labelWidth(label, textScale)) / 2f;
 		float textY = y + (h - textHeight) / 2f;
 		if ((textColor & 0xFFFFFF) == 0xFFFFFF) {
 			drawText(g, label, textX + t, textY + t, textScale, 0x70000000, true, 0.5f);
@@ -919,7 +919,16 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	}
 
 	protected int badgeWidth(String label, float textScale) {
-		return Math.round(textWidth(label, textScale, true, 0.5f)) + 18;
+		return Math.round(labelWidth(label, textScale)) + 18;
+	}
+
+	/**
+	 * A badge label's real width: bold as the font measures it, without {@link #textWidth}'s bold safety margin (a
+	 * pixel per glyph, for the modpack's chat font), which pushed every type name to the left (Adrien 2026-11-11).
+	 */
+	private float labelWidth(String label, float textScale) {
+		int glyphs = label.codePointCount(0, label.length());
+		return font.width(styled(label, true, uniformAt(textScale))) * snapTextScale(textScale) + snapSpacing(0.5f) * (glyphs - 1);
 	}
 
 	/** Physical orange, special blue, status grey — the colours of the games' category icons. */
