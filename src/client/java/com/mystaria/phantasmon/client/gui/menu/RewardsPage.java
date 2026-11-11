@@ -182,11 +182,26 @@ final class RewardsPage implements MenuPage {
 			input(Component.translatable("phantasmon.rewards.species"), Kind.TEXT, 32, "",
 					Component.translatable("phantasmon.rewards.all_species").getString());
 			input(Component.translatable("phantasmon.rewards.note"), Kind.TEXT, 100, "", null);
+			speciesInput = inputs.get(0);
+			noteInput = inputs.get(1);
+		}
+
+		private final Input speciesInput;
+		private final Input noteInput;
+
+		/** An intro or an ambiance is for the player: no species field (and room for the League's many intros). */
+		private void fields() {
+			inputs.clear();
+			if (!content(kind)) {
+				inputs.add(speciesInput);
+			}
+			inputs.add(noteInput);
+			focused = 0;
 		}
 
 		@Override
 		int width() {
-			return 360;
+			return content(kind) ? 460 : 360;
 		}
 
 		private List<String> values() {
@@ -201,7 +216,12 @@ final class RewardsPage implements MenuPage {
 
 		/** Values per row: the long names of intros and ambiances get two. */
 		private int columns() {
-			return content(kind) ? 2 : 3;
+			return content(kind) ? 4 : 3;
+		}
+
+		/** Value chips: lower for intros and ambiances, the League alone has 21 intros. */
+		private int valueH() {
+			return content(kind) ? 14 : CHIP_H;
 		}
 
 		/** The kinds' two rows of chips. */
@@ -211,13 +231,13 @@ final class RewardsPage implements MenuPage {
 		int bodyHeight() {
 			int rows = (values().size() + columns() - 1) / columns();
 			boolean empty = values().isEmpty() && content(kind);
-			return 14 + KINDS_H + 8 + (rows == 0 ? empty ? 22 : 0 : 12 + rows * (CHIP_H + 4));
+			return 14 + KINDS_H + 8 + (rows == 0 ? empty ? 22 : 0 : 12 + rows * (valueH() + 3));
 		}
 
 		/** Each chip of the body, recomputed from the layout: kinds, then values. */
 		private List<int[]> chipRects(int bx, int by, int bRight) {
 			List<int[]> rects = new ArrayList<>();
-			int w = (bRight - bx - 8) / 3;
+			int w = Math.min(112, (bRight - bx - 8) / 3);
 			for (int i = 0; i < KINDS.length; i++) {
 				rects.add(new int[] { bx + (i % 3) * (w + 4), by + 12 + (i / 3) * (CHIP_H + 4), w, CHIP_H });
 			}
@@ -225,7 +245,7 @@ final class RewardsPage implements MenuPage {
 			int columns = columns();
 			int vw = (bRight - bx - 4 * (columns - 1)) / columns;
 			for (int i = 0; i < values.size(); i++) {
-				rects.add(new int[] { bx + (i % columns) * (vw + 4), by + 12 + KINDS_H + 20 + (i / columns) * (CHIP_H + 4), vw, CHIP_H });
+				rects.add(new int[] { bx + (i % columns) * (vw + 4), by + 12 + KINDS_H + 20 + (i / columns) * (valueH() + 3), vw, valueH() });
 			}
 			return rects;
 		}
@@ -275,6 +295,7 @@ final class RewardsPage implements MenuPage {
 						kind = KINDS[i];
 						value = values().isEmpty() ? "SCALE".equals(kind) ? "size" : "" : values().get(0);
 						error = null;
+						fields();
 						layout(Minecraft.getInstance().getWindow().getGuiScaledWidth(), Minecraft.getInstance().getWindow().getGuiScaledHeight());
 					} else {
 						value = values().get(i - KINDS.length);
@@ -290,7 +311,7 @@ final class RewardsPage implements MenuPage {
 			if (busy) {
 				return;
 			}
-			String typed = inputs.get(0).value.strip();
+			String typed = content(kind) ? "" : speciesInput.value.strip();
 			String species = null;
 			if (content(kind)) {
 				if (value.isEmpty()) {
@@ -314,7 +335,7 @@ final class RewardsPage implements MenuPage {
 			if (species != null) {
 				body.put("species", species);
 			}
-			String note = inputs.get(1).value.strip();
+			String note = noteInput.value.strip();
 			if (!note.isEmpty()) {
 				body.put("note", note);
 			}
