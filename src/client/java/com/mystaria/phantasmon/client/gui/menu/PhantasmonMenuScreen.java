@@ -86,6 +86,11 @@ public final class PhantasmonMenuScreen extends Screen {
 		category = categories.stream().filter(nav -> nav.key().equals(startKey)).findFirst()
 				.orElse(categories.get(categories.size() - 1));
 		statusColor = MenuUi.p().muted();
+		if (hubAccess != null && !hubAccess.session().isAuthenticated()) {
+			// Opened without a connection (H, 2026-11-18): say why the backend's pages are missing.
+			status = Component.translatable("phantasmon.menu.not_connected");
+			statusColor = MenuUi.p().danger();
+		}
 	}
 
 	/** The menu opened on an add-on's page ({@code PhantasmonApi.openMenu}). */

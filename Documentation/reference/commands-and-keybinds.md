@@ -13,7 +13,7 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 |---|---|---|
 | `key.cobblemon_battle_showtime.music_menu` (touche de Cobblemon Battle Showtime depuis D-37) | **N** | Ouvre le menu des musiques de Phantasmon (cocher les morceaux du pack à jouer, les écouter) |
 | `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
-| `key.phantasmon.hub_manager` | **H** | Gestionnaire des hubs : pour un joueur, les hubs et ses ancres (placer, supprimer) ; pour un admin, la gestion complète des hubs et de toutes les ancres |
+| `key.phantasmon.hub_manager` | **H** | Menu Phantasmon, ouvert sur les hubs (placer, supprimer ses ancres ; gestion complète pour un admin). Sans connexion au backend, il s'ouvre quand même, sur les Réglages (adresse du backend), sans les pages qui ont besoin du backend (2026-11-18) |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
 Cobblemon → équipe Phantasm (overlay Phantasmon à gauche de l'écran, Ghost sorti en surbrillance) → rien → équipe

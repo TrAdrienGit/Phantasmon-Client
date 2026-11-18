@@ -87,7 +87,8 @@ test a team. Everything is done from the game, nothing on the Minecraft server.
 ## How to use
 
 - **P** opens your PC, **H** the Phantasmon menu (hubs and your anchors, rewards, music, settings including the
-  backend address). Change them in Options → Controls → Phantasmon.
+  backend address; when the backend can't be reached, H opens straight on the settings). Change them in
+  Options → Controls → Phantasmon.
 - **O** (Cobblemon's party key) cycles to your Ghost team; **R** sends the picked Ghost out or recalls it.
 - **R** (Cobblemon's wheel) on a player: Ghost Trade, Ghost Battle, Watch the battle.
 - `/phantasmon` commands do everything the screens do.

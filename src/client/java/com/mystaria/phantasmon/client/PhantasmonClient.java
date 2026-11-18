@@ -136,11 +136,8 @@ public class PhantasmonClient implements ClientModInitializer {
 		if (mc.player == null || mc.screen != null) {
 			return;
 		}
-		if (!authSession.isAuthenticated()) {
-			mc.player.displayClientMessage(net.minecraft.network.chat.Component.translatable("phantasmon.error.not_authenticated")
-					.withStyle(net.minecraft.ChatFormatting.RED), false);
-			return;
-		}
+		// Not connected (2026-11-18): the menu opens anyway, on its Settings (the backend address), the pages that need
+		// the backend left out — the only way in without Mod Menu when the address is wrong or the backend is down.
 		// H again while placing an anchor: placing stops, the manager opens.
 		com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
 		mc.setScreen(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen(null, com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.Category.HUBS));

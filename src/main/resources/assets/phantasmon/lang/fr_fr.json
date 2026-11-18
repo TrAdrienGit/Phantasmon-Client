@@ -104,7 +104,7 @@
   "phantasmon.pc.edit.search_placeholder": "Rechercher...",
   "key.categories.phantasmon": "Phantasmon",
   "key.phantasmon.open_pc": "Ouvrir le PC",
-  "key.phantasmon.hub_manager": "Gestionnaire des hubs (admin)",
+  "key.phantasmon.hub_manager": "Menu Phantasmon",
   "phantasmon.hub_manager.title": "Gestionnaire des hubs",
   "phantasmon.hub_manager.tab.hubs": "Hubs",
   "phantasmon.hub_manager.tab.others": "Autres",
@@ -562,5 +562,6 @@
   "phantasmon.look.error.invalid": "[Phantasmon] Apparence invalide.",
   "phantasmon.rewards.error.invalid": "[Phantasmon] Récompense invalide.",
   "phantasmon.rewards.error.duplicate": "[Phantasmon] Ce joueur a déjà cette récompense.",
-  "phantasmon.rewards.error.not_found": "[Phantasmon] Cette récompense n'existe plus."
+  "phantasmon.rewards.error.not_found": "[Phantasmon] Cette récompense n'existe plus.",
+  "phantasmon.menu.not_connected": "Non connecté au backend : vérifie son adresse dans les Réglages, puis relance le jeu."
 }

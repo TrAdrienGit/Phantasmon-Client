@@ -26,7 +26,7 @@ public final class PhantasmonKeybinds {
 	private static final String CATEGORY = "key.categories.phantasmon";
 
 	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc", GLFW.GLFW_KEY_P, CATEGORY);
-	/** The admins' hub manager (Adrien 2026-11-10): H; refused with a message to a player who is not an admin. */
+	/** The Phantasmon menu (renamed 2026-11-18): H, on the Hubs; without a connection, on the Settings. Rebindable, one key. */
 	private static final KeyMapping OPEN_HUB_MANAGER = new KeyMapping("key.phantasmon.hub_manager", GLFW.GLFW_KEY_H, CATEGORY);
 
 	private PhantasmonKeybinds() {

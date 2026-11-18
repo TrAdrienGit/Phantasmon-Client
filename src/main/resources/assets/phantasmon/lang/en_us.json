@@ -104,7 +104,7 @@
   "phantasmon.pc.edit.search_placeholder": "Search...",
   "key.categories.phantasmon": "Phantasmon",
   "key.phantasmon.open_pc": "Open PC",
-  "key.phantasmon.hub_manager": "Hub manager (admin)",
+  "key.phantasmon.hub_manager": "Phantasmon menu",
   "phantasmon.hub_manager.title": "Hub manager",
   "phantasmon.hub_manager.tab.hubs": "Hubs",
   "phantasmon.hub_manager.tab.others": "Others",
@@ -562,5 +562,6 @@
   "phantasmon.look.error.invalid": "[Phantasmon] Invalid look.",
   "phantasmon.rewards.error.invalid": "[Phantasmon] Invalid reward.",
   "phantasmon.rewards.error.duplicate": "[Phantasmon] This player already has this reward.",
-  "phantasmon.rewards.error.not_found": "[Phantasmon] This reward no longer exists."
+  "phantasmon.rewards.error.not_found": "[Phantasmon] This reward no longer exists.",
+  "phantasmon.menu.not_connected": "Not connected to the backend: check its address in Settings, then restart the game."
 }
