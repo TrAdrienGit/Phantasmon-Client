@@ -313,6 +313,13 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 	}
 
+	/** Battle field (League Reborn), for both players; "" = none. */
+	public void lobbySetField(String field) {
+		if (lobby != null && field != null && !field.equals(lobby.field())) {
+			send("BattleLobbySetField", Map.of("lobby_uuid", lobby.lobbyUuid(), "field", field));
+		}
+	}
+
 	/** The ambiance imposed on the Ghost battle being played or watched (from the lobby), or null: each player's own. */
 	public String battleAmbiance() {
 		String ambiance = battleUuid != null ? battleAmbiance : spectatingUuid != null ? spectatingAmbiance : null;
@@ -699,7 +706,10 @@ public final class LiveBattleController implements LiveBattleListener {
 			pendingInviteUuid = null;
 			lobbyScreenRequested = true;
 			// Either player may host: boot Showdown now, in the background, not when the battle starts.
-			BattleThread.get().submit(() -> BattleThread.get().ensureShowdown());
+			BattleThread.get().submit(() -> {
+				BattleThread.get().ensureShowdown();
+				ShowdownExtensions.apply();
+			});
 			com.mystaria.showtime.audio.BattleMusic.play(com.mystaria.showtime.audio.BattleMusic.Track.LOBBY);
 		}
 		lobby.apply(data);

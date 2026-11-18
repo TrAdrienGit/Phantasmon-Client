@@ -284,6 +284,7 @@ public final class GhostBattles {
 		BattleThread.get().submit(() -> {
 			try {
 				BattleThread.get().ensureShowdown();
+				ShowdownExtensions.apply();
 				List<BattlePokemon> hostPokemon = battleTeam(hostTeam);
 				List<BattlePokemon> guestPokemon = battleTeam(guestTeam);
 				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {

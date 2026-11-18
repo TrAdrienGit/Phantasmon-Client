@@ -62,6 +62,14 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private boolean formatListOpen;
 	private boolean ambianceListOpen;
 	private boolean introListOpen;
+	// ---- Battle field (League Reborn, 2026-11-18): top right of our card's model window; a grid of fields ----
+	private static final int FIELD_X = CARD_X + 305;
+	private static final int FIELD_Y = VIEW_Y + 10;
+	private static final int FIELD_W = 260;
+	private static final int FIELD_GRID_X = 410;
+	private static final int FIELD_GRID_Y = 160;
+	private static final int FIELD_COLUMNS = 3;
+	private boolean fieldListOpen;
 	/** Issues of the own Pokémon under the cursor (footer explains them), refreshed every frame. */
 	private List<BattleLobbyState.Issue> hoveredIssues = List.of();
 
@@ -141,6 +149,16 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			introListOpen = false;
 			return true;
 		}
+		if (fieldListOpen) {
+			List<String> fields = fieldOptions(state);
+			for (int i = 0; i < fields.size(); i++) {
+				if (inside(x, y, fieldCellX(i), fieldCellY(i), FIELD_W, FORMAT_ROW_H)) {
+					controller.lobbySetField(fields.get(i));
+				}
+			}
+			fieldListOpen = false;
+			return true;
+		}
 		if (quitConfirmOpen) {
 			if (inside(x, y, 695, 476, 103, 28)) {
 				quitConfirmOpen = false;
@@ -159,6 +177,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			ambianceListOpen = !state.ambianceFixed();
 		} else if (inside(x, y, INTRO_X, 849, INTRO_W, 28)) {
 			introListOpen = !state.introFixed();
+		} else if (fieldShown(state) && inside(x, y, FIELD_X, FIELD_Y, FIELD_W, 28)) {
+			fieldListOpen = fieldEditable(state);
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
@@ -181,7 +201,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 		if (keyCode == 256) {
-			if (formatListOpen || ambianceListOpen || introListOpen) {
+			if (formatListOpen || ambianceListOpen || introListOpen || fieldListOpen) {
+				fieldListOpen = false;
 				formatListOpen = false;
 				ambianceListOpen = false;
 				introListOpen = false;
@@ -223,7 +244,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (state == null) {
 			return;
 		}
-		boolean listOpen = formatListOpen || ambianceListOpen || introListOpen;
+		boolean listOpen = formatListOpen || ambianceListOpen || introListOpen || fieldListOpen;
 		double mx = quitConfirmOpen || listOpen ? -1 : toCanvasX(mouseX);
 		double my = quitConfirmOpen || listOpen ? -1 : toCanvasY(mouseY);
 		int hovered = slotAt(mx, my);
@@ -248,6 +269,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		if (introListOpen) {
 			renderIntroList(graphics, state, mouseX, mouseY);
+		}
+		if (fieldListOpen) {
+			renderFieldList(graphics, state, mouseX, mouseY);
 		}
 
 		if (quitConfirmOpen) {
@@ -344,6 +368,13 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		outline(g, x + 10, VIEW_Y + 10, Math.round(readyWidth + 16), 22, ready ? READY_BORDER : LINE_30);
 		drawText(g, readyText, x + 18, VIEW_Y + 17, 1f, ready ? READY_TEXT : DIM, true, 1.5f);
 		g.fill(x + 1, VIEW_Y + VIEW_H, x + 576, VIEW_Y + VIEW_H + hairline(), LINE_20);
+		if (own && fieldShown(state)) {
+			boolean editable = fieldEditable(state);
+			renderPrimaryButtonFrame(g, FIELD_X, FIELD_Y, FIELD_W, 28, editable && inside(mx, my, FIELD_X, FIELD_Y, FIELD_W, 28), false);
+			String fieldLabel = Component.translatable("phantasmon.battle.lobby.field", fieldName(state.field())).getString()
+					+ (editable ? "  ▼" : "");
+			drawText(g, fitText(fieldLabel, FIELD_W - 16, 2f, false, 0f), FIELD_X + 8, FIELD_Y + 7, 2f, CYAN, false, 0f);
+		}
 
 		// Lead.
 		infoBox(g, x + 9, 506, 559, 200, own ? "phantasmon.battle.lobby.own_lead" : "phantasmon.battle.lobby.opponent_lead");
@@ -644,6 +675,73 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			}
 			drawText(g, fitText((selected ? "✔ " : "   ") + formatName(format), FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8,
 					rowY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+		}
+		endModalLayer(g);
+	}
+
+	// ---- Battle field (League Reborn) ----
+
+	/** The add-on that runs fields (Phantasmon Events) is here: only then may we lay one down (we host). */
+	private static boolean leagueReborn() {
+		return com.mystaria.phantasmon.client.battle.ShowdownExtensions.has("league_reborn");
+	}
+
+	/** Shown when a field is laid down, or when we could lay one down. */
+	private static boolean fieldShown(BattleLobbyState state) {
+		return !state.field().isEmpty() || (leagueReborn() && !state.fields().isEmpty());
+	}
+
+	private static boolean fieldEditable(BattleLobbyState state) {
+		return leagueReborn() && !state.fieldFixed() && !state.fields().isEmpty() && !state.ownReady();
+	}
+
+	/** "" (no field: the plain format), then the fields we may lay down. */
+	private static List<String> fieldOptions(BattleLobbyState state) {
+		List<String> list = new java.util.ArrayList<>();
+		list.add("");
+		list.addAll(state.fields());
+		return list;
+	}
+
+	/** A field's name, from the add-on's lang files ({@code league_reborn.field.<id>}). */
+	private static String fieldName(String id) {
+		return id == null || id.isEmpty() ? Component.translatable("phantasmon.battle.lobby.field.none").getString()
+				: Component.translatableWithFallback("league_reborn.field." + id, id).getString();
+	}
+
+	private static int fieldCellX(int index) {
+		return FIELD_GRID_X + (index % FIELD_COLUMNS) * (FIELD_W + 10);
+	}
+
+	private static int fieldCellY(int index) {
+		return FIELD_GRID_Y + (index / FIELD_COLUMNS) * FORMAT_ROW_H;
+	}
+
+	/** The field grid: too many fields for a list, three columns under a title, above everything. */
+	private void renderFieldList(GuiGraphics g, BattleLobbyState state, int mouseX, int mouseY) {
+		beginModalLayer(g, 0f);
+		double mx = toCanvasX(mouseX);
+		double my = toCanvasY(mouseY);
+		List<String> fields = fieldOptions(state);
+		int rows = (fields.size() + FIELD_COLUMNS - 1) / FIELD_COLUMNS;
+		int width = FIELD_COLUMNS * FIELD_W + (FIELD_COLUMNS - 1) * 10;
+		int top = FIELD_GRID_Y - 40;
+		int bottom = FIELD_GRID_Y + rows * FORMAT_ROW_H + 8;
+		g.fill(FIELD_GRID_X - 8, top, FIELD_GRID_X + width + 8, bottom, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
+		outline(g, FIELD_GRID_X - 8, top, width + 16, bottom - top, CYAN);
+		drawText(g, upper(Component.translatable("phantasmon.battle.lobby.field.title").getString()), FIELD_GRID_X, top + 12, 2f,
+				TITLE, true, 1f);
+		for (int i = 0; i < fields.size(); i++) {
+			String id = fields.get(i);
+			int cellX = fieldCellX(i);
+			int cellY = fieldCellY(i);
+			boolean selected = id.equals(state.field());
+			boolean hovered = inside(mx, my, cellX, cellY, FIELD_W, FORMAT_ROW_H);
+			if (hovered || selected) {
+				g.fill(cellX, cellY, cellX + FIELD_W, cellY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
+			}
+			drawText(g, fitText((selected ? "✔ " : "   ") + fieldName(id), FIELD_W - 16, 2f, false, 0f), cellX + 8, cellY + 8, 2f,
+					selected ? READY_TEXT : WHITE, false, 0f);
 		}
 		endModalLayer(g);
 	}

@@ -38,6 +38,8 @@ public final class BackendErrorMessages {
 			Map.entry("ERROR_ADMIN_NOTHING_TO_STOP", "phantasmon.admin.error.nothing_to_stop"),
 			Map.entry("ERROR_BATTLE_UNKNOWN_FORMAT", "phantasmon.battle.error.unknown_format"),
 			Map.entry("ERROR_BATTLE_LOBBY_NOT_FOUND", "phantasmon.battle.error.lobby_not_found"),
+			Map.entry("ERROR_BATTLE_FIELD_LOCKED", "phantasmon.battle.error.field_locked"),
+			Map.entry("ERROR_BATTLE_FIELD_NOT_ALLOWED", "phantasmon.battle.error.field_not_allowed"),
 			Map.entry("ERROR_VALIDATION_FAILED", "phantasmon.error.validation_failed"),
 			Map.entry("ERROR_MALFORMED_REQUEST", "phantasmon.error.malformed_request"),
 			Map.entry("ERROR_TRADE_SELF", "phantasmon.trade.error.self"),

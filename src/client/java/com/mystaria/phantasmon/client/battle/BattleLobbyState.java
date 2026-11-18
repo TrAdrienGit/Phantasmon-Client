@@ -54,6 +54,13 @@ public final class BattleLobbyState {
 	/** An event NPC imposes the ambiance / the intro (2026-11-18): the drop-down is locked. */
 	private boolean ambianceFixed;
 	private boolean introFixed;
+	/**
+	 * The battle field (League Reborn, 2026-11-18): a field id or "" for none; locked for us (an event NPC's, or laid
+	 * down by the opponent); the ones we may lay down (a gym leader's rewards, every one for an admin).
+	 */
+	private String field = "";
+	private boolean fieldFixed;
+	private List<String> fields = List.of();
 	/** A tournament match's or an event NPC's format: the drop-down is locked. */
 	private boolean formatFixed;
 	private List<List<Issue>> ownIssues = List.of();
@@ -87,6 +94,9 @@ public final class BattleLobbyState {
 		ambianceFixed = Boolean.TRUE.equals(data.get("ambiance_fixed"));
 		introFixed = Boolean.TRUE.equals(data.get("intro_fixed"));
 		formatFixed = Boolean.TRUE.equals(data.get("format_fixed"));
+		field = data.get("field") == null ? "" : data.get("field").toString();
+		fieldFixed = Boolean.TRUE.equals(data.get("field_fixed"));
+		fields = data.get("fields") instanceof List<?> ids ? ids.stream().map(String::valueOf).toList() : List.of();
 		if (data.get("formats") instanceof List<?> list) {
 			List<FormatOption> options = new ArrayList<>();
 			for (Object entry : list) {
@@ -245,6 +255,18 @@ public final class BattleLobbyState {
 
 	public boolean introFixed() {
 		return introFixed;
+	}
+
+	public String field() {
+		return field;
+	}
+
+	public boolean fieldFixed() {
+		return fieldFixed;
+	}
+
+	public List<String> fields() {
+		return fields;
 	}
 
 	public boolean formatFixed() {
