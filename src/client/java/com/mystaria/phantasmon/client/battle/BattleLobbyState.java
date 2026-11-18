@@ -51,6 +51,9 @@ public final class BattleLobbyState {
 	private String ambiance = "";
 	/** The intro both see: a Showtime intro name, or "" for each player's own choice. */
 	private String intro = "";
+	/** An event NPC imposes the ambiance / the intro (2026-11-18): the drop-down is locked. */
+	private boolean ambianceFixed;
+	private boolean introFixed;
 	private List<List<Issue>> ownIssues = List.of();
 	private List<Boolean> opponentFlags = List.of();
 
@@ -79,6 +82,8 @@ public final class BattleLobbyState {
 		}
 		ambiance = data.get("ambiance") == null ? "" : data.get("ambiance").toString();
 		intro = data.get("intro") == null ? "" : data.get("intro").toString();
+		ambianceFixed = Boolean.TRUE.equals(data.get("ambiance_fixed"));
+		introFixed = Boolean.TRUE.equals(data.get("intro_fixed"));
 		if (data.get("formats") instanceof List<?> list) {
 			List<FormatOption> options = new ArrayList<>();
 			for (Object entry : list) {
@@ -229,6 +234,14 @@ public final class BattleLobbyState {
 
 	public String intro() {
 		return intro;
+	}
+
+	public boolean ambianceFixed() {
+		return ambianceFixed;
+	}
+
+	public boolean introFixed() {
+		return introFixed;
 	}
 
 	public String formatId() {

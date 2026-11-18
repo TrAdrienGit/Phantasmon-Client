@@ -156,9 +156,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
 			formatListOpen = true;
 		} else if (inside(x, y, AMBIANCE_X, 849, AMBIANCE_W, 28)) {
-			ambianceListOpen = true;
+			ambianceListOpen = !state.ambianceFixed();
 		} else if (inside(x, y, INTRO_X, 849, INTRO_W, 28)) {
-			introListOpen = true;
+			introListOpen = !state.introFixed();
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
@@ -485,13 +485,16 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		renderPrimaryButtonFrame(g, FORMAT_X, 849, FORMAT_W, 28, formatHovered, false);
 		String label = Component.translatable("phantasmon.battle.lobby.format", formatName(state.format())).getString() + "  ▲";
 		drawText(g, fitText(label, FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8, 856, 2f, CYAN, false, 0f);
-		boolean ambianceHovered = inside(mx, my, AMBIANCE_X, 849, AMBIANCE_W, 28);
+		// Imposed by an event NPC (2026-11-18): no arrow, no hover, the list stays shut.
+		boolean ambianceHovered = !state.ambianceFixed() && inside(mx, my, AMBIANCE_X, 849, AMBIANCE_W, 28);
 		renderPrimaryButtonFrame(g, AMBIANCE_X, 849, AMBIANCE_W, 28, ambianceHovered, false);
-		String ambianceLabel = Component.translatable("phantasmon.battle.lobby.ambiance", ambianceName(state.ambiance())).getString() + "  ▲";
+		String ambianceLabel = Component.translatable("phantasmon.battle.lobby.ambiance", ambianceName(state.ambiance())).getString()
+				+ (state.ambianceFixed() ? "" : "  ▲");
 		drawText(g, fitText(ambianceLabel, AMBIANCE_W - 16, 2f, false, 0f), AMBIANCE_X + 8, 856, 2f, CYAN, false, 0f);
-		boolean introHovered = inside(mx, my, INTRO_X, 849, INTRO_W, 28);
+		boolean introHovered = !state.introFixed() && inside(mx, my, INTRO_X, 849, INTRO_W, 28);
 		renderPrimaryButtonFrame(g, INTRO_X, 849, INTRO_W, 28, introHovered, false);
-		String introLabel = Component.translatable("phantasmon.battle.lobby.intro", introName(state.intro())).getString() + "  ▲";
+		String introLabel = Component.translatable("phantasmon.battle.lobby.intro", introName(state.intro())).getString()
+				+ (state.introFixed() ? "" : "  ▲");
 		drawText(g, fitText(introLabel, INTRO_W - 16, 2f, false, 0f), INTRO_X + 8, 856, 2f, CYAN, false, 0f);
 		renderButton(g, MUSIC_X, 849, MUSIC_W, 28, "phantasmon.music.button", false, inside(mx, my, MUSIC_X, 849, MUSIC_W, 28));
 		if (state.timerOn()) {
