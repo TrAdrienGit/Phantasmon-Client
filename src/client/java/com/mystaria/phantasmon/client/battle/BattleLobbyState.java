@@ -54,6 +54,8 @@ public final class BattleLobbyState {
 	/** An event NPC imposes the ambiance / the intro (2026-11-18): the drop-down is locked. */
 	private boolean ambianceFixed;
 	private boolean introFixed;
+	/** A tournament match's or an event NPC's format: the drop-down is locked. */
+	private boolean formatFixed;
 	private List<List<Issue>> ownIssues = List.of();
 	private List<Boolean> opponentFlags = List.of();
 
@@ -84,6 +86,7 @@ public final class BattleLobbyState {
 		intro = data.get("intro") == null ? "" : data.get("intro").toString();
 		ambianceFixed = Boolean.TRUE.equals(data.get("ambiance_fixed"));
 		introFixed = Boolean.TRUE.equals(data.get("intro_fixed"));
+		formatFixed = Boolean.TRUE.equals(data.get("format_fixed"));
 		if (data.get("formats") instanceof List<?> list) {
 			List<FormatOption> options = new ArrayList<>();
 			for (Object entry : list) {
@@ -242,6 +245,10 @@ public final class BattleLobbyState {
 
 	public boolean introFixed() {
 		return introFixed;
+	}
+
+	public boolean formatFixed() {
+		return formatFixed;
 	}
 
 	public String formatId() {

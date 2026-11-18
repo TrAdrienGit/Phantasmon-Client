@@ -154,7 +154,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.lobbyToggleReady();
 		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
-			formatListOpen = true;
+			formatListOpen = !state.formatFixed();
 		} else if (inside(x, y, AMBIANCE_X, 849, AMBIANCE_W, 28)) {
 			ambianceListOpen = !state.ambianceFixed();
 		} else if (inside(x, y, INTRO_X, 849, INTRO_W, 28)) {
@@ -481,9 +481,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (status != null) {
 			drawText(g, fitText(status, MUSIC_X - 30 - STATUS_X, 2f, false, 0f), STATUS_X, 855.5f, 2f, statusColor, false, 0f);
 		}
-		boolean formatHovered = inside(mx, my, FORMAT_X, 849, FORMAT_W, 28);
+		boolean formatHovered = !state.formatFixed() && inside(mx, my, FORMAT_X, 849, FORMAT_W, 28);
 		renderPrimaryButtonFrame(g, FORMAT_X, 849, FORMAT_W, 28, formatHovered, false);
-		String label = Component.translatable("phantasmon.battle.lobby.format", formatName(state.format())).getString() + "  ▲";
+		String label = Component.translatable("phantasmon.battle.lobby.format", formatName(state.format())).getString()
+				+ (state.formatFixed() ? "" : "  ▲");
 		drawText(g, fitText(label, FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8, 856, 2f, CYAN, false, 0f);
 		// Imposed by an event NPC (2026-11-18): no arrow, no hover, the list stays shut.
 		boolean ambianceHovered = !state.ambianceFixed() && inside(mx, my, AMBIANCE_X, 849, AMBIANCE_W, 28);
