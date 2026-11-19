@@ -14,7 +14,7 @@ Automatique en entrant dans un monde si le service Phantasmon est disponible. Si
 - Si votre version du mod est trop ancienne, un message vous le dit avec un lien de téléchargement.
 - Un compte hors-ligne n'est pas accepté.
 
-## 2. Le PC (touche P)
+## 2. Le PC (touche P, ou U si LeagueWay est installé)
 
 - **À gauche**, votre équipe (6 emplacements) ; **au centre**, la fiche du Pokémon sélectionné ; **à droite**, la
   boîte affichée (16 boîtes de 30 cases).

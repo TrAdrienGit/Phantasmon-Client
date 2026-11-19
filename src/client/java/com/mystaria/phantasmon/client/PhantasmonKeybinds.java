@@ -25,7 +25,9 @@ public final class PhantasmonKeybinds {
 
 	private static final String CATEGORY = "key.categories.phantasmon";
 
-	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc", GLFW.GLFW_KEY_P, CATEGORY);
+	private static final KeyMapping OPEN_PC = new KeyMapping("key.phantasmon.open_pc",
+			// LeagueWay takes P (its PokéPhone) and keeps it from other mods: U by default then (2026-11-19).
+			net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("leagueway") ? GLFW.GLFW_KEY_U : GLFW.GLFW_KEY_P, CATEGORY);
 	/** The Phantasmon menu (renamed 2026-11-18): H, on the Hubs; without a connection, on the Settings. Rebindable, one key. */
 	private static final KeyMapping OPEN_HUB_MANAGER = new KeyMapping("key.phantasmon.hub_manager", GLFW.GLFW_KEY_H, CATEGORY);
 
