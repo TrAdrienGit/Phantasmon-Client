@@ -301,7 +301,8 @@ final class HubsPage implements MenuPage {
 					for (int i = 0; i < values.size(); i++) {
 						HubManagerTab.Field.Kind kind = action.fields().get(i).kind();
 						boolean number = kind == HubManagerTab.Field.Kind.NUMBER || kind == HubManagerTab.Field.Kind.SIGNED_NUMBER;
-						if (values.get(i).isEmpty() || number && MenuDialog.number(values.get(i)) == null) {
+						boolean empty = values.get(i).isEmpty() && kind != HubManagerTab.Field.Kind.CHOICE;
+						if (empty || number && MenuDialog.number(values.get(i)) == null) {
 							screen.dialog().error = Component.translatable("phantasmon.hub_manager.form_fill");
 							return;
 						}
@@ -310,11 +311,16 @@ final class HubsPage implements MenuPage {
 					runForm(action, hub, values);
 				});
 		for (HubManagerTab.Field field : action.fields()) {
+			if (field.kind() == HubManagerTab.Field.Kind.CHOICE) {
+				String initial = hub == null ? "" : field.initial().apply(hub);
+				form.choice(field.label(), field.options().get(), initial == null ? "" : initial);
+				continue;
+			}
 			MenuDialog.Kind kind = switch (field.kind()) {
 				case NAME -> MenuDialog.Kind.NAME;
 				case NUMBER -> MenuDialog.Kind.NUMBER;
 				case SIGNED_NUMBER -> MenuDialog.Kind.SIGNED_NUMBER;
-				case TEXT -> MenuDialog.Kind.TEXT;
+				case TEXT, CHOICE -> MenuDialog.Kind.TEXT;
 			};
 			form.input(field.label(), kind, kind == MenuDialog.Kind.TEXT || kind == MenuDialog.Kind.NAME ? 32 : 6, "", null);
 		}

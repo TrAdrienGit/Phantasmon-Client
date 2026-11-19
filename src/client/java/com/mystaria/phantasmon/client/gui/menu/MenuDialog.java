@@ -24,7 +24,9 @@ class MenuDialog {
 		ANCHOR,
 		NUMBER,
 		SIGNED_NUMBER,
-		TEXT
+		TEXT,
+		/** A drop-down list of {@link Input#options}: a click opens it, a click on an entry picks it. */
+		CHOICE
 	}
 
 	static final class Input {
@@ -33,6 +35,7 @@ class MenuDialog {
 		final int max;
 		final String placeholder;
 		String value;
+		List<com.mystaria.phantasmon.client.api.HubManagerTab.Option> options = List.of();
 
 		Input(Component label, Kind kind, int max, String value, String placeholder) {
 			this.label = label;
@@ -41,7 +44,24 @@ class MenuDialog {
 			this.value = value == null ? "" : value;
 			this.placeholder = placeholder;
 		}
+
+		/** The name shown for the value picked (a choice), or the value itself. */
+		String shown() {
+			for (var option : options) {
+				if (option.value().equals(value)) {
+					return option.label().getString();
+				}
+			}
+			return value;
+		}
 	}
+
+	/** The rows a drop-down list shows at once; the wheel scrolls the rest. */
+	private static final int LIST_ROWS = 8;
+	private static final int ROW_H = 12;
+	/** The choice whose list is open (-1: none), and how far it is scrolled. */
+	int openList = -1;
+	int listScroll;
 
 	static final int WIDTH = 300;
 	private static final int HEADER = 22;
@@ -80,6 +100,14 @@ class MenuDialog {
 
 	MenuDialog input(Component label, Kind kind, int max, String value, String placeholder) {
 		inputs.add(new Input(label, kind, max, value, placeholder));
+		return this;
+	}
+
+	/** A drop-down list of {@code options}, {@code value} picked first. */
+	MenuDialog choice(Component label, List<com.mystaria.phantasmon.client.api.HubManagerTab.Option> options, String value) {
+		Input input = new Input(label, Kind.CHOICE, 0, value, null);
+		input.options = List.copyOf(options);
+		inputs.add(input);
 		return this;
 	}
 
@@ -166,8 +194,14 @@ class MenuDialog {
 		}
 		for (int i = 0; i < inputs.size(); i++) {
 			Input input = inputs.get(i);
-			MenuUi.field(g, left + 12, fieldY(i), width() - 24, FIELD_H, input.label, input.value, input.placeholder,
-					i == focused, false);
+			if (input.kind == Kind.CHOICE) {
+				MenuUi.field(g, left + 12, fieldY(i), width() - 24, FIELD_H, input.label, input.shown(), null, false, false);
+				g.drawString(Minecraft.getInstance().font, openList == i ? "\u25B2" : "\u25BC", right - 22, fieldY(i) + 4,
+						MenuUi.p().accent(), false);
+			} else {
+				MenuUi.field(g, left + 12, fieldY(i), width() - 24, FIELD_H, input.label, input.value, input.placeholder,
+						i == focused, false);
+			}
 		}
 		if (error != null) {
 			MenuUi.text(g, error, left + 12, buttonY() - 12, width() - 24, c.danger());
@@ -180,12 +214,84 @@ class MenuDialog {
 		} else {
 			MenuUi.primary(g, confirmX(), buttonY(), BUTTON_W, BUTTON_H, confirmLabel, hover, !busy);
 		}
+		renderList(g, mouseX, mouseY);
+	}
+
+	private int listY() {
+		return fieldY(openList) + FIELD_H + 1;
+	}
+
+	private int listRows() {
+		return Math.min(LIST_ROWS, inputs.get(openList).options.size());
+	}
+
+	/** The open drop-down list, over the fields and buttons under it. */
+	private void renderList(GuiGraphics g, int mouseX, int mouseY) {
+		if (openList < 0 || openList >= inputs.size()) {
+			return;
+		}
+		MenuUi.Palette c = MenuUi.p();
+		Input input = inputs.get(openList);
+		int x = left + 12;
+		int w = width() - 24;
+		int y = listY();
+		int rows = listRows();
+		g.pose().pushPose();
+		g.pose().translate(0, 0, 200);
+		g.fill(x - 1, y - 1, x + w + 1, y + rows * ROW_H + 1, c.accent());
+		g.fill(x, y, x + w, y + rows * ROW_H, c.dark());
+		for (int r = 0; r < rows; r++) {
+			int index = listScroll + r;
+			if (index >= input.options.size()) {
+				break;
+			}
+			var option = input.options.get(index);
+			int rowY = y + r * ROW_H;
+			boolean picked = option.value().equals(input.value);
+			if (MenuUi.inside(mouseX, mouseY, x, rowY, w, ROW_H)) {
+				g.fill(x, rowY, x + w, rowY + ROW_H, c.raised());
+			}
+			MenuUi.text(g, option.label(), x + 4, rowY + 2, w - 14, picked ? c.accent() : c.white());
+		}
+		if (input.options.size() > rows) {
+			// Where the visible rows stand in the whole list.
+			int track = rows * ROW_H;
+			int thumb = Math.max(6, track * rows / input.options.size());
+			int at = y + (track - thumb) * listScroll / Math.max(1, input.options.size() - rows);
+			g.fill(x + w - 3, at, x + w - 1, at + thumb, c.light());
+		}
+		g.pose().popPose();
+	}
+
+	/** The wheel: the open list first, then the dialog's own body. */
+	void scroll(double mouseX, double mouseY, double amount) {
+		if (openList >= 0) {
+			int max = Math.max(0, inputs.get(openList).options.size() - listRows());
+			listScroll = Math.max(0, Math.min(max, listScroll - (int) Math.signum(amount)));
+			return;
+		}
+		scrollBody(mouseX, mouseY, amount);
 	}
 
 	// ---------------------------------------------------------------- input
 
 	/** False when the click asks to close the dialog (Cancel). */
 	boolean click(double mouseX, double mouseY) {
+		if (openList >= 0) {
+			Input input = inputs.get(openList);
+			int x = left + 12;
+			int w = width() - 24;
+			int rows = listRows();
+			if (MenuUi.inside(mouseX, mouseY, x, listY(), w, rows * ROW_H)) {
+				int index = listScroll + (int) ((mouseY - listY()) / ROW_H);
+				if (index >= 0 && index < input.options.size()) {
+					input.value = input.options.get(index).value();
+					MenuUi.click();
+				}
+			}
+			openList = -1; // a click anywhere closes the list
+			return true;
+		}
 		if (MenuUi.inside(mouseX, mouseY, cancelX(), buttonY(), BUTTON_W, BUTTON_H)) {
 			MenuUi.click();
 			return false;
@@ -198,6 +304,18 @@ class MenuDialog {
 		for (int i = 0; i < inputs.size(); i++) {
 			if (MenuUi.inside(mouseX, mouseY, left + 12, fieldY(i), width() - 24, FIELD_H)) {
 				focused = i;
+				if (inputs.get(i).kind == Kind.CHOICE && !inputs.get(i).options.isEmpty()) {
+					MenuUi.click();
+					openList = i;
+					// The list opens on the value picked.
+					int picked = 0;
+					for (int k = 0; k < inputs.get(i).options.size(); k++) {
+						if (inputs.get(i).options.get(k).value().equals(inputs.get(i).value)) {
+							picked = k;
+						}
+					}
+					listScroll = Math.max(0, Math.min(picked - LIST_ROWS / 2, inputs.get(i).options.size() - listRows()));
+				}
 				return true;
 			}
 		}
@@ -223,7 +341,7 @@ class MenuDialog {
 			return;
 		}
 		Input input = inputs.get(focused);
-		if (input.value.length() >= input.max) {
+		if (input.kind == Kind.CHOICE || input.value.length() >= input.max) {
 			return;
 		}
 		char c = chr;
@@ -236,6 +354,7 @@ class MenuDialog {
 			case NUMBER -> Character.isDigit(chr);
 			case SIGNED_NUMBER -> Character.isDigit(chr) || chr == '-' && input.value.isEmpty();
 			case TEXT -> chr >= 32 && chr != 127;
+			case CHOICE -> false;
 		};
 		if (ok) {
 			input.value += c;
@@ -246,6 +365,10 @@ class MenuDialog {
 	boolean key(int keyCode, boolean shift) {
 		switch (keyCode) {
 			case GLFW.GLFW_KEY_ESCAPE -> {
+				if (openList >= 0) {
+					openList = -1;
+					return true;
+				}
 				return false;
 			}
 			case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> confirm();
@@ -255,7 +378,8 @@ class MenuDialog {
 				}
 			}
 			case GLFW.GLFW_KEY_BACKSPACE -> {
-				if (focused >= 0 && focused < inputs.size() && !inputs.get(focused).value.isEmpty()) {
+				if (focused >= 0 && focused < inputs.size() && inputs.get(focused).kind != Kind.CHOICE
+						&& !inputs.get(focused).value.isEmpty()) {
 					Input input = inputs.get(focused);
 					input.value = input.value.substring(0, input.value.length() - 1);
 				}

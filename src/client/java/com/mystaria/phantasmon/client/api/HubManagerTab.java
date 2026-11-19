@@ -51,8 +51,22 @@ public interface HubManagerTab {
 		}
 	}
 
-	/** One input of an action's form. */
-	record Field(Component label, Kind kind) {
+	/**
+	 * One input of an action's form. A {@link Kind#CHOICE} (2026-11-19) is a drop-down list of {@code options}, opened
+	 * on {@code initial}'s answer for the selected hub; its value may be "" (an option meaning none).
+	 */
+	record Field(Component label, Kind kind, java.util.function.Supplier<List<Option>> options,
+			java.util.function.Function<HubAdminDto, String> initial) {
+
+		public Field(Component label, Kind kind) {
+			this(label, kind, List::of, hub -> "");
+		}
+
+		/** A drop-down list: {@code options} listed when the form opens, {@code initial} picked first. */
+		public static Field choice(Component label, java.util.function.Supplier<List<Option>> options,
+				java.util.function.Function<HubAdminDto, String> initial) {
+			return new Field(label, Kind.CHOICE, options, initial);
+		}
 
 		public enum Kind {
 			/** A hub name: lower-case letters, digits, _ (2 to 32). */
@@ -62,8 +76,14 @@ public interface HubManagerTab {
 			/** A whole number, possibly negative. */
 			SIGNED_NUMBER,
 			/** Any text (32 characters). */
-			TEXT
+			TEXT,
+			/** One of a list ({@link Field#choice}). */
+			CHOICE
 		}
+	}
+
+	/** One entry of a {@link Field.Kind#CHOICE}: the value the form gives, the name the list shows. */
+	record Option(String value, Component label) {
 	}
 
 	@FunctionalInterface

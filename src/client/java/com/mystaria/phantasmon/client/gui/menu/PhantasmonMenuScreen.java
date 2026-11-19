@@ -375,7 +375,7 @@ public final class PhantasmonMenuScreen extends Screen {
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
 		if (dialog != null) {
-			dialog.scrollBody(mouseX, mouseY, scrollY);
+			dialog.scroll(mouseX, mouseY, scrollY);
 			return true;
 		}
 		page().scroll(mouseX, mouseY, scrollY);
