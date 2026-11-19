@@ -450,7 +450,7 @@
   "phantasmon.battle.error.format_locked": "[Phantasmon] Tournament match: the format is the tournament's, it can't be changed.",
   "phantasmon.battle.error.tournament_paired": "[Phantasmon] You are paired in a tournament: you can only battle your round's opponent.",
   "phantasmon.battle.error.partner_in_tournament": "[Phantasmon] This player is paired in a tournament: they can only battle their round's opponent.",
-  "phantasmon.battle.lobby.ambiance": "Ambiance: %s",
+  "phantasmon.battle.lobby.ambiance": "Scene: %s",
   "phantasmon.battle.lobby.ambiance.each": "each their own",
   "phantasmon.battle.lobby.intro": "Intro: %s",
   "phantasmon.battle.lobby.intro.each": "each their own",
@@ -568,5 +568,11 @@
   "phantasmon.rewards.error.invalid": "[Phantasmon] Invalid reward.",
   "phantasmon.rewards.error.duplicate": "[Phantasmon] This player already has this reward.",
   "phantasmon.rewards.error.not_found": "[Phantasmon] This reward no longer exists.",
-  "phantasmon.menu.not_connected": "Not connected to the backend: check its address in Settings, then restart the game."
+  "phantasmon.menu.not_connected": "Not connected to the backend: check its address in Settings, then restart the game.",
+  "phantasmon.battle.lobby.scene.title": "Battle scene",
+  "phantasmon.battle.lobby.scene.tab.presets": "Presets",
+  "phantasmon.battle.lobby.scene.tab.stadiums": "Stadiums",
+  "phantasmon.battle.lobby.scene.tab.ambiances": "Ambiances",
+  "phantasmon.battle.lobby.scene.stadium_each": "each their own",
+  "phantasmon.battle.lobby.scene.stadium_field": "the field's own"
 }

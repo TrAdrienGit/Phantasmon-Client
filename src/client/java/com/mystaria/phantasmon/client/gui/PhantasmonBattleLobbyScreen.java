@@ -128,11 +128,16 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			return true;
 		}
 		if (ambianceListOpen) {
-			List<String> ambiances = ambiances();
-			int top = formatListTop(ambiances.size());
-			for (int i = 0; i < ambiances.size(); i++) {
-				if (inside(x, y, AMBIANCE_X, top + i * FORMAT_ROW_H, AMBIANCE_W, FORMAT_ROW_H)) {
-					controller.lobbySetAmbiance(ambiances.get(i));
+			for (int t = 0; t < 3; t++) {
+				if (inside(x, y, fieldCellX(t), SCENE_TABS_Y, FIELD_W, FORMAT_ROW_H)) {
+					sceneTab = t;
+					return true; // the panel stays open on its new tab
+				}
+			}
+			List<String> options = sceneOptions();
+			for (int i = 0; i < options.size(); i++) {
+				if (inside(x, y, fieldCellX(i), sceneCellY(i), FIELD_W, FORMAT_ROW_H)) {
+					controller.lobbySetAmbiance(sceneAfterPick(state.ambiance(), options.get(i)));
 				}
 			}
 			ambianceListOpen = false;
@@ -520,7 +525,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		// Imposed by an event NPC (2026-11-18): no arrow, no hover, the list stays shut.
 		boolean ambianceHovered = !state.ambianceFixed() && inside(mx, my, AMBIANCE_X, 849, AMBIANCE_W, 28);
 		renderPrimaryButtonFrame(g, AMBIANCE_X, 849, AMBIANCE_W, 28, ambianceHovered, false);
-		String ambianceLabel = Component.translatable("phantasmon.battle.lobby.ambiance", ambianceName(state.ambiance())).getString()
+		String ambianceLabel = Component.translatable("phantasmon.battle.lobby.ambiance", sceneName(state.ambiance())).getString()
 				+ (state.ambianceFixed() ? "" : "  ▲");
 		drawText(g, fitText(ambianceLabel, AMBIANCE_W - 16, 2f, false, 0f), AMBIANCE_X + 8, 856, 2f, CYAN, false, 0f);
 		boolean introHovered = !state.introFixed() && inside(mx, my, INTRO_X, 849, INTRO_W, 28);
@@ -579,18 +584,101 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		return "free".equals(format.id()) ? Component.translatable("phantasmon.battle.lobby.format.free").getString() : format.name();
 	}
 
-	/** "" (each player's own), then Showtime's ambiances and those resource packs add. */
-	private static List<String> ambiances() {
+	// ---- Battle scene (Showtime 1.3, 2026-11-19): presets, stadiums, ambiances, in one string "<ambiance>|<stadium>" ----
+
+	private static final int SCENE_TABS_Y = FIELD_GRID_Y;
+	private static final int SCENE_GRID_Y = FIELD_GRID_Y + FORMAT_ROW_H + 10;
+	/** 0: presets, 1: stadiums, 2: ambiances. */
+	private int sceneTab = 2;
+	/** A stadium option meaning "each player's own stadium". */
+	private static final String EACH_STADIUM = "*";
+
+	private static int sceneCellY(int index) {
+		return SCENE_GRID_Y + (index / FIELD_COLUMNS) * FORMAT_ROW_H;
+	}
+
+	/** The open tab's options: "" first (each player's own). */
+	private List<String> sceneOptions() {
 		List<String> list = new java.util.ArrayList<>();
-		list.add("");
-		// Reserved ones (TODO-37) only once won: Showtime asks Phantasmon's rewards.
-		list.addAll(com.mystaria.showtime.ambiance.Ambiances.usableIds());
+		switch (sceneTab) {
+			case 0 -> {
+				list.add("");
+				list.addAll(com.mystaria.showtime.ambiance.Ambiances.scenePresetIds());
+			}
+			case 1 -> {
+				list.add(EACH_STADIUM);
+				// With a League Reborn field: its own stadium, if it suggests one (a cave field: the Cave).
+				BattleLobbyState state = controller.lobby();
+				if (state != null && fieldShown(state)) {
+					list.add(com.mystaria.showtime.ambiance.Ambiances.FIELD_STADIUM);
+				}
+				list.add(com.mystaria.showtime.ambiance.Ambiances.NONE);
+				list.addAll(com.mystaria.showtime.ambiance.Ambiances.stadiumIds());
+			}
+			default -> {
+				list.add("");
+				// Reserved ones (TODO-37) only once won: Showtime asks Phantasmon's rewards.
+				list.addAll(com.mystaria.showtime.ambiance.Ambiances.plainAmbianceIds());
+			}
+		}
 		return list;
+	}
+
+	/** The scene once {@code option} of the open tab is picked: a preset sets both, the others keep what is not theirs. */
+	private String sceneAfterPick(String scene, String option) {
+		String ambiance = com.mystaria.showtime.ambiance.Ambiances.sceneAmbiance(scene);
+		String stadium = com.mystaria.showtime.ambiance.Ambiances.sceneStadium(scene);
+		return switch (sceneTab) {
+			case 0 -> option;
+			case 1 -> com.mystaria.showtime.ambiance.Ambiances.scene(
+					com.mystaria.showtime.ambiance.Ambiances.isPreset(ambiance)
+							? com.mystaria.showtime.ambiance.Ambiances.presetAmbiance(ambiance) : ambiance,
+					EACH_STADIUM.equals(option) ? null : option);
+			default -> {
+				String keep = stadium != null ? stadium : com.mystaria.showtime.ambiance.Ambiances.presetStadium(ambiance);
+				yield com.mystaria.showtime.ambiance.Ambiances.scene(option, keep);
+			}
+		};
+	}
+
+	/** Whether {@code option} of the open tab is what the scene holds now. */
+	private boolean sceneSelected(String scene, String option) {
+		String ambiance = com.mystaria.showtime.ambiance.Ambiances.sceneAmbiance(scene);
+		String stadium = com.mystaria.showtime.ambiance.Ambiances.sceneStadium(scene);
+		boolean preset = com.mystaria.showtime.ambiance.Ambiances.isPreset(ambiance) && stadium == null;
+		return switch (sceneTab) {
+			case 0 -> option.isEmpty() ? scene == null || scene.isEmpty() : preset && option.equals(ambiance);
+			case 1 -> {
+				String playing = stadium != null ? stadium : com.mystaria.showtime.ambiance.Ambiances.presetStadium(ambiance);
+				yield EACH_STADIUM.equals(option) ? playing == null : option.equals(playing);
+			}
+			default -> {
+				String playing = com.mystaria.showtime.ambiance.Ambiances.isPreset(ambiance)
+						? com.mystaria.showtime.ambiance.Ambiances.presetAmbiance(ambiance) : ambiance;
+				yield option.equals(playing);
+			}
+		};
+	}
+
+	private String sceneOptionName(String option) {
+		if (sceneTab == 1) {
+			if (com.mystaria.showtime.ambiance.Ambiances.FIELD_STADIUM.equals(option)) {
+				return Component.translatable("phantasmon.battle.lobby.scene.stadium_field").getString();
+			}
+			return EACH_STADIUM.equals(option) ? Component.translatable("phantasmon.battle.lobby.scene.stadium_each").getString()
+					: com.mystaria.showtime.ambiance.Ambiances.stadiumName(option).getString();
+		}
+		return ambianceName(option);
 	}
 
 	private static String ambianceName(String id) {
 		return id == null || id.isEmpty() ? Component.translatable("phantasmon.battle.lobby.ambiance.each").getString()
 				: com.mystaria.showtime.ambiance.Ambiances.displayName(id).getString();
+	}
+
+	private static String sceneName(String scene) {
+		return com.mystaria.showtime.ambiance.Ambiances.sceneName(scene,
+				Component.translatable("phantasmon.battle.lobby.ambiance.each")).getString();
 	}
 
 	/** "" (each player's own), then every Showtime intro, add-ons' included, reserved ones only once won (TODO-37). */
@@ -629,25 +717,42 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		endModalLayer(g);
 	}
 
-	/** The ambiance list, like the format's: above everything, on the canvas transform. */
+	/** The scene panel: three tabs over a grid, like the field's (one list would run off the screen). */
 	private void renderAmbianceList(GuiGraphics g, BattleLobbyState state, int mouseX, int mouseY) {
 		beginModalLayer(g, 0f);
 		double mx = toCanvasX(mouseX);
 		double my = toCanvasY(mouseY);
-		List<String> ambiances = ambiances();
-		int top = formatListTop(ambiances.size());
-		g.fill(AMBIANCE_X - 4, top - 4, AMBIANCE_X + AMBIANCE_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
-		outline(g, AMBIANCE_X - 4, top - 4, AMBIANCE_W + 8, 849 - top + 4, CYAN);
-		for (int i = 0; i < ambiances.size(); i++) {
-			String id = ambiances.get(i);
-			int rowY = top + i * FORMAT_ROW_H;
-			boolean selected = id.equals(state.ambiance());
-			boolean hovered = inside(mx, my, AMBIANCE_X, rowY, AMBIANCE_W, FORMAT_ROW_H);
+		List<String> options = sceneOptions();
+		int rows = (options.size() + FIELD_COLUMNS - 1) / FIELD_COLUMNS;
+		int width = FIELD_COLUMNS * FIELD_W + (FIELD_COLUMNS - 1) * 10;
+		int top = SCENE_TABS_Y - 40;
+		int bottom = SCENE_GRID_Y + rows * FORMAT_ROW_H + 8;
+		g.fill(FIELD_GRID_X - 8, top, FIELD_GRID_X + width + 8, bottom, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
+		outline(g, FIELD_GRID_X - 8, top, width + 16, bottom - top, CYAN);
+		drawText(g, upper(Component.translatable("phantasmon.battle.lobby.scene.title").getString()), FIELD_GRID_X, top + 12, 2f,
+				TITLE, true, 1f);
+		String[] tabs = {"presets", "stadiums", "ambiances"};
+		for (int t = 0; t < 3; t++) {
+			int cellX = fieldCellX(t);
+			boolean selected = t == sceneTab;
+			boolean hovered = inside(mx, my, cellX, SCENE_TABS_Y, FIELD_W, FORMAT_ROW_H);
+			g.fill(cellX, SCENE_TABS_Y, cellX + FIELD_W, SCENE_TABS_Y + FORMAT_ROW_H,
+					selected ? SLOT_SELECTED_BG : hovered ? SLOT_HOVER_BG : 0x40000000);
+			outline(g, cellX, SCENE_TABS_Y, FIELD_W, FORMAT_ROW_H, selected ? CYAN : LINE_30);
+			drawCentered(g, Component.translatable("phantasmon.battle.lobby.scene.tab." + tabs[t]).getString(),
+					cellX + FIELD_W / 2f, SCENE_TABS_Y + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+		}
+		for (int i = 0; i < options.size(); i++) {
+			String id = options.get(i);
+			int cellX = fieldCellX(i);
+			int cellY = sceneCellY(i);
+			boolean selected = sceneSelected(state.ambiance(), id);
+			boolean hovered = inside(mx, my, cellX, cellY, FIELD_W, FORMAT_ROW_H);
 			if (hovered || selected) {
-				g.fill(AMBIANCE_X, rowY, AMBIANCE_X + AMBIANCE_W, rowY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
+				g.fill(cellX, cellY, cellX + FIELD_W, cellY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
 			}
-			drawText(g, fitText((selected ? "✔ " : "   ") + ambianceName(id), AMBIANCE_W - 16, 2f, false, 0f), AMBIANCE_X + 8,
-					rowY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+			drawText(g, fitText((selected ? "✔ " : "   ") + sceneOptionName(id), FIELD_W - 16, 2f, false, 0f), cellX + 8,
+					cellY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
 		}
 		endModalLayer(g);
 	}
