@@ -402,6 +402,10 @@ public final class PhantasmonMenuScreen extends Screen {
 		if (page().key(keyCode, hasControlDown())) {
 			return true;
 		}
+		if (com.mystaria.phantasmon.client.PhantasmonKeybinds.isMenuKey(keyCode, scanCode)) {
+			onClose(); // the menu's key closes it, as it opened it
+			return true;
+		}
 		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 }

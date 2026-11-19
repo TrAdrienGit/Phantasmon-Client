@@ -344,7 +344,7 @@ final class RowList {
 			}
 			case GLFW.GLFW_KEY_ESCAPE -> focused = null;
 			default -> {
-				return false;
+				return true; // typed in the field (charTyped), never a key of the menu's
 			}
 		}
 		return true;

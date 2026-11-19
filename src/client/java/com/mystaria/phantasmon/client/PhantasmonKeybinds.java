@@ -32,6 +32,11 @@ public final class PhantasmonKeybinds {
 	private PhantasmonKeybinds() {
 	}
 
+	/** Whether a key pressed in a screen is the Phantasmon menu's: pressed again, it closes the menu. */
+	public static boolean isMenuKey(int keyCode, int scanCode) {
+		return OPEN_HUB_MANAGER.matches(keyCode, scanCode);
+	}
+
 	public static void register() {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
 		KeyBindingHelper.registerKeyBinding(OPEN_HUB_MANAGER);
