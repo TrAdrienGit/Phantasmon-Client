@@ -158,7 +158,28 @@ public final class VirtualItems {
 			Map.entry("zapplate", "Zap Plate"));
 			// GENERATED END
 
+	/**
+	 * Items another mod adds (2026-11-19): League Reborn's seeds and Amplifield Rock, which only its battle engine
+	 * knows. Showdown id -> name and icon; the core never names them.
+	 */
+	private static final Map<String, String> ADDED_NAMES = new java.util.concurrent.ConcurrentHashMap<>();
+	private static final Map<String, ResourceLocation> ADDED_ICONS = new java.util.concurrent.ConcurrentHashMap<>();
+
 	private VirtualItems() {
+	}
+
+	/**
+	 * Adds a virtual item (once, at client start): held like the others, its Showdown id handed to the battle engine,
+	 * which must know it (the adding mod's own engine extension).
+	 */
+	public static void register(String showdownId, String name, ResourceLocation icon) {
+		String id = CobblemonIdentifiers.slugConcat(showdownId);
+		ADDED_NAMES.put(id, name);
+		ADDED_ICONS.put(id, icon);
+	}
+
+	private static boolean known(String id) {
+		return NAMES.containsKey(id) || ADDED_NAMES.containsKey(id);
 	}
 
 	/** The Showdown id of the item {@code heldItemId} names, or null if it isn't one of these. */
@@ -167,7 +188,7 @@ public final class VirtualItems {
 			return null;
 		}
 		String id = CobblemonIdentifiers.slugConcat(heldItemId.contains(":") ? heldItemId.substring(heldItemId.indexOf(':') + 1) : heldItemId);
-		return NAMES.containsKey(id) ? id : null;
+		return known(id) ? id : null;
 	}
 
 	public static boolean isVirtual(String heldItemId) {
@@ -177,17 +198,23 @@ public final class VirtualItems {
 	/** Display name ("Firium Z"), or null if {@code heldItemId} isn't one of these. */
 	public static String name(String heldItemId) {
 		String id = showdownId(heldItemId);
-		return id == null ? null : NAMES.get(id);
+		return id == null ? null : NAMES.getOrDefault(id, ADDED_NAMES.get(id));
 	}
 
 	/** Its 32x32 icon, or null if {@code heldItemId} isn't one of these. */
 	public static ResourceLocation icon(String heldItemId) {
 		String id = showdownId(heldItemId);
-		return id == null ? null : ResourceLocation.fromNamespaceAndPath("phantasmon", "textures/gui/held_items/" + id + ".png");
+		if (id == null) {
+			return null;
+		}
+		ResourceLocation added = ADDED_ICONS.get(id);
+		return added != null ? added : ResourceLocation.fromNamespaceAndPath("phantasmon", "textures/gui/held_items/" + id + ".png");
 	}
 
 	/** Every id, for the editor's list. */
 	public static List<String> ids() {
-		return List.copyOf(NAMES.keySet());
+		List<String> ids = new java.util.ArrayList<>(NAMES.keySet());
+		ids.addAll(ADDED_NAMES.keySet());
+		return List.copyOf(ids);
 	}
 }
