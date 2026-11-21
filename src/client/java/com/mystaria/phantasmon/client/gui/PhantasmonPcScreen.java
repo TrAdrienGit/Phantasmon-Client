@@ -141,6 +141,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private long lastClickTime;
 	private static final long DOUBLE_CLICK_MS = 350;
 
+	/** Ctrl+click picks several Pokémon (2026-11-21), kept across boxes; dragging one of them carries them all. */
+	private final java.util.LinkedHashSet<UUID> picked = new java.util.LinkedHashSet<>();
+	/** The Pokémon a drag carries: the picked ones when it started on one of them, else the one dragged. */
+	private List<PokemonDto> carried = List.of();
+
 	/** The search (TODO-38): its text, whether it has the keyboard, and each Pokémon's searchable words, cached. */
 	private String search = "";
 	private boolean searchFocused;
@@ -397,8 +402,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	/**
-	 * Double click (TODO-19): a boxed Pokémon joins the team in its first free slot; a team member goes to the
-	 * first free PC slot (box 1 slot 1 onward). Full team / full PC: said in the footer, nothing moves.
+	 * Double click (TODO-19): a boxed Pokémon joins the team in its first free slot. A team member goes back to the
+	 * box on screen (2026-11-21: it went to the PC's first free slot, box 1 onward, wherever the player was): its
+	 * first free slot, else the next boxes'. In a team box the whole team goes, into the first empty row. Full team /
+	 * full PC: said in the footer, nothing moves.
 	 */
 	private void quickMove(PokemonDto moving, SlotRef from) {
 		if (from.kind() == SlotRef.Kind.PC) {
@@ -411,14 +418,23 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			setStatus(Component.translatable("phantasmon.pc.screen.team_full").getString(), true);
 			return;
 		}
-		boolean[][] taken = new boolean[BOX_COUNT + 1][SLOTS_PER_BOX + 1];
-		for (PokemonDto pokemon : allPokemon) {
-			if (pokemon.teamSlot() == null && pokemon.boxId() != null && pokemon.boxSlot() != null
-					&& pokemon.boxId() >= 1 && pokemon.boxId() <= BOX_COUNT && pokemon.boxSlot() >= 1 && pokemon.boxSlot() <= SLOTS_PER_BOX) {
-				taken[pokemon.boxId()][pokemon.boxSlot()] = true;
+		if (teamBox()) {
+			for (int row = 0; row < BOX_ROWS; row++) {
+				boolean empty = true;
+				for (int column = 0; column < BOX_COLUMNS; column++) {
+					empty &= boxSlots[row * BOX_COLUMNS + column] == null;
+				}
+				if (empty) {
+					swapTeamRow(row, "phantasmon.pc.screen.team_stored");
+					return;
+				}
 			}
+			setStatus(Component.translatable("phantasmon.pc.screen.team_box_full").getString(), true);
+			return;
 		}
-		for (int box = 1; box <= BOX_COUNT; box++) {
+		boolean[][] taken = takenSlots();
+		for (int step = 0; step < BOX_COUNT; step++) {
+			int box = (currentBox - 1 + step) % BOX_COUNT + 1;
 			for (int slot = 1; slot <= SLOTS_PER_BOX; slot++) {
 				if (!taken[box][slot]) {
 					move(moving, PokemonUpdateRequestDto.movingToPcSlot(box, slot));
@@ -434,7 +450,114 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	 * becomes the team's 1st, the team's 1st takes its place in the row, and so on. Each column is one move the backend
 	 * already knows (onto an occupied slot it swaps the two, D-04), sent one after the other.
 	 */
+	/** Which PC slots hold a Pokémon: [box][slot], both from 1. */
+	private boolean[][] takenSlots() {
+		boolean[][] taken = new boolean[BOX_COUNT + 1][SLOTS_PER_BOX + 1];
+		for (PokemonDto pokemon : allPokemon) {
+			if (pokemon.teamSlot() == null && pokemon.boxId() != null && pokemon.boxSlot() != null
+					&& pokemon.boxId() >= 1 && pokemon.boxId() <= BOX_COUNT && pokemon.boxSlot() >= 1 && pokemon.boxSlot() <= SLOTS_PER_BOX) {
+				taken[pokemon.boxId()][pokemon.boxSlot()] = true;
+			}
+		}
+		return taken;
+	}
+
+	/**
+	 * The picked Pokémon dropped on {@code to}: into the empty slots of the box on screen from that slot on (then
+	 * from its start), or the team's empty slots. Only empty slots: no swap, so the order the moves land in doesn't
+	 * matter. Not enough room: said in the footer, nothing moves.
+	 */
+	private void dropCarried(List<PokemonDto> group, SlotRef to) {
+		List<java.util.function.Supplier<java.util.concurrent.CompletableFuture<?>>> moves = new ArrayList<>();
+		if (to.kind() == SlotRef.Kind.TEAM) {
+			List<PokemonDto> joining = group.stream().filter(pokemon -> pokemon.teamSlot() == null).toList();
+			List<Integer> free = new ArrayList<>();
+			for (int i = 0; i < TEAM_SIZE; i++) {
+				int slot = (to.index() + i) % TEAM_SIZE;
+				if (teamSlots[slot] == null) {
+					free.add(slot + 1);
+				}
+			}
+			if (free.size() < joining.size()) {
+				setStatus(Component.translatable("phantasmon.pc.screen.team_full").getString(), true);
+				return;
+			}
+			for (int i = 0; i < joining.size(); i++) {
+				PokemonDto pokemon = joining.get(i);
+				int slot = free.get(i);
+				moves.add(() -> pokemonClient.update(session.accessToken(), pokemon.uuid(), PokemonUpdateRequestDto.movingToTeamSlot(slot)));
+			}
+		} else {
+			int box = currentBox;
+			List<PokemonDto> arriving = group.stream()
+					.filter(pokemon -> pokemon.teamSlot() != null || pokemon.boxId() == null || pokemon.boxId() != box).toList();
+			List<PokemonDto> here = group.stream().filter(pokemon -> !arriving.contains(pokemon)).toList();
+			// Those already in this box gather too, into the empty slots left once the arriving ones are placed.
+			List<Integer> free = new ArrayList<>();
+			for (int i = 0; i < SLOTS_PER_BOX; i++) {
+				int slot = (to.index() + i) % SLOTS_PER_BOX;
+				if (boxSlots[slot] == null) {
+					free.add(slot + 1);
+				}
+			}
+			if (free.size() < arriving.size()) {
+				setStatus(Component.translatable("phantasmon.pc.screen.box_full", currentBox).getString(), true);
+				return;
+			}
+			int next = 0;
+			for (PokemonDto pokemon : arriving) {
+				int slot = free.get(next++);
+				moves.add(() -> pokemonClient.update(session.accessToken(), pokemon.uuid(), PokemonUpdateRequestDto.movingToPcSlot(box, slot)));
+			}
+			for (PokemonDto pokemon : here) {
+				if (next >= free.size()) {
+					break; // no empty slot left for it: it stays where it is, in this box anyway
+				}
+				int slot = free.get(next++);
+				moves.add(() -> pokemonClient.update(session.accessToken(), pokemon.uuid(), PokemonUpdateRequestDto.movingToPcSlot(box, slot)));
+			}
+		}
+		int count = moves.size();
+		picked.clear();
+		runMoves(moves, () -> setStatus(Component.translatable("phantasmon.pc.screen.group_moved", count).getString(), false));
+	}
+
+	/** Moves one after the other (the backend resolves each against the state the previous one left), then a refresh. */
+	private void runMoves(List<java.util.function.Supplier<java.util.concurrent.CompletableFuture<?>>> moves, Runnable done) {
+		if (moves.isEmpty()) {
+			return;
+		}
+		loading = true;
+		java.util.concurrent.CompletableFuture<?> chain = java.util.concurrent.CompletableFuture.completedFuture(null);
+		for (var next : moves) {
+			chain = chain.thenCompose(ignored -> next.get());
+		}
+		chain.thenAccept(ignored -> Minecraft.getInstance().execute(() -> {
+			done.run();
+			refresh();
+		})).exceptionally(ex -> {
+			Minecraft.getInstance().execute(() -> {
+				setStatus(errorMessage(ex), true);
+				refresh(); // what already moved shows as it is
+			});
+			return null;
+		});
+	}
+
+	private PokemonDto findPokemon(UUID uuid) {
+		for (PokemonDto pokemon : allPokemon) {
+			if (pokemon.uuid().equals(uuid)) {
+				return pokemon;
+			}
+		}
+		return null;
+	}
+
 	private void swapTeamRow(int row) {
+		swapTeamRow(row, "phantasmon.pc.screen.team_swapped");
+	}
+
+	private void swapTeamRow(int row, String doneKey) {
 		List<java.util.function.Supplier<java.util.concurrent.CompletableFuture<?>>> moves = new ArrayList<>();
 		for (int column = 0; column < BOX_COLUMNS; column++) {
 			PokemonDto inRow = boxSlots[row * BOX_COLUMNS + column];
@@ -450,24 +573,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 						PokemonUpdateRequestDto.movingToPcSlot(box, pcSlot)));
 			}
 		}
-		if (moves.isEmpty()) {
-			return;
-		}
-		loading = true;
-		java.util.concurrent.CompletableFuture<?> chain = java.util.concurrent.CompletableFuture.completedFuture(null);
-		for (var next : moves) {
-			chain = chain.thenCompose(ignored -> next.get());
-		}
-		chain.thenAccept(done -> Minecraft.getInstance().execute(() -> {
-			setStatus(Component.translatable("phantasmon.pc.screen.team_swapped", row + 1).getString(), false);
-			refresh();
-		})).exceptionally(ex -> {
-			Minecraft.getInstance().execute(() -> {
-				setStatus(errorMessage(ex), true);
-				refresh(); // what already moved shows as it is
-			});
-			return null;
-		});
+		runMoves(moves, () -> setStatus(Component.translatable(doneKey, row + 1).getString(), false));
 	}
 
 	private void move(PokemonDto moving, PokemonUpdateRequestDto request) {
@@ -753,8 +859,26 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		if (ref != null) {
 			PokemonDto pokemon = pokemonAt(ref);
 			long now = System.currentTimeMillis();
+			if (hasControlDown()) {
+				// Ctrl+click: picks or drops this one from the group; no double click, no drag.
+				lastClickUuid = null;
+				if (pokemon != null) {
+					if (!picked.remove(pokemon.uuid())) {
+						if (picked.isEmpty() && selectedUuid != null && !selectedUuid.equals(pokemon.uuid()) && findPokemon(selectedUuid) != null) {
+							picked.add(selectedUuid); // the one already selected starts the group
+						}
+						picked.add(pokemon.uuid());
+					}
+					selectedUuid = pokemon.uuid();
+				}
+				return true;
+			}
+			if (pokemon == null || !picked.contains(pokemon.uuid())) {
+				picked.clear();
+			}
 			if (pokemon != null && pokemon.uuid().equals(lastClickUuid) && now - lastClickTime <= DOUBLE_CLICK_MS) {
 				lastClickUuid = null;
+				picked.clear();
 				dragged = null;
 				dragSource = null;
 				dragging = false;
@@ -775,6 +899,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				setStatus(unrecognized.getString(), true);
 			}
 			if (pokemon != null && !loading) {
+				carried = picked.contains(pokemon.uuid()) && picked.size() > 1
+						? picked.stream().map(this::findPokemon).filter(java.util.Objects::nonNull).toList()
+						: List.of(pokemon);
 				dragged = pokemon;
 				dragSource = ref;
 				dragSourceBox = currentBox;
@@ -814,7 +941,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				SlotRef target = slotAt(toCanvasX(mouseX), toCanvasY(mouseY));
 				boolean sameSlot = target != null && target.equals(source)
 						&& (target.kind() == SlotRef.Kind.TEAM || sourceBox == currentBox);
-				if (target != null && !sameSlot) {
+				List<PokemonDto> group = carried;
+				carried = List.of();
+				if (target != null && group.size() > 1) {
+					dropCarried(group, target);
+				} else if (target != null && !sameSlot) {
 					handleDrop(moving, target);
 				}
 			}
@@ -1179,8 +1310,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	/** Selected = the selected Pokémon's slot; while dragging, the hovered slot is the drop target (empty or not). */
 	private SlotLook lookOf(SlotRef ref, PokemonDto pokemon, double mx, double my, int x, int y, int w, int h) {
-		boolean isDragSource = dragging && ref.equals(dragSource)
-				&& (ref.kind() == SlotRef.Kind.TEAM || dragSourceBox == currentBox);
+		boolean isDragSource = dragging && (ref.equals(dragSource) && (ref.kind() == SlotRef.Kind.TEAM || dragSourceBox == currentBox)
+				|| carried.size() > 1 && pokemon != null && carried.stream().anyMatch(c -> c.uuid().equals(pokemon.uuid())));
 		if (isDragSource) {
 			return SlotLook.DRAG_SOURCE;
 		}
@@ -1188,7 +1319,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		if (dragging && hovered) {
 			return SlotLook.HOVER;
 		}
-		if (pokemon != null && pokemon.uuid().equals(selectedUuid)) {
+		if (pokemon != null && (pokemon.uuid().equals(selectedUuid) || picked.contains(pokemon.uuid()))) {
 			return SlotLook.SELECTED;
 		}
 		return hovered && pokemon != null ? SlotLook.HOVER : SlotLook.NORMAL;
@@ -1213,6 +1344,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			color = statusIsError ? ERROR_TEXT : READY_TEXT;
 		} else if (searching()) {
 			status = searchSummary();
+			color = CYAN;
+		} else if (picked.size() > 1) {
+			status = Component.translatable("phantasmon.pc.screen.group_hint", picked.size()).getString();
 			color = CYAN;
 		} else if (teamBox()) {
 			int row = teamRowAt(mx, my);
@@ -1279,6 +1413,17 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		float modelScale = GRID_SLOT.modelScale() * 1.15f;
 		PokemonGuiRendering.renderModel(g, dragged.species(), dragged.form(), dragged.isShiny(), PokemonGuiRendering.storedGender(dragged),
 				(float) cursorX, slotModelAnchorY((float) cursorY, modelScale), modelScale, com.mystaria.phantasmon.client.pokemon.PokemonLook.of(dragged));
+		if (carried.size() > 1) {
+			// How many are carried, in a badge by the cursor.
+			pose.translate(0, 0, 200);
+			String count = "×" + carried.size();
+			int bx = (int) cursorX + 22;
+			int by = (int) cursorY + 18;
+			int bw = (int) textWidth(count, 2f, true, 0f) + 14;
+			blackBorder(g, bx, by, bw, 26, PANEL_BORDER);
+			g.fill(bx, by, bx + bw, by + 26, CYAN);
+			drawText(g, count, bx + 7, by + 6, 2f, PANEL_BORDER, true, 0f);
+		}
 		pose.popPose();
 	}
 
