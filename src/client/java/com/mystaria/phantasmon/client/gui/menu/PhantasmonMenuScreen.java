@@ -360,7 +360,7 @@ public final class PhantasmonMenuScreen extends Screen {
 
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-		if (dialog == null && page().drag(mouseX, mouseY)) {
+		if (dialog != null ? dialog.drag(mouseX, mouseY) : page().drag(mouseX, mouseY)) {
 			return true;
 		}
 		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
@@ -368,6 +368,9 @@ public final class PhantasmonMenuScreen extends Screen {
 
 	@Override
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+		if (dialog != null) {
+			dialog.release();
+		}
 		page().release();
 		return super.mouseReleased(mouseX, mouseY, button);
 	}

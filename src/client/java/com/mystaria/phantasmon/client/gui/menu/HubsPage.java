@@ -63,6 +63,8 @@ final class HubsPage implements MenuPage {
 	private List<HubAdminDto.Anchor> anchors = List.of();
 	private String selected;
 	private int hubScroll;
+	private final com.mystaria.phantasmon.client.gui.ScrollGrab hubGrab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
+	private final com.mystaria.phantasmon.client.gui.ScrollGrab anchorGrab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
 	private int anchorScroll;
 	private boolean loading = true;
 	private boolean uploading;
@@ -522,6 +524,7 @@ final class HubsPage implements MenuPage {
 		private final List<Path> files = listSchematics();
 		private int pick = -1;
 		private int scroll;
+		private final com.mystaria.phantasmon.client.gui.ScrollGrab grab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
 
 		SchematicDialog(HubAdminDto hub) {
 			super(Component.translatable("phantasmon.hub_manager.schematic_title", hub.name()),
@@ -593,6 +596,10 @@ final class HubsPage implements MenuPage {
 			int bx = left + 12;
 			int by = bodyTop();
 			int listH = LIST_ROWS * ROW + 4;
+			if (grab.press(mouseX, mouseY, right - 18, 5, by + 2, listH - 4, files.size() * ROW, scroll * ROW, 16)) {
+				scroll = grab.dragRows(mouseY, ROW);
+				return true;
+			}
 			for (int i = 0; i < LIST_ROWS && scroll + i < files.size(); i++) {
 				if (MenuUi.inside(mouseX, mouseY, bx, by + 2 + i * ROW, right - 12 - bx, ROW)) {
 					pick = scroll + i;
@@ -627,6 +634,20 @@ final class HubsPage implements MenuPage {
 				lines += Math.max(1, font.split(line, width() - 24).size());
 			}
 			return top + 22 + 8 + lines * 10 + (message.isEmpty() ? 0 : 6);
+		}
+
+		@Override
+		boolean dragBody(double mouseX, double mouseY) {
+			if (grab.active()) {
+				scroll = grab.dragRows(mouseY, ROW);
+				return true;
+			}
+			return false;
+		}
+
+		@Override
+		void releaseBody() {
+			grab.release();
 		}
 
 		@Override
@@ -878,6 +899,10 @@ final class HubsPage implements MenuPage {
 			return true;
 		}
 		int top = listTop();
+		if (hubGrab.press(mouseX, mouseY, listRight() - 7, 5, top + 2, listBottom() - top - 4, tabHubs().size() * HUB_PITCH, hubScroll, 16)) {
+			hubScroll = hubGrab.drag(mouseY);
+			return true;
+		}
 		if (MenuUi.inside(mouseX, mouseY, x, top, listRight() - x, listBottom() - top)) {
 			List<HubAdminDto> shown = tabHubs();
 			int index = (int) ((mouseY - top - 2 + hubScroll) / HUB_PITCH);
@@ -903,6 +928,10 @@ final class HubsPage implements MenuPage {
 		}
 		int listTop = anchorsY(actions) + 14;
 		int total = anchors.size() * ANCHOR_PITCH;
+		if (anchorGrab.press(mouseX, mouseY, right - 5, 5, listTop, bottom - listTop, total, anchorScroll, 16)) {
+			anchorScroll = anchorGrab.drag(mouseY);
+			return true;
+		}
 		int rowW = right - detailX() - (total > bottom - listTop ? 7 : 0);
 		for (int i = 0; i < anchors.size(); i++) {
 			int ry = listTop + i * ANCHOR_PITCH - anchorScroll;
@@ -914,6 +943,25 @@ final class HubsPage implements MenuPage {
 			}
 		}
 		return false;
+	}
+
+	@Override
+	public boolean drag(double mouseX, double mouseY) {
+		if (hubGrab.active()) {
+			hubScroll = hubGrab.drag(mouseY);
+			return true;
+		}
+		if (anchorGrab.active()) {
+			anchorScroll = anchorGrab.drag(mouseY);
+			return true;
+		}
+		return false;
+	}
+
+	@Override
+	public void release() {
+		hubGrab.release();
+		anchorGrab.release();
 	}
 
 	@Override

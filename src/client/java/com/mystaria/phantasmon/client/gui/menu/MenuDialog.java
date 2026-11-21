@@ -62,6 +62,7 @@ class MenuDialog {
 	/** The choice whose list is open (-1: none), and how far it is scrolled. */
 	int openList = -1;
 	int listScroll;
+	private final com.mystaria.phantasmon.client.gui.ScrollGrab listGrab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
 
 	static final int WIDTH = 300;
 	private static final int HEADER = 22;
@@ -129,6 +130,28 @@ class MenuDialog {
 
 	boolean scrollBody(double mouseX, double mouseY, double amount) {
 		return false;
+	}
+
+	/** A body's own scrollbar held and dragged. */
+	boolean dragBody(double mouseX, double mouseY) {
+		return false;
+	}
+
+	void releaseBody() {
+	}
+
+	/** Dragging: the open list's bar, then the body's. */
+	boolean drag(double mouseX, double mouseY) {
+		if (listGrab.active()) {
+			listScroll = listGrab.dragRows(mouseY, ROW_H);
+			return true;
+		}
+		return dragBody(mouseX, mouseY);
+	}
+
+	void release() {
+		listGrab.release();
+		releaseBody();
 	}
 
 	private int messageHeight() {
@@ -282,6 +305,10 @@ class MenuDialog {
 			int x = left + 12;
 			int w = width() - 24;
 			int rows = listRows();
+			if (listGrab.press(mouseX, mouseY, x + w - 3, 2, listY(), rows * ROW_H, input.options.size() * ROW_H, listScroll * ROW_H, 6)) {
+				listScroll = listGrab.dragRows(mouseY, ROW_H);
+				return true;
+			}
 			if (MenuUi.inside(mouseX, mouseY, x, listY(), w, rows * ROW_H)) {
 				int index = listScroll + (int) ((mouseY - listY()) / ROW_H);
 				if (index >= 0 && index < input.options.size()) {

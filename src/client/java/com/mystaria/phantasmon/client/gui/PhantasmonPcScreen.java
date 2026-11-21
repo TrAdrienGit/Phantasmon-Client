@@ -163,6 +163,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private int importCaret;
 	private boolean importAll;
 	private int importScroll;
+	private boolean importFollowCaret;
+	private final com.mystaria.phantasmon.client.gui.ScrollGrab importGrab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
 	private ImportCheck importCheck = ImportCheck.EMPTY;
 
 	/** Whose PC this is: the player's own, or — admin (TODO-25) — another player's, handled as if it were theirs. */
@@ -631,6 +633,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		importText = text.length() > IMPORT_MAX_CHARS ? text.substring(0, IMPORT_MAX_CHARS) : text;
 		importCaret = Math.max(0, Math.min(caret, importText.length()));
 		importAll = false;
+		importFollowCaret = true;
 		importCheck = ImportCheck.of(importText);
 	}
 
@@ -916,6 +919,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+		if (importOpen) {
+			if (importGrab.active()) {
+				importScroll = importGrab.dragRows(toCanvasY(mouseY), IMPORT_LINE_H);
+			}
+			return true;
+		}
 		if (button == 0 && dragged != null) {
 			double x = toCanvasX(mouseX);
 			double y = toCanvasY(mouseY);
@@ -929,6 +938,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+		importGrab.release();
 		if (button == 0 && dragged != null) {
 			PokemonDto moving = dragged;
 			boolean wasDragging = dragging;
@@ -1528,12 +1538,15 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		int[] caret = caretLineColumn();
 		if (!importText.isEmpty()) {
 			// Keep the caret in sight; the wheel scrolls within the text's length.
-			importScroll = Math.min(importScroll, Math.max(0, lines.size() - visible));
-			if (caret[0] < importScroll) {
-				importScroll = caret[0];
-			} else if (caret[0] >= importScroll + visible) {
-				importScroll = caret[0] - visible + 1;
+			if (importFollowCaret) {
+				importFollowCaret = false;
+				if (caret[0] < importScroll) {
+					importScroll = caret[0];
+				} else if (caret[0] >= importScroll + visible) {
+					importScroll = caret[0] - visible + 1;
+				}
 			}
+			importScroll = Math.max(0, Math.min(importScroll, lines.size() - visible));
 		} else {
 			importScroll = 0;
 		}
@@ -1557,9 +1570,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		}
 		g.disableScissor();
 		if (lines.size() > visible && !importText.isEmpty()) {
-			int barH = Math.max(24, (h - 8) * visible / lines.size());
-			int barY = y + 4 + (h - 8 - barH) * importScroll / Math.max(1, lines.size() - visible);
-			g.fill(x + w - 7, barY, x + w - 4, barY + barH, LINE_20);
+			// Same geometry as importGrab's: a track of the visible lines, the thumb their share of the text.
+			int trackH = visible * IMPORT_LINE_H;
+			int barH = Math.max(24, trackH * visible / lines.size());
+			int barY = y + 4 + (trackH - barH) * importScroll / Math.max(1, lines.size() - visible);
+			g.fill(x + w - 8, y + 4, x + w - 3, y + 4 + trackH, palette().black());
+			g.fill(x + w - 8, barY, x + w - 3, barY + barH, importGrab.active() ? CYAN : LINE_20);
 		}
 	}
 
@@ -1687,6 +1703,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private void moveImportCaret(int caret) {
 		importAll = false;
 		importCaret = Math.max(0, Math.min(caret, importText.length()));
+		importFollowCaret = true;
 	}
 
 	private void importClicked(double x, double y) {
@@ -1695,6 +1712,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		} else if (inside(x, y, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H) && importCheck.valid()) {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			importChecked();
+		} else if (importGrab.press(x, y, IMPORT_TEXT_X + IMPORT_TEXT_W - 8, 5, IMPORT_TEXT_Y + 4,
+				(IMPORT_TEXT_H - 16) / IMPORT_LINE_H * IMPORT_LINE_H, importText.split("\n", -1).length * IMPORT_LINE_H,
+				importScroll * IMPORT_LINE_H, 24)) {
+			importScroll = importGrab.dragRows(y, IMPORT_LINE_H);
 		} else if (inside(x, y, IMPORT_TEXT_X, IMPORT_TEXT_Y, IMPORT_TEXT_W, IMPORT_TEXT_H) && !importText.isEmpty()) {
 			// The caret goes where the click is: the line under it, the column nearest to it.
 			int line = importScroll + (int) ((y - IMPORT_TEXT_Y - 8) / IMPORT_LINE_H);

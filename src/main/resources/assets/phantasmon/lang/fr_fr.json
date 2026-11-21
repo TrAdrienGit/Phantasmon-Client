@@ -257,7 +257,7 @@
   "phantasmon.pc.screen.delete_title": "Supprimer %s ?",
   "phantasmon.pc.screen.delete_text": "Cette action est définitive.",
   "phantasmon.pc.screen.hidden_power": "P. cachée",
-  "phantasmon.pc.screen.idle_hint": "Glisser-déposer : déplacer | Molette : changer de boîte | Importer : coller une équipe Showdown",
+  "phantasmon.pc.screen.idle_hint": "Glisser : déplacer | Double-clic : équipe / PC | Ctrl+clic : sélection multiple | Molette : changer de boîte",
   "phantasmon.pc.import.title": "Importer une équipe",
   "phantasmon.pc.import.subtitle": "Colle une équipe au format Showdown : de 1 à %s Pokémon",
   "phantasmon.pc.import.hint": "Ctrl+V : coller · Ctrl+A : tout sélectionner · Ctrl+Entrée : importer",

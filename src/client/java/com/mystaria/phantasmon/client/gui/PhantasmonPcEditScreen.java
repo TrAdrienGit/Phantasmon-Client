@@ -160,6 +160,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private int activeMoveSlot = -1;
 	private int pickerAnchorX, pickerAnchorY, pickerAnchorW, pickerAnchorH;
 	private int pickerScroll;
+	private final com.mystaria.phantasmon.client.gui.ScrollGrab pickerGrab = new com.mystaria.phantasmon.client.gui.ScrollGrab();
 	private final StringBuilder searchQuery = new StringBuilder();
 
 	private boolean dirty;
@@ -579,13 +580,18 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		if (query.isEmpty()) {
 			return true;
 		}
-		String haystack = (id + " " + displayName).toLowerCase(Locale.ROOT);
-		for (String token : query.toLowerCase(Locale.ROOT).split("\\s+")) {
+		String haystack = fold(id + " " + displayName);
+		for (String token : fold(query).split("\\s+")) {
 			if (!haystack.contains(token)) {
 				return false;
 			}
 		}
 		return true;
+	}
+
+	/** Lower case and without accents, so "electrik" finds "Électrik" and "ceinture" finds "Ceinture Force". */
+	private static String fold(String text) {
+		return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
 	}
 
 	private static List<String> allHeldItemIds() {
@@ -640,6 +646,21 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	// =====================================================================
 
 	@Override
+	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+		if (pickerGrab.active()) {
+			pickerScroll = pickerGrab.dragRows(toCanvasY(mouseY), DROPDOWN_ROW_H);
+			return true;
+		}
+		return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+	}
+
+	@Override
+	public boolean mouseReleased(double mouseX, double mouseY, int button) {
+		pickerGrab.release();
+		return super.mouseReleased(mouseX, mouseY, button);
+	}
+
+	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		if (button != 0) {
 			return super.mouseClicked(mouseX, mouseY, button);
@@ -676,6 +697,11 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		}
 		if (openPicker != Picker.NONE) {
 			PickerGeometry geo = pickerGeometry();
+			if (pickerGrab.press(x, y, geo.x() + geo.w() - 7, 4, geo.listY(), geo.visible() * DROPDOWN_ROW_H, pickerSize() * DROPDOWN_ROW_H,
+					pickerScroll * DROPDOWN_ROW_H, 20)) {
+				pickerScroll = pickerGrab.dragRows(y, DROPDOWN_ROW_H);
+				return true;
+			}
 			if (inside(x, y, geo.x(), geo.listY(), geo.w(), geo.visible() * DROPDOWN_ROW_H)) {
 				selectPickerValue((int) ((y - geo.listY()) / DROPDOWN_ROW_H) + pickerScroll);
 				return true;
