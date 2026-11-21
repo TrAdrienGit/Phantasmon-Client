@@ -294,6 +294,11 @@ public final class HubController implements HubListener {
 
 	// ---------------------------------------------------------------- messages
 
+	/** In an Events (mirror) hub: no arrivals or departures in the chat either, the ambiences show them (2026-11-21). */
+	private boolean mirrorHub() {
+		return joinedAnchor != null && joinedAnchor.mirror();
+	}
+
 	@Override
 	public void onHubMessage(String type, Map<String, Object> data) {
 		switch (type) {
@@ -345,7 +350,7 @@ public final class HubController implements HubListener {
 			case "HubPlayerEnter" -> {
 				Member member = putMember(data);
 				showAvatar(member);
-				if (member != null) {
+				if (member != null && !mirrorHub()) {
 					status(Component.translatable("phantasmon.hub.player_enter", member.username()).withStyle(ChatFormatting.GRAY));
 				}
 			}
@@ -365,7 +370,7 @@ public final class HubController implements HubListener {
 				if (playerUuid != null) {
 					avatars.remove(playerUuid);
 				}
-				if (member != null) {
+				if (member != null && !mirrorHub()) {
 					status(Component.translatable("phantasmon.hub.player_leave", member.username()).withStyle(ChatFormatting.GRAY));
 				}
 			}
