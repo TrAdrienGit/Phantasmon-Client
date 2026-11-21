@@ -152,6 +152,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private String statusMessage;
 	private boolean statusIsError;
 	private boolean deleteConfirmOpen;
+	/** The import window (2026-11-21): a Showdown paste typed or pasted in, checked as it changes, previewed on the right. */
+	private boolean importOpen;
+	private String importText = "";
+	private int importCaret;
+	private boolean importAll;
+	private int importScroll;
+	private ImportCheck importCheck = ImportCheck.EMPTY;
 
 	/** Whose PC this is: the player's own, or — admin (TODO-25) — another player's, handled as if it were theirs. */
 	private final java.util.UUID ownerUuid;
@@ -495,36 +502,88 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		setStatus(Component.translatable("phantasmon.pc.screen.exported", team.size()).getString(), false);
 	}
 
-	private void importFromClipboard() {
+	/** Opens the import window, filled with the clipboard when it holds a Showdown paste. */
+	private void openImport() {
 		String clipboard = Minecraft.getInstance().keyboardHandler.getClipboard();
-		if (clipboard == null || clipboard.isBlank()) {
-			setStatus(Component.translatable("phantasmon.pokemon.import.clipboard_empty").getString(), true);
-			return;
+		String text = "";
+		if (clipboard != null && !clipboard.isBlank()) {
+			try {
+				ShowdownParser.parseTeam(clipboard);
+				text = clipboard.replace("\r\n", "\n").replace('\r', '\n').strip();
+			} catch (RuntimeException ignored) {
+				// Not a paste: the window opens empty, with its example.
+			}
 		}
-		List<ShowdownPokemon> parsed;
-		try {
-			parsed = ShowdownParser.parseTeam(clipboard);
-		} catch (ShowdownParseException ex) {
-			setStatus(Component.translatable("phantasmon.pokemon.import.parse_error", ex.getMessage()).getString(), true);
-			return;
+		importOpen = true;
+		searchFocused = false;
+		renaming = null;
+		setImportText(text, text.length());
+		importScroll = 0;
+	}
+
+	private void setImportText(String text, int caret) {
+		importText = text.length() > IMPORT_MAX_CHARS ? text.substring(0, IMPORT_MAX_CHARS) : text;
+		importCaret = Math.max(0, Math.min(caret, importText.length()));
+		importAll = false;
+		importCheck = ImportCheck.of(importText);
+	}
+
+	/** The check made as the text changes: what each set would become, and why the paste can't be imported if it can't. */
+	private record ImportCheck(List<PokemonCreateRequestDto> requests, List<PokemonDto> preview, List<String> rejected, String error) {
+		static final ImportCheck EMPTY = new ImportCheck(List.of(), List.of(), List.of(), null);
+
+		boolean valid() {
+			return error == null && !requests.isEmpty();
 		}
 
-		List<PokemonCreateRequestDto> requests = new ArrayList<>();
-		String bearerToken = session.accessToken();
-		for (ShowdownPokemon set : parsed.subList(0, Math.min(parsed.size(), 6))) { // a full team at most
-			PokemonCreateRequestDto request;
-			try {
-				request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local(),
-						com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames::baseAbilities);
-			} catch (ShowdownParseException ex) {
-				setStatus(Component.translatable("phantasmon.pokemon.import.parse_error_for", set.speciesToken(), ex.getMessage()).getString(), true);
-				continue;
+		static ImportCheck of(String text) {
+			if (text.isBlank()) {
+				return EMPTY;
 			}
-			requests.add(request);
+			List<ShowdownPokemon> parsed;
+			try {
+				parsed = ShowdownParser.parseTeam(text);
+			} catch (RuntimeException ex) {
+				return new ImportCheck(List.of(), List.of(), List.of(),
+						Component.translatable("phantasmon.pc.import.unreadable", ex.getMessage()).getString());
+			}
+			List<PokemonCreateRequestDto> requests = new ArrayList<>();
+			List<PokemonDto> preview = new ArrayList<>();
+			List<String> rejected = new ArrayList<>();
+			String error = parsed.size() > TEAM_SIZE ? Component.translatable("phantasmon.pc.import.too_many", parsed.size(), TEAM_SIZE).getString() : null;
+			for (ShowdownPokemon set : parsed) {
+				PokemonCreateRequestDto request;
+				try {
+					request = ShowdownImportMapper.toCreateRequest(set, com.mystaria.phantasmon.client.pokemon.CobblemonDataVersion.local(),
+							com.mystaria.phantasmon.client.pokemon.showdown.CobblemonShowdownNames::baseAbilities);
+				} catch (RuntimeException ex) {
+					rejected.add(set.speciesToken());
+					preview.add(null);
+					error = error != null ? error : Component.translatable("phantasmon.pc.import.bad_set", set.speciesToken(), ex.getMessage()).getString();
+					continue;
+				}
+				if (com.cobblemon.mod.common.api.pokemon.PokemonSpecies.INSTANCE.getByName(request.species()) == null) {
+					rejected.add(set.speciesToken());
+					preview.add(null);
+					error = error != null ? error : Component.translatable("phantasmon.pc.import.unknown_species", set.speciesToken()).getString();
+					continue;
+				}
+				requests.add(request);
+				rejected.add(null);
+				preview.add(new PokemonDto(null, null, request.species(), request.form(), request.level(), request.nature(), request.ability(),
+						Boolean.TRUE.equals(request.isShiny()), null, null, null, request.cobblemonDataVersion(), request.data()));
+			}
+			return new ImportCheck(requests, preview, rejected, error);
 		}
-		if (requests.isEmpty()) {
+	}
+
+	private void importChecked() {
+		if (!importCheck.valid()) {
 			return;
 		}
+		List<PokemonCreateRequestDto> requests = importCheck.requests();
+		importOpen = false;
+		String bearerToken = session.accessToken();
 
 		loading = true;
 		// One after the other: the backend gives each the first free PC slot, so created together they would all want
@@ -617,6 +676,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		double x = toCanvasX(mouseX);
 		double y = toCanvasY(mouseY);
 
+		if (importOpen) {
+			importClicked(x, y);
+			return true;
+		}
 		if (deleteConfirmOpen) {
 			if (inside(x, y, MODAL_CANCEL_X, MODAL_BUTTON_Y, MODAL_CANCEL_W, MODAL_BUTTON_H)) {
 				deleteConfirmOpen = false;
@@ -632,7 +695,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		}
 		if (inside(x, y, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
-			importFromClipboard();
+			openImport();
 			return true;
 		}
 		if (inside(x, y, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H)) {
@@ -763,6 +826,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	/** Mouse wheel anywhere changes box — also works mid-drag, to drop a Pokémon into another box. */
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+		if (importOpen) {
+			if (scrollY != 0) {
+				importScroll = Math.max(0, importScroll + (scrollY > 0 ? -3 : 3));
+			}
+			return true;
+		}
 		if (!deleteConfirmOpen && scrollY != 0) {
 			changeBox(scrollY > 0 ? -1 : 1);
 			return true;
@@ -778,7 +847,11 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean charTyped(char chr, int modifiers) {
 		if (chr < 32 || chr == 127) {
-			return super.charTyped(chr, modifiers);
+			return importOpen || super.charTyped(chr, modifiers);
+		}
+		if (importOpen) {
+			importInsert(String.valueOf(chr));
+			return true;
 		}
 		if (renaming != null) {
 			if (renaming.length() < com.mystaria.phantasmon.client.pokemon.PcBoxTypes.NAME_MAX) {
@@ -797,6 +870,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+		if (importOpen) {
+			importKey(keyCode);
+			return true;
+		}
 		if (!deleteConfirmOpen && renaming != null) {
 			switch (keyCode) {
 				case 256 -> renaming = null; // Escape: unchanged
@@ -936,8 +1013,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		renderWorldBackdrop(graphics, mouseX, mouseY, partialTick);
 		cursorX = toCanvasX(mouseX);
 		cursorY = toCanvasY(mouseY);
-		double mx = deleteConfirmOpen ? -1 : cursorX;
-		double my = deleteConfirmOpen ? -1 : cursorY;
+		double mx = deleteConfirmOpen || importOpen ? -1 : cursorX;
+		double my = deleteConfirmOpen || importOpen ? -1 : cursorY;
 
 		beginCanvas(graphics);
 		renderRootPanel(graphics);
@@ -952,6 +1029,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 		if (deleteConfirmOpen) {
 			renderDeleteModal(graphics, mouseX, mouseY);
+		}
+		if (importOpen) {
+			renderImportModal(graphics, mouseX, mouseY);
 		}
 	}
 
@@ -1218,6 +1298,270 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		renderButton(g, MODAL_DELETE_X, MODAL_BUTTON_Y, MODAL_DELETE_W, MODAL_BUTTON_H, "phantasmon.pc.delete", true,
 				inside(mx, my, MODAL_DELETE_X, MODAL_BUTTON_Y, MODAL_DELETE_W, MODAL_BUTTON_H), 2f);
 		endModalLayer(g);
+	}
+
+	// ---- Import window -------------------------------------------------------------------------------------------
+
+	private static final int IMP_X = 180, IMP_Y = 104, IMP_W = 1240, IMP_H = 690;
+	private static final int IMPORT_TEXT_X = 212, IMPORT_TEXT_Y = 196, IMPORT_TEXT_W = 700, IMPORT_TEXT_H = 492;
+	private static final int IMPORT_PREVIEW_X = 940, IMPORT_PREVIEW_Y = 196, IMPORT_CELL_W = 218, IMPORT_CELL_H = 156, IMPORT_GAP = 12;
+	private static final int IMPORT_BUTTON_Y = 728, IMPORT_BUTTON_H = 42, IMPORT_BUTTON_W = 190;
+	private static final int IMPORT_CANCEL_X = 1006, IMPORT_OK_X = 1208;
+	private static final int IMPORT_LINE_H = 18;
+	private static final int IMPORT_MAX_CHARS = 8000;
+	private static final int IMPORT_INVALID = 0xFFE5484D;
+	private static final SlotLayout IMPORT_SLOT = new SlotLayout(20, 104, SLOT_MODEL_SCALE * 104 / 142f * 1.6f, 132,
+			IMPORT_CELL_W - 26, 128, 18);
+	/** Shown greyed in the empty field: what a paste looks like. */
+	private static final String IMPORT_EXAMPLE = """
+			Garchomp @ Choice Scarf
+			Ability: Rough Skin
+			Tera Type: Dragon
+			EVs: 252 Atk / 4 SpD / 252 Spe
+			Jolly Nature
+			- Earthquake
+			- Outrage
+			- Stone Edge
+			- Poison Jab
+
+			Rotom-Wash @ Leftovers
+			Ability: Levitate
+			...""";
+
+	private void renderImportModal(GuiGraphics g, int mouseX, int mouseY) {
+		beginModalLayer(g, 1f);
+		double mx = toCanvasX(mouseX);
+		double my = toCanvasY(mouseY);
+		renderModalCard(g, IMP_X, IMP_Y, IMP_W, IMP_H, 1f);
+		drawCentered(g, upper(Component.translatable("phantasmon.pc.import.title").getString()), 800, 132, 2f, TITLE, true, 2f);
+		drawCentered(g, Component.translatable("phantasmon.pc.import.subtitle", TEAM_SIZE).getString(), 800, 164, 2f, TEXT2, false, 0f);
+
+		renderImportField(g);
+		renderImportPreview(g);
+
+		String status;
+		int color;
+		if (importCheck.error() != null) {
+			status = importCheck.error();
+			color = IMPORT_INVALID;
+		} else if (importCheck.valid()) {
+			status = Component.translatable("phantasmon.pc.import.ready", importCheck.requests().size()).getString();
+			color = READY_TEXT;
+		} else {
+			status = Component.translatable("phantasmon.pc.import.hint").getString();
+			color = DIM;
+		}
+		drawText(g, fitText(status, IMPORT_CANCEL_X - IMPORT_TEXT_X - 24, 2f, false, 0f), IMPORT_TEXT_X, IMPORT_BUTTON_Y + 14, 2f, color, false, 0f);
+
+		renderButton(g, IMPORT_CANCEL_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H, "phantasmon.trade.screen.cancel", false,
+				inside(mx, my, IMPORT_CANCEL_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H), 2f);
+		boolean ready = importCheck.valid();
+		boolean okHovered = ready && inside(mx, my, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H);
+		String label = upper(Component.translatable("phantasmon.pc.screen.import").getString());
+		if (ready) {
+			renderPrimaryButtonFrame(g, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H, okHovered, false);
+		} else {
+			blackBorder(g, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H, palette().black());
+			g.fill(IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_OK_X + IMPORT_BUTTON_W, IMPORT_BUTTON_Y + IMPORT_BUTTON_H, palette().dark());
+			sunkenEdge(g, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H);
+		}
+		drawCentered(g, label, IMPORT_OK_X + IMPORT_BUTTON_W / 2f, IMPORT_BUTTON_Y + (IMPORT_BUTTON_H - 7 * snapTextScale(2f)) / 2f, 2f,
+				ready ? CYAN : DIM, true, 1.5f);
+		endModalLayer(g);
+	}
+
+	/** The text field: red frame when the paste can't be imported, accent when it can. */
+	private void renderImportField(GuiGraphics g) {
+		int x = IMPORT_TEXT_X, y = IMPORT_TEXT_Y, w = IMPORT_TEXT_W, h = IMPORT_TEXT_H;
+		int frame = importCheck.error() != null ? IMPORT_INVALID : importCheck.valid() ? CYAN : PANEL_BORDER;
+		g.fill(x - 3, y - 3, x + w + 3, y + h + 3, frame);
+		g.fill(x, y, x + w, y + h, INFO_BOX_BG);
+		sunkenEdge(g, x, y, w, h);
+
+		List<String> lines = List.of((importText.isEmpty() ? IMPORT_EXAMPLE : importText).split("\n", -1));
+		int visible = (h - 16) / IMPORT_LINE_H;
+		int[] caret = caretLineColumn();
+		if (!importText.isEmpty()) {
+			// Keep the caret in sight; the wheel scrolls within the text's length.
+			importScroll = Math.min(importScroll, Math.max(0, lines.size() - visible));
+			if (caret[0] < importScroll) {
+				importScroll = caret[0];
+			} else if (caret[0] >= importScroll + visible) {
+				importScroll = caret[0] - visible + 1;
+			}
+		} else {
+			importScroll = 0;
+		}
+		g.flush();
+		enableCanvasScissor(g, x + 4, y + 4, w - 8, h - 8);
+		if (importAll && !importText.isEmpty()) {
+			for (int i = importScroll; i < Math.min(lines.size(), importScroll + visible); i++) {
+				int lineY = y + 8 + (i - importScroll) * IMPORT_LINE_H;
+				g.fill(x + 10, lineY - 2, x + 14 + (int) textWidth(lines.get(i), 2f, false, 0f), lineY + IMPORT_LINE_H - 2, palette().accentDim());
+			}
+		}
+		int color = importText.isEmpty() ? DIM : WHITE;
+		for (int i = importScroll; i < Math.min(lines.size(), importScroll + visible); i++) {
+			drawText(g, lines.get(i), x + 12, y + 8 + (i - importScroll) * IMPORT_LINE_H, 2f, color, false, 0f);
+		}
+		if ((System.currentTimeMillis() / 500) % 2 == 0) {
+			String before = importText.isEmpty() ? "" : lines.get(caret[0]).substring(0, caret[1]);
+			float caretX = x + 12 + textWidth(before, 2f, false, 0f);
+			int caretY = y + 8 + (caret[0] - importScroll) * IMPORT_LINE_H;
+			g.fill((int) caretX, caretY - 2, (int) caretX + 2, caretY + 15, CYAN);
+		}
+		g.disableScissor();
+		if (lines.size() > visible && !importText.isEmpty()) {
+			int barH = Math.max(24, (h - 8) * visible / lines.size());
+			int barY = y + 4 + (h - 8 - barH) * importScroll / Math.max(1, lines.size() - visible);
+			g.fill(x + w - 7, barY, x + w - 4, barY + barH, LINE_20);
+		}
+	}
+
+	/** Up to six cases, two by two: the model, name and item each set would be imported as; a red case for a refused one. */
+	private void renderImportPreview(GuiGraphics g) {
+		for (int i = 0; i < TEAM_SIZE; i++) {
+			int x = IMPORT_PREVIEW_X + (i % 2) * (IMPORT_CELL_W + IMPORT_GAP);
+			int y = IMPORT_PREVIEW_Y + (i / 2) * (IMPORT_CELL_H + IMPORT_GAP);
+			PokemonDto pokemon = i < importCheck.preview().size() ? importCheck.preview().get(i) : null;
+			String rejected = i < importCheck.rejected().size() ? importCheck.rejected().get(i) : null;
+			renderSlot(g, x, y, IMPORT_CELL_W, IMPORT_CELL_H, pokemon, SlotLook.NORMAL, IMPORT_SLOT);
+			if (rejected != null) {
+				g.fill(x, y, x + IMPORT_CELL_W, y + 3, IMPORT_INVALID);
+				g.fill(x, y + IMPORT_CELL_H - 3, x + IMPORT_CELL_W, y + IMPORT_CELL_H, IMPORT_INVALID);
+				g.fill(x, y, x + 3, y + IMPORT_CELL_H, IMPORT_INVALID);
+				g.fill(x + IMPORT_CELL_W - 3, y, x + IMPORT_CELL_W, y + IMPORT_CELL_H, IMPORT_INVALID);
+				drawCentered(g, "?", x + IMPORT_CELL_W / 2f, y + 50, 4f, IMPORT_INVALID, true, 0f);
+				drawCentered(g, fitText(rejected, IMPORT_CELL_W - 12, 1f, true, 0f), x + IMPORT_CELL_W / 2f, y + IMPORT_SLOT.nameY(), 1f,
+						IMPORT_INVALID, true, 0f);
+			} else if (pokemon == null) {
+				drawCentered(g, String.valueOf(i + 1), x + IMPORT_CELL_W / 2f, y + (IMPORT_CELL_H - 14) / 2f, 2f, LINE_20, true, 0f);
+			}
+		}
+	}
+
+	/** The caret's line and column in the text. */
+	private int[] caretLineColumn() {
+		int line = 0;
+		int lineStart = 0;
+		for (int i = 0; i < importCaret; i++) {
+			if (importText.charAt(i) == '\n') {
+				line++;
+				lineStart = i + 1;
+			}
+		}
+		return new int[] { line, importCaret - lineStart };
+	}
+
+	/** Where line {@code line}, column {@code column} (clamped to the line) is in the text. */
+	private int caretAt(int line, int column) {
+		String[] lines = importText.split("\n", -1);
+		line = Math.max(0, Math.min(line, lines.length - 1));
+		int index = 0;
+		for (int i = 0; i < line; i++) {
+			index += lines[i].length() + 1;
+		}
+		return index + Math.max(0, Math.min(column, lines[line].length()));
+	}
+
+	private void importInsert(String text) {
+		text = text.replace("\r\n", "\n").replace('\r', '\n').replace("\t", "  ");
+		if (importAll) {
+			setImportText(text, text.length());
+			return;
+		}
+		setImportText(importText.substring(0, importCaret) + text + importText.substring(importCaret), importCaret + text.length());
+	}
+
+	private void importKey(int keyCode) {
+		boolean ctrl = hasControlDown();
+		var keyboard = Minecraft.getInstance().keyboardHandler;
+		switch (keyCode) {
+			case 256 -> importOpen = false; // Escape
+			case 257, 335 -> { // Enter: a new line; Ctrl+Enter imports
+				if (ctrl) {
+					com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+					importChecked();
+				} else {
+					importInsert("\n");
+				}
+			}
+			case 259 -> { // Backspace
+				if (importAll) {
+					setImportText("", 0);
+				} else if (importCaret > 0) {
+					int from = importCaret - 1;
+					if (ctrl) {
+						while (from > 0 && importText.charAt(from - 1) != '\n' && !Character.isWhitespace(importText.charAt(from - 1))) {
+							from--;
+						}
+					}
+					setImportText(importText.substring(0, from) + importText.substring(importCaret), from);
+				}
+			}
+			case 261 -> { // Delete
+				if (importAll) {
+					setImportText("", 0);
+				} else if (importCaret < importText.length()) {
+					setImportText(importText.substring(0, importCaret) + importText.substring(importCaret + 1), importCaret);
+				}
+			}
+			case 263 -> moveImportCaret(importAll ? 0 : importCaret - 1);
+			case 262 -> moveImportCaret(importAll ? importText.length() : importCaret + 1);
+			case 265, 264 -> {
+				int[] caret = caretLineColumn();
+				moveImportCaret(caretAt(caret[0] + (keyCode == 265 ? -1 : 1), caret[1]));
+			}
+			case 268 -> moveImportCaret(ctrl ? 0 : caretAt(caretLineColumn()[0], 0));
+			case 269 -> moveImportCaret(ctrl ? importText.length() : caretAt(caretLineColumn()[0], Integer.MAX_VALUE));
+			case 65 -> importAll = ctrl && !importText.isEmpty(); // Ctrl+A
+			case 67 -> { // Ctrl+C: the whole text
+				if (ctrl && !importText.isEmpty()) {
+					keyboard.setClipboard(importText);
+				}
+			}
+			case 88 -> { // Ctrl+X
+				if (ctrl && !importText.isEmpty()) {
+					keyboard.setClipboard(importText);
+					setImportText("", 0);
+				}
+			}
+			case 86 -> { // Ctrl+V
+				if (ctrl) {
+					String clip = keyboard.getClipboard();
+					if (clip != null && !clip.isEmpty()) {
+						importInsert(clip);
+					}
+				}
+			}
+			default -> {
+			}
+		}
+	}
+
+	private void moveImportCaret(int caret) {
+		importAll = false;
+		importCaret = Math.max(0, Math.min(caret, importText.length()));
+	}
+
+	private void importClicked(double x, double y) {
+		if (inside(x, y, IMPORT_CANCEL_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H)) {
+			importOpen = false;
+		} else if (inside(x, y, IMPORT_OK_X, IMPORT_BUTTON_Y, IMPORT_BUTTON_W, IMPORT_BUTTON_H) && importCheck.valid()) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+			importChecked();
+		} else if (inside(x, y, IMPORT_TEXT_X, IMPORT_TEXT_Y, IMPORT_TEXT_W, IMPORT_TEXT_H) && !importText.isEmpty()) {
+			// The caret goes where the click is: the line under it, the column nearest to it.
+			int line = importScroll + (int) ((y - IMPORT_TEXT_Y - 8) / IMPORT_LINE_H);
+			String[] lines = importText.split("\n", -1);
+			line = Math.max(0, Math.min(line, lines.length - 1));
+			int column = 0;
+			while (column < lines[line].length()
+					&& IMPORT_TEXT_X + 12 + textWidth(lines[line].substring(0, column + 1), 2f, false, 0f) - 6 < x) {
+				column++;
+			}
+			moveImportCaret(caretAt(line, column));
+		}
 	}
 
 	private record SlotRef(Kind kind, int index) {

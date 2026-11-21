@@ -181,7 +181,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		return line;
 	}
 
-	private static com.mystaria.phantasmon.client.gui.menu.MenuUi.Palette palette() {
+	protected static com.mystaria.phantasmon.client.gui.menu.MenuUi.Palette palette() {
 		return com.mystaria.phantasmon.client.gui.menu.MenuUi.p();
 	}
 
