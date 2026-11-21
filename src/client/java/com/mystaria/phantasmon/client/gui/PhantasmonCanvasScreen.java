@@ -715,6 +715,15 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			String ev = String.valueOf(evValue);
 			drawText(g, iv, ivCenter - textWidth(iv, VALUE_SCALE, false, 0f) / 2f, textY, VALUE_SCALE, IV_COLOR, false, 0f);
 			drawText(g, ev, evCenter - textWidth(ev, VALUE_SCALE, false, 0f) / 2f, textY, VALUE_SCALE, EV_COLOR, false, 0f);
+			// How far this stat's EVs go (out of 252): the spread at a glance.
+			int barLeft = 551 + dx;
+			int barRight = 773 + dx;
+			int barY = rowY + rowH - 5;
+			g.fill(barLeft, barY, barRight, barY + 2, LINE_20);
+			int filled = Math.round((barRight - barLeft) * Math.min(252, Math.max(0, evValue)) / 252f);
+			if (filled > 0) {
+				g.fill(barLeft, barY, barLeft + filled, barY + 2, withAlpha(EV_COLOR, 0.75f));
+			}
 		}
 		int totalY = 528 + 6 * rowH + 6;
 		g.fill(547 + dx, totalY, 777 + dx, totalY + hairline(), LINE_20);
@@ -744,6 +753,56 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		if (status != null) {
 			drawText(g, fitText(status, statusMaxWidth, 2f, false, 0f), 27, 855.5f, 2f, statusColor, false, 0f);
 		}
+	}
+
+	/**
+	 * A footer of hints ("action : what it does | …"): one segment per hint, a bar between segments, the action in
+	 * white. Each segment is drawn whole first, then its action over it, so the action stays right against what it
+	 * does (measured apart, the space after the colon came out wide). Too long for the bar: one plain line.
+	 */
+	protected void renderFooterHints(GuiGraphics g, String text, float maxWidth) {
+		String[] hints = text.split("\\|");
+		String[] whole = new String[hints.length];
+		String[] keys = new String[hints.length];
+		float total = 0;
+		for (int i = 0; i < hints.length; i++) {
+			String hint = hints[i].trim();
+			int colon = hint.indexOf(':');
+			whole[i] = colon < 0 ? hint : hint.substring(0, colon + 1).trim() + " " + hint.substring(colon + 1).trim();
+			keys[i] = colon < 0 ? "" : hint.substring(0, colon + 1).trim();
+			total += textWidth(whole[i], 2f, false, 0f);
+		}
+		float gap = hints.length > 1 ? Math.min(48, (maxWidth - total) / (hints.length - 1)) : 0;
+		if (gap < 16) {
+			renderFooterBar(g, String.join("  ·  ", whole), DIM, maxWidth);
+			return;
+		}
+		renderFooterBar(g, null, DIM, maxWidth);
+		float x = 27;
+		for (int i = 0; i < hints.length; i++) {
+			if (i > 0) {
+				g.fill((int) (x + gap / 2f - 1), 849, (int) (x + gap / 2f + 1), 876, LINE_20);
+				x += gap;
+			}
+			drawText(g, whole[i], x, 855.5f, 2f, MUTED, false, 0f);
+			if (!keys[i].isEmpty()) {
+				drawText(g, keys[i], x, 855.5f, 2f, WHITE, false, 0f);
+			}
+			x += textWidth(whole[i], 2f, false, 0f);
+		}
+	}
+
+	/** The header's "+ IMPORTER" button, as the PC and its editor show it (same size as EXPORTER beside it). */
+	protected void renderImportButton(GuiGraphics g, int x, int y, int w, int h, boolean hovered) {
+		renderPrimaryButtonFrame(g, x, y, w, h, hovered, false);
+		String plus = "+";
+		String label = upper(Component.translatable("phantasmon.pc.screen.import").getString());
+		float plusWidth = textWidth(plus, 2f, true, 0f);
+		float labelScale = textWidth(label, 2f, true, 1f) + plusWidth + 8 <= w - 16 ? 2f : 1f;
+		float labelWidth = textWidth(label, labelScale, true, 1f);
+		float startX = x + (w - plusWidth - 8 - labelWidth) / 2f;
+		drawText(g, plus, startX, y + 17, 2f, CYAN, true, 0f);
+		drawText(g, label, startX + plusWidth + 8, y + (h - 7 * labelScale) / 2f, labelScale, CYAN, true, 1f);
 	}
 
 	protected void renderButton(GuiGraphics g, int x, int y, int w, int h, String labelKey, boolean danger, boolean hovered) {
@@ -1009,8 +1068,8 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			int nameColor, int rightReserve) {
 		String name = template != null ? template.getDisplayName().getString() : moveId;
 		int right = x + w - rightReserve;
-		int badgeW = type == null ? 0 : typeBadgeWidth(type, VALUE_SCALE);
-		int badgeH = typeBadgeHeight(VALUE_SCALE);
+		int badgeW = type == null ? 0 : typeBadgeWidth(type, MOVE_BADGE_SCALE);
+		int badgeH = typeBadgeHeight(MOVE_BADGE_SCALE);
 		boolean compact = h < 90;
 		float nameHeight = 7 * snapTextScale(VALUE_SCALE);
 		float statsHeight = 7 * snapTextScale(1f);
@@ -1018,14 +1077,21 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		float top = y + (h - block) / 2f;
 		drawText(g, fitText(name, right - x - badgeW - 24, VALUE_SCALE, false, 0f), x + 10, top, VALUE_SCALE, nameColor, false, 0f);
 		if (template != null) {
-			String power = template.getPower() > 0 ? String.valueOf((int) template.getPower()) : "—";
-			String accuracy = template.getAccuracy() > 0 ? (int) template.getAccuracy() + "%" : "—";
-			String stats = Component.translatable("phantasmon.move.stats", power, accuracy, template.getMaxPp()).getString();
+			// Only what the move has (2026-11-21: "Power — · Acc. —" took the room and the PP were cut off).
+			List<String> parts = new java.util.ArrayList<>();
+			if (template.getPower() > 0) {
+				parts.add(Component.translatable("phantasmon.move.power", (int) template.getPower()).getString());
+			}
+			if (template.getAccuracy() > 0) {
+				parts.add(Component.translatable("phantasmon.move.accuracy", (int) template.getAccuracy() + "%").getString());
+			}
+			parts.add(Component.translatable("phantasmon.move.pp", template.getMaxPp()).getString());
+			String stats = String.join("  ·  ", parts);
 			drawText(g, fitText(stats, right - x - badgeW - 24, 1f, false, 0f), x + 10, top + nameHeight + 8, 1f, MUTED, false, 0f);
 		}
 		if (type != null) {
 			float badgeY = template == null ? y + (h - badgeH) / 2f : y + (compact ? 6 : h / 2f - badgeH - 3);
-			drawTypeBadge(g, type, right - 10 - badgeW, badgeY, VALUE_SCALE);
+			drawTypeBadge(g, type, right - 10 - badgeW, badgeY, MOVE_BADGE_SCALE);
 			if (template != null) {
 				String category = template.getDamageCategory().getDisplayName().getString();
 				int categoryW = badgeWidth(upper(category), 1f);
@@ -1034,6 +1100,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			}
 		}
 	}
+
+	/** Move rows' type badge: smaller than the card's Tera badge, closer to the category badge under it (2026-11-21). */
+	protected static final float MOVE_BADGE_SCALE = 1.5f;
 
 	protected int typeBadgeHeight(float textScale) {
 		return Math.round(7 * snapTextScale(textScale)) + 12;

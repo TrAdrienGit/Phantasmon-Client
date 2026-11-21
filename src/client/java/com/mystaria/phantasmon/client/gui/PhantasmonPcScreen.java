@@ -69,6 +69,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final int GRID_X = 818;
 	private static final int GRID_Y = 127;
 	private static final int GRID_SLOT_W = 119;
+	/** The team rail's cases, taller since the help box under them went (2026-11-21): down to the rail's foot. */
+	private static final int TEAM_RAIL_SLOT_H = 230;
+	private static final SlotLayout TEAM_RAIL_SLOT = new SlotLayout(20, 154, SLOT_MODEL_SCALE * 1.08f, 178, 59, 202, 20);
 	private static final int GRID_SLOT_H = 132;
 	private static final int GRID_GAP = 8;
 	/** Team boxes (TODO-36): shorter slots, wider gaps between the rows, the same overall height. */
@@ -1087,7 +1090,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	private SlotRef slotAt(double x, double y) {
 		for (int i = 0; i < TEAM_SIZE; i++) {
-			if (inside(x, y, teamSlotX(i), teamSlotY(i), 85, 214)) {
+			if (inside(x, y, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H)) {
 				return new SlotRef(SlotRef.Kind.TEAM, i);
 			}
 		}
@@ -1105,7 +1108,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private static int teamSlotY(int index) {
-		return 117 + (index / 2) * 221;
+		return 117 + (index / 2) * (TEAM_RAIL_SLOT_H + 7);
 	}
 
 	private static int gridSlotX(int index) {
@@ -1200,16 +1203,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		drawText(g, totals, CLOSE_X - 14 - textWidth(totals, 2f, false, 1f), 32, 2f, MUTED, false, 1f);
 		renderCloseButton(g, CLOSE_X, CLOSE_Y, CLOSE_SIZE, inside(mx, my, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE));
 
-		boolean hovered = inside(mx, my, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H);
-		renderPrimaryButtonFrame(g, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, hovered, false);
-		String plus = "+";
-		String label = upper(Component.translatable("phantasmon.pc.screen.import").getString());
-		float plusWidth = textWidth(plus, 2f, true, 0f);
-		float labelScale = textWidth(label, 2f, true, 1f) + plusWidth + 8 <= IMPORT_W - 16 ? 2f : 1f;
-		float labelWidth = textWidth(label, labelScale, true, 1f);
-		float startX = IMPORT_X + (IMPORT_W - plusWidth - 8 - labelWidth) / 2f;
-		drawText(g, plus, startX, IMPORT_Y + 17, 2f, CYAN, true, 0f);
-		drawText(g, label, startX + plusWidth + 8, IMPORT_Y + (IMPORT_H - 7 * labelScale) / 2f, labelScale, CYAN, true, 1f);
+		renderImportButton(g, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, inside(mx, my, IMPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H));
 		renderExportButton(g, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H, inside(mx, my, EXPORT_X, IMPORT_Y, IMPORT_W, IMPORT_H));
 		renderSearchField(g, mx, my);
 	}
@@ -1246,9 +1240,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		renderRailFrame(g, 15, 72, 194, 758, Component.translatable("phantasmon.pc.team_label").getString(), null);
 		for (int i = 0; i < TEAM_SIZE; i++) {
 			SlotRef ref = new SlotRef(SlotRef.Kind.TEAM, i);
-			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, 214, teamSlots[i], lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, 214), RAIL_SLOT);
+			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H, teamSlots[i],
+					lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H), TEAM_RAIL_SLOT);
+			if (teamSlots[i] == null) {
+				emptyMark(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H, i + 1);
+			}
 			if (searching() && !matches(teamSlots[i])) {
-				greyOut(g, teamSlotX(i), teamSlotY(i), 85, 214);
+				greyOut(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H);
 			}
 		}
 	}
@@ -1273,8 +1271,19 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			}
 		} else {
 			boolean titleHovered = inside(mx, my, TITLE_X, NAV_Y, TITLE_W, NAV_H);
-			String boxLabel = fitText(boxTitle(), TITLE_W - 20, 2f, true, 2f);
-			drawCentered(g, boxLabel, TITLE_X + TITLE_W / 2f, NAV_Y + 8, 2f, titleHovered ? WHITE : MUTED, true, 2f);
+			String name = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.name(pcOwner(), currentBox);
+			if (name == null) {
+				String boxLabel = fitText(boxTitle(), TITLE_W - 20, 2f, true, 2f);
+				drawCentered(g, boxLabel, TITLE_X + TITLE_W / 2f, NAV_Y + 8, 2f, titleHovered ? WHITE : MUTED, true, 2f);
+			} else {
+				// The name stands out, its number after it, muted.
+				String count = "  ·  " + currentBox + "/" + BOX_COUNT;
+				float countW = textWidth(count, 2f, true, 2f);
+				String fitted = fitText(name, TITLE_W - 20 - countW, 2f, true, 2f);
+				float startX = TITLE_X + (TITLE_W - textWidth(fitted, 2f, true, 2f) - countW) / 2f;
+				drawText(g, fitted, startX, NAV_Y + 8, 2f, WHITE, true, 2f);
+				drawText(g, count, startX + textWidth(fitted, 2f, true, 2f), NAV_Y + 8, 2f, titleHovered ? TEXT2 : DIM, true, 2f);
+			}
 			if (titleHovered) {
 				g.fill(TITLE_X + 20, NAV_Y + NAV_H - 3, TITLE_X + TITLE_W - 20, NAV_Y + NAV_H - 1, CYAN2);
 			}
@@ -1312,10 +1321,18 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			int y = gridSlotY(i);
 			int h = gridSlotH();
 			renderSlot(g, x, y, GRID_SLOT_W, h, boxSlots[i], lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, h), GRID_SLOT);
+			if (boxSlots[i] == null && !team) {
+				emptyMark(g, x, y, GRID_SLOT_W, h, i + 1);
+			}
 			if (searching() && !matches(boxSlots[i])) {
 				greyOut(g, x, y, GRID_SLOT_W, h);
 			}
 		}
+	}
+
+	/** An empty case's mark: its number, faint, in its middle (2026-11-21: empty and dark cases looked alike). */
+	private void emptyMark(GuiGraphics g, int x, int y, int w, int h, int number) {
+		drawCentered(g, String.valueOf(number), x + w / 2f, y + (h - 14) / 2f, 2f, LINE_20, true, 0f);
 	}
 
 	/** Selected = the selected Pokémon's slot; while dragging, the hovered slot is the drop target (empty or not). */
@@ -1367,47 +1384,16 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			status = null;
 			color = DIM;
 		}
-		renderFooterBar(g, status, color, EDIT_X - 27 - 16);
 		if (status == null) {
-			renderHints(g, EDIT_X - 27 - 16);
+			renderFooterHints(g, Component.translatable("phantasmon.pc.screen.idle_hint").getString(), EDIT_X - 27 - 16);
+		} else {
+			renderFooterBar(g, status, color, EDIT_X - 27 - 16);
 		}
 		if (selectedPokemon() != null) {
 			renderButton(g, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H, "phantasmon.pc.edit", false,
 					inside(mx, my, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H), 2f);
 			renderButton(g, DELETE_X, FOOTER_BUTTON_Y, DELETE_W, FOOTER_BUTTON_H, "phantasmon.pc.delete", true,
 					inside(mx, my, DELETE_X, FOOTER_BUTTON_Y, DELETE_W, FOOTER_BUTTON_H), 2f);
-		}
-	}
-
-	/**
-	 * The idle help, one hint per segment: the action in white, what it does dimmed, a bar between segments (a lone
-	 * dot between them read as one sentence).
-	 */
-	private void renderHints(GuiGraphics g, float maxWidth) {
-		String[] hints = Component.translatable("phantasmon.pc.screen.idle_hint").getString().split("\\|");
-		String[][] parts = new String[hints.length][];
-		float total = 0;
-		for (int i = 0; i < hints.length; i++) {
-			String hint = hints[i].trim();
-			int colon = hint.indexOf(':');
-			parts[i] = colon < 0 ? new String[] {"", hint} : new String[] {hint.substring(0, colon + 1).trim() + " ", hint.substring(colon + 1).trim()};
-			total += textWidth(parts[i][0] + parts[i][1], 2f, false, 0f);
-		}
-		float gap = hints.length > 1 ? Math.min(56, (maxWidth - total) / (hints.length - 1)) : 0;
-		if (gap < 16) {
-			renderFooterBar(g, String.join("  |  ", hints), DIM, maxWidth);
-			return;
-		}
-		float x = 27;
-		for (int i = 0; i < hints.length; i++) {
-			if (i > 0) {
-				g.fill((int) (x + gap / 2f - 1), 849, (int) (x + gap / 2f + 1), 876, LINE_20);
-				x += gap;
-			}
-			drawText(g, parts[i][0], x, 855.5f, 2f, WHITE, false, 0f);
-			x += textWidth(parts[i][0], 2f, false, 0f);
-			drawText(g, parts[i][1], x, 855.5f, 2f, MUTED, false, 0f);
-			x += textWidth(parts[i][1], 2f, false, 0f);
 		}
 	}
 

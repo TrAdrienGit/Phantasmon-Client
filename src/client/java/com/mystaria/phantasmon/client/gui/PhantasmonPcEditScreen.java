@@ -937,7 +937,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		beginCanvas(graphics);
 		renderRootPanel(graphics);
 		renderHeader(graphics, mx, my);
-		renderPokemonCard(graphics, preview(), ownerName(), CARD_DX, ACCENT_LEFT, null, true);
+		renderPokemonCard(graphics, preview(), null, CARD_DX, ACCENT_LEFT, null, true);
 		renderForm(graphics, mx, my);
 		renderFooter(graphics, mx, my);
 		endCanvas(graphics);
@@ -966,15 +966,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		String state = upper(Component.translatable(dirty ? "phantasmon.pc.editor.dirty" : "phantasmon.pc.editor.clean").getString());
 		drawText(g, state, 1569 - textWidth(state, 2f, false, 1f), 32, 2f, dirty ? ERROR_TEXT : DIM, false, 1f);
 
-		boolean hovered = inside(mx, my, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48);
-		renderPrimaryButtonFrame(g, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48, hovered, false);
-		String plus = "+";
-		String label = upper(Component.translatable("phantasmon.pc.screen.import").getString());
-		float plusWidth = textWidth(plus, 2f, true, 0f);
-		float labelWidth = textWidth(label, 2f, true, 1f);
-		float startX = HEADER_IMPORT_X + (HEADER_PAIR_W - plusWidth - 8 - labelWidth) / 2f;
-		drawText(g, plus, startX, 32, 2f, CYAN, true, 0f);
-		drawText(g, label, startX + plusWidth + 8, 32, 2f, CYAN, true, 1f);
+		renderImportButton(g, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48, inside(mx, my, HEADER_IMPORT_X, 15, HEADER_PAIR_W, 48));
 		renderExportButton(g, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48, inside(mx, my, HEADER_EXPORT_X, 15, HEADER_PAIR_W, 48));
 		boolean lookHovered = inside(mx, my, LOOK_X, LOOK_Y, LOOK_W, LOOK_H);
 		renderPrimaryButtonFrame(g, LOOK_X, LOOK_Y, LOOK_W, LOOK_H, lookHovered, !look.empty());
@@ -1356,10 +1348,14 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			status = statusMessage;
 			color = statusIsError ? ERROR_TEXT : READY_TEXT;
 		} else {
-			status = Component.translatable("phantasmon.pc.editor.hint").getString();
+			status = null;
 			color = DIM;
 		}
-		renderFooterBar(g, status, color, CANCEL_X - 27 - 16);
+		if (status == null) {
+			renderFooterHints(g, Component.translatable("phantasmon.pc.editor.hint").getString(), CANCEL_X - 27 - 16);
+		} else {
+			renderFooterBar(g, status, color, CANCEL_X - 27 - 16);
+		}
 		renderButton(g, CANCEL_X, FOOTER_BUTTON_Y, CANCEL_W, FOOTER_BUTTON_H, "phantasmon.pc.edit.cancel", false,
 				inside(mx, my, CANCEL_X, FOOTER_BUTTON_Y, CANCEL_W, FOOTER_BUTTON_H), 2f);
 		boolean saveHovered = inside(mx, my, SAVE_X, FOOTER_BUTTON_Y, SAVE_W, FOOTER_BUTTON_H);
