@@ -1179,20 +1179,27 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		return (float) ((Math.round((originY + y * scale) * gui) / gui - originY) / scale);
 	}
 
-	/** Draws {@code text} with its glyph top at {@code y}, optionally with CSS-like {@code letter-spacing} (canvas px). Pixel-snapped, see {@link #snapTextScale}. */
-	protected void drawText(GuiGraphics g, String text, float x, float y, float textScale, int color, boolean bold, float spacing) {
+	/**
+	 * Draws {@code text} with its glyph top at {@code y}, optionally with CSS-like {@code letter-spacing} (canvas px).
+	 * Pixel-snapped, see {@link #snapTextScale}. Returns where the drawn text ends (canvas x): a caret goes there, as
+	 * the font's measured width can run wider than what it draws (2026-11-21: carets drifted right as text grew).
+	 */
+	protected float drawText(GuiGraphics g, String text, float x, float y, float textScale, int color, boolean bold, float spacing) {
 		if (text == null || text.isEmpty() || (color >>> 24) < 8) {
-			return;
+			return x;
 		}
 		float effectiveScale = snapTextScale(textScale);
 		float effectiveSpacing = snapSpacing(spacing);
 		boolean uniform = uniformAt(textScale);
 		PoseStack pose = g.pose();
 		pose.pushPose();
-		pose.translate(snapX(x), snapY(y), 0);
+		float left = snapX(x);
+		pose.translate(left, snapY(y), 0);
 		pose.scale(effectiveScale, effectiveScale, 1f);
+		float advance;
 		if (effectiveSpacing <= 0f) {
-			g.drawString(font, styled(text, bold, uniform), 0, 0, color, false);
+			advance = g.drawString(font, styled(text, bold, uniform), 0, 0, color, false);
+			reportWidthMismatch(text, bold, uniform, advance);
 		} else {
 			float cursor = 0f;
 			int i = 0;
@@ -1206,8 +1213,22 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 				cursor += font.width(styled(glyph, bold, uniform)) + effectiveSpacing / effectiveScale;
 				i += Character.charCount(codePoint);
 			}
+			advance = cursor;
 		}
 		pose.popPose();
+		return left + advance * effectiveScale;
+	}
+
+	/** Texts already reported: the log names each measured/drawn mismatch once. */
+	private static final java.util.Set<String> WIDTH_REPORTED = java.util.concurrent.ConcurrentHashMap.newKeySet();
+
+	/** Logs, once per text, when the font draws it narrower or wider than it measures it (what made carets drift). */
+	private void reportWidthMismatch(String text, boolean bold, boolean uniform, float drawn) {
+		int measured = font.width(styled(text, bold, uniform));
+		if (Math.abs(measured - drawn) > 1 && WIDTH_REPORTED.size() < 50 && WIDTH_REPORTED.add(text)) {
+			org.slf4j.LoggerFactory.getLogger("phantasmon-ui").warn(
+					"Text width mismatch: measured {} drawn {} (uniform={}, bold={}) for \"{}\"", measured, drawn, uniform, bold, text);
+		}
 	}
 
 	protected void drawSequence(GuiGraphics g, FormattedCharSequence sequence, float x, float y, int color) {

@@ -1155,9 +1155,9 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 					null, null, null, null, Map.of())), x + 9, y + 26, VALUE_SCALE, DIM, false, 0f);
 		} else {
 			String shown = fitText(value, w - 30, VALUE_SCALE, false, 0f);
-			drawText(g, shown, x + 9, y + 26, VALUE_SCALE, color, false, 0f);
+			float end = drawText(g, shown, x + 9, y + 26, VALUE_SCALE, color, false, 0f);
 			if (focused && (System.currentTimeMillis() / 500) % 2 == 0) {
-				drawText(g, "_", x + 9 + textWidth(shown, VALUE_SCALE, false, 0f) + 2, y + 26, VALUE_SCALE, CYAN, false, 0f);
+				drawText(g, "_", end + 2, y + 26, VALUE_SCALE, CYAN, false, 0f);
 			}
 		}
 	}

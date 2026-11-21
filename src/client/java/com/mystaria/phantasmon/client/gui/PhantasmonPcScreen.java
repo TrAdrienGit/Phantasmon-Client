@@ -1225,9 +1225,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			while (!shown.isEmpty() && textWidth(shown, 2f, false, 0f) > textRight - SEARCH_X - 26) {
 				shown = shown.substring(1);
 			}
-			drawText(g, shown, SEARCH_X + 10, textY, 2f, WHITE, false, 0f);
+			float end = drawText(g, shown, SEARCH_X + 10, textY, 2f, WHITE, false, 0f);
 			if (searchFocused && (System.currentTimeMillis() / 500) % 2 == 0) {
-				drawText(g, "_", SEARCH_X + 12 + textWidth(shown, 2f, false, 0f), textY, 2f, CYAN, false, 0f);
+				drawText(g, "_", end + 2, textY, 2f, CYAN, false, 0f);
 			}
 		}
 		if (clear) {
@@ -1265,9 +1265,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			sunkenEdge(g, TITLE_X, NAV_Y, TITLE_W, NAV_H);
 			String shown = renaming.isEmpty() ? Component.translatable("phantasmon.pc.screen.box_name_hint").getString() : renaming;
 			String fitted = fitText(shown, TITLE_W - 30, 2f, false, 0f);
-			drawText(g, fitted, TITLE_X + 10, NAV_Y + 8, 2f, renaming.isEmpty() ? DIM : WHITE, false, 0f);
+			float end = drawText(g, fitted, TITLE_X + 10, NAV_Y + 8, 2f, renaming.isEmpty() ? DIM : WHITE, false, 0f);
 			if (!renaming.isEmpty() && (System.currentTimeMillis() / 500) % 2 == 0) {
-				drawText(g, "_", TITLE_X + 12 + textWidth(fitted, 2f, false, 0f), NAV_Y + 8, 2f, CYAN, false, 0f);
+				drawText(g, "_", end + 2, NAV_Y + 8, 2f, CYAN, false, 0f);
 			}
 		} else {
 			boolean titleHovered = inside(mx, my, TITLE_X, NAV_Y, TITLE_W, NAV_H);
@@ -1550,8 +1550,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		}
 		if ((System.currentTimeMillis() / 500) % 2 == 0) {
 			String before = importText.isEmpty() ? "" : lines.get(caret[0]).substring(0, caret[1]);
-			float caretX = x + 12 + textWidth(before, 2f, false, 0f);
 			int caretY = y + 8 + (caret[0] - importScroll) * IMPORT_LINE_H;
+			// Drawn again over itself: where it ends is where the caret goes (see drawText).
+			float caretX = drawText(g, before, x + 12, caretY, 2f, color, false, 0f);
 			g.fill((int) caretX, caretY - 2, (int) caretX + 2, caretY + 15, CYAN);
 		}
 		g.disableScissor();
