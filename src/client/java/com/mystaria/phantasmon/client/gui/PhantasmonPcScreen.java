@@ -943,7 +943,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		renderRootPanel(graphics);
 		renderHeader(graphics, mx, my);
 		renderTeamRail(graphics, mx, my);
-		renderPokemonCard(graphics, selectedPokemon(), playerName(), 0, ACCENT_LEFT,
+		renderPokemonCard(graphics, selectedPokemon(), null, 0, ACCENT_LEFT,
 				Component.translatable("phantasmon.pc.no_selection").getString(), true);
 		renderGridPanel(graphics, mx, my);
 		renderFooter(graphics, mx, my);
@@ -975,7 +975,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 		long teamCount = Arrays.stream(teamSlots).filter(p -> p != null).count();
 		long pcCount = allPokemon.size() - teamCount;
-		String totals = upper(Component.translatable("phantasmon.pc.screen.count", pcCount, PC_CAPACITY, teamCount, TEAM_SIZE).getString());
+		String totals = upper(Component.translatable("phantasmon.pc.screen.count", pcCount, PC_CAPACITY).getString());
 		drawText(g, totals, CLOSE_X - 14 - textWidth(totals, 2f, false, 1f), 32, 2f, MUTED, false, 1f);
 		renderCloseButton(g, CLOSE_X, CLOSE_Y, CLOSE_SIZE, inside(mx, my, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE));
 
@@ -1022,8 +1022,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void renderTeamRail(GuiGraphics g, double mx, double my) {
-		renderRailFrame(g, 15, 72, 194, 758, Component.translatable("phantasmon.trade.screen.team", playerName()).getString(),
-				Component.translatable("phantasmon.pc.screen.team_hint"));
+		renderRailFrame(g, 15, 72, 194, 758, Component.translatable("phantasmon.pc.team_label").getString(), null);
 		for (int i = 0; i < TEAM_SIZE; i++) {
 			SlotRef ref = new SlotRef(SlotRef.Kind.TEAM, i);
 			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, 214, teamSlots[i], lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, 214), RAIL_SLOT);
@@ -1141,15 +1140,50 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 					: Component.translatable("phantasmon.pc.screen.team_row_hint", row + 1).getString();
 			color = row < 0 ? DIM : CYAN;
 		} else {
-			status = Component.translatable("phantasmon.pc.screen.idle_hint").getString();
+			status = null;
 			color = DIM;
 		}
 		renderFooterBar(g, status, color, EDIT_X - 27 - 16);
+		if (status == null) {
+			renderHints(g, EDIT_X - 27 - 16);
+		}
 		if (selectedPokemon() != null) {
 			renderButton(g, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H, "phantasmon.pc.edit", false,
 					inside(mx, my, EDIT_X, FOOTER_BUTTON_Y, EDIT_W, FOOTER_BUTTON_H), 2f);
 			renderButton(g, DELETE_X, FOOTER_BUTTON_Y, DELETE_W, FOOTER_BUTTON_H, "phantasmon.pc.delete", true,
 					inside(mx, my, DELETE_X, FOOTER_BUTTON_Y, DELETE_W, FOOTER_BUTTON_H), 2f);
+		}
+	}
+
+	/**
+	 * The idle help, one hint per segment: the action in white, what it does dimmed, a bar between segments (a lone
+	 * dot between them read as one sentence).
+	 */
+	private void renderHints(GuiGraphics g, float maxWidth) {
+		String[] hints = Component.translatable("phantasmon.pc.screen.idle_hint").getString().split("\\|");
+		String[][] parts = new String[hints.length][];
+		float total = 0;
+		for (int i = 0; i < hints.length; i++) {
+			String hint = hints[i].trim();
+			int colon = hint.indexOf(':');
+			parts[i] = colon < 0 ? new String[] {"", hint} : new String[] {hint.substring(0, colon + 1).trim() + " ", hint.substring(colon + 1).trim()};
+			total += textWidth(parts[i][0] + parts[i][1], 2f, false, 0f);
+		}
+		float gap = hints.length > 1 ? Math.min(56, (maxWidth - total) / (hints.length - 1)) : 0;
+		if (gap < 16) {
+			renderFooterBar(g, String.join("  |  ", hints), DIM, maxWidth);
+			return;
+		}
+		float x = 27;
+		for (int i = 0; i < hints.length; i++) {
+			if (i > 0) {
+				g.fill((int) (x + gap / 2f - 1), 849, (int) (x + gap / 2f + 1), 876, LINE_20);
+				x += gap;
+			}
+			drawText(g, parts[i][0], x, 855.5f, 2f, WHITE, false, 0f);
+			x += textWidth(parts[i][0], 2f, false, 0f);
+			drawText(g, parts[i][1], x, 855.5f, 2f, MUTED, false, 0f);
+			x += textWidth(parts[i][1], 2f, false, 0f);
 		}
 	}
 

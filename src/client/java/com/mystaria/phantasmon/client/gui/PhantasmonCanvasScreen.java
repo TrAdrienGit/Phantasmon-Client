@@ -521,8 +521,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		// Not bold: the modpack's font renders bold wider than Minecraft measures it, which pushed this right-aligned text out of the card.
 		float levelWidth = textWidth(level, 2f, false, 0f);
 		float levelX = 784 + dx - levelWidth;
-		String ownerText = upper(owner);
-		float ownerWidth = textWidth(ownerText, 1f, false, 1.5f);
+		// No owner (the PC: its header already names the player): the name alone.
+		String ownerText = owner == null ? "" : upper(owner);
+		float ownerWidth = owner == null ? 0 : textWidth(ownerText, 1f, false, 1.5f);
 
 		float genderWidth = info.gender() == PokemonGender.MALE || info.gender() == PokemonGender.FEMALE ? 14 : 0;
 		float nameMax = Math.max(40, (levelX - (231 + dx)) - ownerWidth - genderWidth - 24);
@@ -533,7 +534,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 		float nameRight = 231 + dx + nameWidth + genderWidth;
 		float ownerX = nameRight + (levelX - nameRight - ownerWidth) / 2f;
-		drawText(g, ownerText, ownerX, 93, 1f, MUTED, false, 1.5f);
+		if (owner != null) {
+			drawText(g, ownerText, ownerX, 93, 1f, MUTED, false, 1.5f);
+		}
 		drawText(g, level, levelX, 89, 2f, WHITE, false, 0f);
 	}
 
@@ -687,6 +690,9 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		String evHead = Component.translatable("phantasmon.trade.screen.ev").getString();
 		drawText(g, ivHead, ivRight - textWidth(ivHead, 1f, true, 0f), 514, 1f, STAT_HEAD, true, 0f);
 		drawText(g, evHead, evRight - textWidth(evHead, 1f, true, 0f), 514, 1f, STAT_HEAD, true, 0f);
+		// Values centred under their heading: right-aligned, a single digit stood off-centre from "31" or "252".
+		float ivCenter = ivRight - textWidth(ivHead, 1f, true, 0f) / 2f;
+		float evCenter = evRight - textWidth(evHead, 1f, true, 0f) / 2f;
 		Map<String, Object> ivs = asMap(data.get("ivs"));
 		Map<String, Object> evs = asMap(data.get("evs"));
 		String boosted = modifier == null ? null : modifier.boosted().toLowerCase(Locale.ROOT);
@@ -707,15 +713,15 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 			int evValue = asInt(evs.get(STAT_KEYS[i]));
 			evTotal += evValue;
 			String ev = String.valueOf(evValue);
-			drawText(g, iv, ivRight - textWidth(iv, VALUE_SCALE, false, 0f), textY, VALUE_SCALE, IV_COLOR, false, 0f);
-			drawText(g, ev, evRight - textWidth(ev, VALUE_SCALE, false, 0f), textY, VALUE_SCALE, EV_COLOR, false, 0f);
+			drawText(g, iv, ivCenter - textWidth(iv, VALUE_SCALE, false, 0f) / 2f, textY, VALUE_SCALE, IV_COLOR, false, 0f);
+			drawText(g, ev, evCenter - textWidth(ev, VALUE_SCALE, false, 0f) / 2f, textY, VALUE_SCALE, EV_COLOR, false, 0f);
 		}
 		int totalY = 528 + 6 * rowH + 6;
 		g.fill(547 + dx, totalY, 777 + dx, totalY + hairline(), LINE_20);
 		float totalTextY = totalY + 1 + (rowH - 7 * VALUE_SCALE) / 2f;
 		drawText(g, Component.translatable("phantasmon.trade.screen.total_ev").getString(), 551 + dx, totalTextY, VALUE_SCALE, DIM, false, 0f);
 		String total = String.valueOf(evTotal);
-		drawText(g, total, evRight - textWidth(total, VALUE_SCALE, false, 0f), totalTextY, VALUE_SCALE, EV_COLOR, false, 0f);
+		drawText(g, total, evCenter - textWidth(total, VALUE_SCALE, false, 0f) / 2f, totalTextY, VALUE_SCALE, EV_COLOR, false, 0f);
 	}
 
 	protected void infoBox(GuiGraphics g, int x, int y, int w, int h, String labelKey) {
