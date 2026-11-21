@@ -315,8 +315,12 @@ public final class HubController implements HubListener {
 						}
 					}
 				}
-				status(Component.translatable("phantasmon.hub.joined", members.size()).withStyle(ChatFormatting.LIGHT_PURPLE));
-				com.mystaria.phantasmon.client.voice.HubVoice.onJoined();
+				// An Events (mirror) hub says nothing on the way in: its ambiences show it (2026-11-21).
+				boolean quiet = joinedAnchor != null && joinedAnchor.mirror();
+				if (!quiet) {
+					status(Component.translatable("phantasmon.hub.joined", members.size()).withStyle(ChatFormatting.LIGHT_PURPLE));
+				}
+				com.mystaria.phantasmon.client.voice.HubVoice.onJoined(quiet);
 			}
 			case "HubLeft" -> {
 				com.mystaria.phantasmon.client.voice.HubVoice.onLeft();
@@ -327,11 +331,13 @@ public final class HubController implements HubListener {
 				members.clear();
 				avatars.clear();
 				String reason = String.valueOf(data.get("reason"));
-				status(Component.translatable("phantasmon.hub.left." + switch (reason) {
-					case "SERVER_CHANGED" -> "server_changed";
-					case "ANCHOR_DELETED" -> "anchor_deleted";
-					default -> "left";
-				}, hubName).withStyle(ChatFormatting.LIGHT_PURPLE));
+				if (left == null || !left.mirror()) { // nor on the way out of an Events (mirror) hub
+					status(Component.translatable("phantasmon.hub.left." + switch (reason) {
+						case "SERVER_CHANGED" -> "server_changed";
+						case "ANCHOR_DELETED" -> "anchor_deleted";
+						default -> "left";
+					}, hubName).withStyle(ChatFormatting.LIGHT_PURPLE));
+				}
 				if ("ANCHOR_DELETED".equals(reason)) {
 					refreshAnchors();
 				}

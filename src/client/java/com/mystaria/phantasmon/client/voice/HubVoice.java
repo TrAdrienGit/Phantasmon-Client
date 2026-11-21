@@ -113,12 +113,15 @@ public final class HubVoice {
 
 	// ---------------------------------------------------------------- hub lifecycle (client thread)
 
-	/** {@code HubJoined}: tells the backend whether we talk and listen, and the player whether voice works. */
-	public static void onJoined() {
+	/**
+	 * {@code HubJoined}: tells the backend whether we talk and listen, and the player whether voice works, unless
+	 * {@code quiet} (an Events mirror hub: no chat on the way in).
+	 */
+	public static void onJoined(boolean quiet) {
 		inHub = true;
 		announced = null;
 		announce();
-		if (engine == null) {
+		if (engine == null || quiet) {
 			return;
 		}
 		chat(usable() ? Component.translatable("phantasmon.hub.voice.on").withStyle(ChatFormatting.LIGHT_PURPLE)
