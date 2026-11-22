@@ -640,6 +640,7 @@ public final class LiveBattleController implements LiveBattleListener {
 			NetworkPacket<?> packet = CobblemonPackets.decode(new CobblemonPackets.Encoded(id, payload));
 			if (packet instanceof BattleInitializePacket init) {
 				spectateInitialized = true;
+				BattleVisuals.joinInProgress(); // the catch-up: the battle as it stands, its Pokémon already out
 				spectatingCobblemonId = init.getBattleId();
 				com.mystaria.showtime.audio.BattleMusic.play(com.mystaria.showtime.audio.BattleMusic.Track.BATTLE);
 			} else if (!spectateInitialized) {

@@ -113,6 +113,7 @@ public final class BattleVisuals {
 	public static void onPacket(NetworkPacket<?> packet) {
 		try {
 			if (packet instanceof BattleInitializePacket init) {
+				boolean inProgress = joining;
 				clear();
 				com.mystaria.phantasmon.client.compat.BattleExtrasCompat.phantasmonBattleStarted();
 				UUID player = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
@@ -126,7 +127,7 @@ public final class BattleVisuals {
 					}
 				}
 				// Right after the launch intro, the send-outs are staged for the camera: the opponent's first, then ours.
-				boolean staged = stageSendOuts();
+				boolean staged = !inProgress && stageSendOuts();
 				BattleCameraDirector.start(STAGE);
 				UUID self = viewpoint;
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
@@ -137,10 +138,12 @@ public final class BattleVisuals {
 						for (var active : actor.getActivePokemon()) {
 							if (active != null) {
 								String pnx = actor.getShowdownId() + slot;
-								if (delay > 0f) {
-									later(delay, () -> sendOut(pnx, active));
+								if (inProgress) {
+									sendOut(pnx, active, true);
+								} else if (delay > 0f) {
+									later(delay, () -> sendOut(pnx, active, false));
 								} else {
-									sendOut(pnx, active);
+									sendOut(pnx, active, false);
 								}
 							}
 							slot++;
@@ -153,11 +156,11 @@ public final class BattleVisuals {
 				var incoming = switchPacket.getNewPokemon();
 				if (recalled) {
 					later(SEND_OUT_DURATION, () -> {
-						sendOut(pnx, incoming);
+						sendOut(pnx, incoming, false);
 						BattleCameraDirector.onFocus(pnx);
 					});
 				} else {
-					sendOut(pnx, incoming);
+					sendOut(pnx, incoming, false);
 					BattleCameraDirector.onFocus(pnx);
 				}
 			} else if (packet instanceof BattleFaintPacket faint) {
@@ -259,6 +262,7 @@ public final class BattleVisuals {
 	public static void clear() {
 		generation++;
 		viewpoint = null;
+		joining = false;
 		BattleCameraDirector.stop();
 		BattleShowtime.clear();
 		ClientLevel level = Minecraft.getInstance().level;
@@ -272,7 +276,17 @@ public final class BattleVisuals {
 		}
 	}
 
-	private static void sendOut(String pnx, BattleInitializePacket.ActiveBattlePokemonDTO dto) {
+	/**
+	 * The next battle start is a battle already under way, joined by a spectator (2026-11-22): its Pokémon are out
+	 * already, shown where they stand, not thrown out again.
+	 */
+	private static boolean joining;
+
+	public static void joinInProgress() {
+		joining = true;
+	}
+
+	private static void sendOut(String pnx, BattleInitializePacket.ActiveBattlePokemonDTO dto, boolean instant) {
 		ClientLevel level = Minecraft.getInstance().level;
 		Player self = Minecraft.getInstance().player;
 		if (level == null || self == null || pnx.length() < 2 || entities.containsKey(pnx)) {
@@ -283,7 +297,8 @@ public final class BattleVisuals {
 			return;
 		}
 
-		PokemonEntity entity = sendOutEntity(level, dto, placement.position(), placement.yaw(), placement.trainer(), BattleVisuals::later);
+		PokemonEntity entity = sendOutEntity(level, dto, placement.position(), placement.yaw(), placement.trainer(), BattleVisuals::later,
+				instant);
 		entities.put(pnx, entity);
 		BattleShowtime.onSentOut(entity, dto.getUuid());
 	}
@@ -300,6 +315,12 @@ public final class BattleVisuals {
 	 */
 	static PokemonEntity sendOutEntity(ClientLevel level, BattleInitializePacket.ActiveBattlePokemonDTO dto, Vec3 at, float yaw,
 			Player trainer, Later later) {
+		return sendOutEntity(level, dto, at, yaw, trainer, later, false);
+	}
+
+	/** {@code instant}: already out (a battle joined under way), standing there with no throw, beam or cry. */
+	static PokemonEntity sendOutEntity(ClientLevel level, BattleInitializePacket.ActiveBattlePokemonDTO dto, Vec3 at, float yaw,
+			Player trainer, Later later, boolean instant) {
 		// Not PokemonProperties.create(): it initialises a default moveset through Cobblemon's moveset builders,
 		// a server datapack registry that is empty on a client connected to a remote/LAN server (crashed the
 		// guest's send-outs). apply() only sets the visual properties, like the Ghost entities do.
@@ -327,6 +348,12 @@ public final class BattleVisuals {
 		entity.setYHeadRot(yaw);
 		entity.getEntityData().set(PokemonEntity.getSPAWN_DIRECTION(), yaw);
 
+		if (instant) {
+			entity.setBeamMode(BEAM_NONE);
+			level.addEntity(entity);
+			PhantasmonEntities.register(entity);
+			return entity;
+		}
 		if (trainer != null) {
 			trainer.swing(InteractionHand.MAIN_HAND);
 			entity.setPhasingTargetId(trainer.getId());
