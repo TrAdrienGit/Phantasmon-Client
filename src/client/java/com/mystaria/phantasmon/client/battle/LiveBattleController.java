@@ -670,7 +670,9 @@ public final class LiveBattleController implements LiveBattleListener {
 	private void endSpectatingLocally() {
 		UUID id = spectatingCobblemonId;
 		var clientBattle = CobblemonClient.INSTANCE.getBattle();
-		if (id != null && clientBattle != null && id.equals(clientBattle.getBattleId())) {
+		// Also when Cobblemon's back button already dropped its battle (no end packet then): the show ends with it, or
+		// its ambiance stayed on as if the battle went on (2026-11-22).
+		if (id != null && (clientBattle == null || id.equals(clientBattle.getBattleId()))) {
 			CobblemonPackets.dispatchLocally(new BattleEndPacket());
 		}
 		BattleVisuals.clear();
