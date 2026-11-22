@@ -97,6 +97,45 @@ public final class BattleFieldScenes {
 	}
 	private static int ticks;
 
+	/**
+	 * Another mod following the battles seen from afar (2026-11-22, Phantasmon Events: the League Reborn field in play,
+	 * so the field's ambiance shows to those around and not only to the players and spectators). Client thread.
+	 */
+	public interface Watcher {
+		/** The field as it stands (a battle starts being seen, or starts again). */
+		default void started(UUID battleUuid, BattleInitializePacket init) {
+		}
+
+		/** One of its packets after that. */
+		default void packet(UUID battleUuid, NetworkPacket<?> packet) {
+		}
+
+		/** No longer seen (over, out of sight, watched, world left). */
+		default void ended(UUID battleUuid) {
+		}
+	}
+
+	private static final java.util.List<Watcher> WATCHERS = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+	public static void addWatcher(Watcher watcher) {
+		WATCHERS.add(watcher);
+	}
+
+	/** The battle seen from afar whose ambiance plays here, or null. */
+	public static UUID ambianceBattle() {
+		return ambianceOf;
+	}
+
+	private static void tell(java.util.function.Consumer<Watcher> call) {
+		for (Watcher watcher : WATCHERS) {
+			try {
+				call.accept(watcher);
+			} catch (Exception ex) {
+				LOG.warn("Battle field watcher failed", ex);
+			}
+		}
+	}
+
 	private BattleFieldScenes() {
 	}
 
@@ -136,10 +175,12 @@ public final class BattleFieldScenes {
 				scene = new Scene(level);
 				scenes.put(battleUuid, scene);
 				scene.initialize(init);
+				tell(watcher -> watcher.started(battleUuid, init));
 				startAmbiance(battleUuid);
 			} else if (scene != null) {
 				// Anything before the field as it stands is dropped: it carries the whole battle.
 				scene.onPacket(packet);
+				tell(watcher -> watcher.packet(battleUuid, packet));
 			}
 		} catch (Exception ex) {
 			// Never let a cosmetic failure break anything else.
@@ -155,6 +196,7 @@ public final class BattleFieldScenes {
 		Scene scene = scenes.remove(battleUuid);
 		if (battleUuid != null) {
 			stopAmbiance(battleUuid);
+			tell(watcher -> watcher.ended(battleUuid));
 		}
 		if (scene == null) {
 			return;
@@ -168,6 +210,9 @@ public final class BattleFieldScenes {
 
 	/** World left / connection lost: everything goes at once. */
 	public static void clear() {
+		for (UUID battleUuid : scenes.keySet()) {
+			tell(watcher -> watcher.ended(battleUuid));
+		}
 		scenes.values().forEach(Scene::discard);
 		scenes.clear();
 		ambiances.clear();

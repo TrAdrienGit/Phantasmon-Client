@@ -115,15 +115,20 @@ public final class BattleVisuals {
 			if (packet instanceof BattleInitializePacket init) {
 				clear();
 				com.mystaria.phantasmon.client.compat.BattleExtrasCompat.phantasmonBattleStarted();
+				UUID player = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
+				viewpoint = null;
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
 						trainers.put(actor.getShowdownId(), actor.getUuid());
+						if (actor.getUuid().equals(player) || viewpoint == null && side == init.getSide1()) {
+							viewpoint = actor.getUuid();
+						}
 					}
 				}
 				// Right after the launch intro, the send-outs are staged for the camera: the opponent's first, then ours.
 				boolean staged = stageSendOuts();
 				BattleCameraDirector.start(STAGE);
-				UUID self = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
+				UUID self = viewpoint;
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
 						boolean local = actor.getUuid().equals(self);
@@ -184,7 +189,7 @@ public final class BattleVisuals {
 			if (placement == null) {
 				continue;
 			}
-			if (entry.getValue().equals(self.getUUID())) {
+			if (entry.getValue().equals(viewpoint)) {
 				localSpot = placement.position();
 			} else {
 				opponentSpot = placement.position();
@@ -237,16 +242,23 @@ public final class BattleVisuals {
 			return null;
 		}
 		for (Map.Entry<String, UUID> entry : trainers.entrySet()) {
-			if (entry.getValue().equals(self.getUUID()) == local) {
+			if (entry.getValue().equals(viewpoint) == local) {
 				return entry.getKey();
 			}
 		}
 		return null;
 	}
 
+	/**
+	 * The trainer whose side the camera films as "ours": this player in their own battle; a spectator, who fights in
+	 * none, sees it from the host's side (2026-11-22: with no side of their own, the cinematic camera never started).
+	 */
+	private static UUID viewpoint;
+
 	/** World left / connection lost: drop everything at once, no animation. */
 	public static void clear() {
 		generation++;
+		viewpoint = null;
 		BattleCameraDirector.stop();
 		BattleShowtime.clear();
 		ClientLevel level = Minecraft.getInstance().level;
