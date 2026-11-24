@@ -112,13 +112,6 @@ public final class GhostBattlePokemonFactory {
 		} else if ("F".equalsIgnoreCase(String.valueOf(gender))) {
 			pokemon.setGender(Gender.FEMALE);
 		}
-		Object tera = data.get("tera_type");
-		if (tera != null) {
-			TeraType teraType = TeraTypes.get(tera.toString().toLowerCase(Locale.ROOT));
-			if (teraType != null) {
-				pokemon.setTeraType(teraType);
-			}
-		}
 		Object nickname = data.get("nickname");
 		if (nickname != null && !nickname.toString().isBlank()) {
 			pokemon.setNickname(Component.literal(nickname.toString()));
@@ -146,6 +139,11 @@ public final class GhostBattlePokemonFactory {
 			pokemon.setForcedAspects(forced);
 			pokemon.updateAspects();
 		}
+		// No Tera type chosen: its original type (its form's, set above), as the editor says. The blank Pokémon's own was the one of the random
+		// species it was made from (a Terastallization from the start came out in a random type, 2026-11-24).
+		Object tera = data.get("tera_type");
+		TeraType teraType = tera == null ? null : TeraTypes.get(tera.toString().toLowerCase(Locale.ROOT));
+		pokemon.setTeraType(teraType != null ? teraType : TeraTypes.forElementalType(pokemon.getPrimaryType()));
 		pokemon.heal();
 		return pokemon;
 	}

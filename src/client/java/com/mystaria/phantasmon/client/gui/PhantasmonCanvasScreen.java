@@ -655,6 +655,11 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		if (info.teraType() != null) {
 			drawTypeBadge(g, info.teraType(), 519 + dx, valueY - 3, VALUE_SCALE);
 		}
+		if (Boolean.TRUE.equals(data.get("pre_tera"))) {
+			// Terastallized from the start of every battle (2026-11-24).
+			float x = 519 + dx + (info.teraType() != null ? typeBadgeWidth(info.teraType(), VALUE_SCALE) + 8 : 0);
+			drawText(g, Component.translatable("phantasmon.pc.screen.pre_tera").getString(), x, valueY, VALUE_SCALE, NATURE_UP, false, 0f);
+		}
 		if (showHiddenPower) {
 			ElementalType hiddenPower = Look.safeType(HiddenPowerCalculator.type(asMap(data.get("ivs"))));
 			String label = upper(Component.translatable("phantasmon.pc.screen.hidden_power").getString());

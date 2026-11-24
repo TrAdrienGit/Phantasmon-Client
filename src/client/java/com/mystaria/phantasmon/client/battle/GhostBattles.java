@@ -81,6 +81,7 @@ public final class GhostBattles {
 				event -> onFormeChange(event.getBattle(), event.getPokemon(), FormeChangeVisual.TERA_PREFIX + event.getTeraType().getId().getPath());
 		com.cobblemon.mod.common.api.events.CobblemonEvents.TERASTALLIZATION.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onTera);
 		com.cobblemon.mod.common.api.events.CobblemonEvents.FORME_CHANGE.subscribe(com.cobblemon.mod.common.api.Priority.NORMAL, onForme);
+		PreTerastallization.register();
 	}
 
 	/** Battle thread. Gives the battle Pokémon the aspect (kept through switches) and reports it to the controller. */
@@ -285,8 +286,9 @@ public final class GhostBattles {
 			try {
 				BattleThread.get().ensureShowdown();
 				ShowdownExtensions.apply();
-				List<BattlePokemon> hostPokemon = battleTeam(hostTeam);
-				List<BattlePokemon> guestPokemon = battleTeam(guestTeam);
+				List<BattlePokemon> preTera = new ArrayList<>();
+				List<BattlePokemon> hostPokemon = battleTeam(hostTeam, preTera);
+				List<BattlePokemon> guestPokemon = battleTeam(guestTeam, preTera);
 				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
 					// An add-on's AI may pick its lead against the player's team, as at team preview (Adrien 2026-11-03).
 					guestPokemon = addonAi.orderTeam(guestPokemon, hostPokemon);
@@ -316,6 +318,10 @@ public final class GhostBattles {
 				BattleFormat singles = BattleFormat.Companion.getGEN_9_SINGLES();
 				java.util.Set<String> rules = new java.util.LinkedHashSet<>(singles.getRuleSet());
 				rules.addAll(battleRules);
+				String preTeraRule = PreTerastallization.rule(preTera);
+				if (preTeraRule != null) {
+					rules.add(preTeraRule);
+				}
 				BattleFormat format = singles.copy(singles.getMod(), singles.getBattleType(), rules, singles.getGen(),
 						adjustLevel > 0 ? adjustLevel : singles.getAdjustLevel());
 				BattleStartResult result = BattleRegistry.startBattle(format,
@@ -599,13 +605,18 @@ public final class GhostBattles {
 	}
 
 	/** Pokémon this client's Cobblemon doesn't recognize sit the battle out; the host is told which (DEBT-5). */
-	static List<BattlePokemon> battleTeam(List<PokemonDto> team) {
+	/** {@code preTera}: gets the ones terastallized from the start ({@link PreTerastallization}). */
+	static List<BattlePokemon> battleTeam(List<PokemonDto> team, List<BattlePokemon> preTera) {
 		List<BattlePokemon> result = new ArrayList<>();
 		for (PokemonDto dto : team) {
 			net.minecraft.network.chat.Component unrecognized = com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(dto);
 			Pokemon pokemon = unrecognized == null ? GhostBattlePokemonFactory.create(dto) : null;
 			if (pokemon != null) {
-				result.add(new BattlePokemon(pokemon, pokemon, new ArrayList<>(), new ArrayList<>()));
+				BattlePokemon battlePokemon = new BattlePokemon(pokemon, pokemon, new ArrayList<>(), new ArrayList<>());
+				result.add(battlePokemon);
+				if (PreTerastallization.marked(dto)) {
+					preTera.add(battlePokemon);
+				}
 			} else if (unrecognized != null) {
 				Minecraft.getInstance().execute(() -> {
 					if (Minecraft.getInstance().player != null) {

@@ -2634,3 +2634,19 @@ Test d'Adrien : intros, caméra, combats sauvages intacts OK ; seule la musique 
 volume propre des musiques, menu des musiques de Showtime (touche N, qui passe de Phantasmon à Showtime ; Phantasmon y
 branche son propre écran par `ShowtimeHooks.setMusicScreen`), et un petit lecteur dans l'écran de combat à la place
 du bouton « musique suivante » : titre qui ouvre la liste des morceaux, volume − / barre / +, morceau suivant.
+
+### 4.108 Pokémon téracristallisés d'office (2026-11-24)
+
+Demande des joueurs de la Ligue. Dans l'éditeur du PC, une case « Téracristallisé » à côté du type Téra (clé
+`pre_tera` dans `data`, booléen vérifié par `PokemonLegalityService`) ; la fiche affiche « d'office » après le type.
+
+- **Combat** : l'hôte ajoute la règle Showdown `Phantasmon Pre Tera = <uuids>` (`PreTerastallization`, extension
+  installée par `ShowdownExtensions`). Au début, l'équipe d'un Pokémon marqué perd la Téracristallisation ; à sa
+  première entrée, il se téracristallise comme la vraie (`actions.terastallize` : message, type, mécaniques, effet
+  Showtime). Elle passe la Terastal Clause (décision de Gwen) : la clause n'empêche que les Téracristallisations
+  choisies en combat.
+- **Lobby** (backend, `TeamValidator`, tous formats, Libre compris) : un seul par équipe (`PRE_TERA_TWICE`), pas avec
+  une Méga-Gemme utilisable ni un Cristal Z (`PRE_TERA_ITEM`).
+- **Bugs trouvés au test** : sans type Téra choisi, le Pokémon prenait celui de l'espèce aléatoire du Pokémon vierge
+  (`GhostBattlePokemonFactory` donne maintenant le type d'origine) ; chez l'hôte, l'effet Téra partait avant les
+  paquets retenus pendant l'intro et le début du combat effaçait le halo (il suit maintenant la même file, `hostHeld`).

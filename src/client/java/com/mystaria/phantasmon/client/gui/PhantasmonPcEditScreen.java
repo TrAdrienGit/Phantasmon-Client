@@ -101,6 +101,10 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 	private static final int COL1_W = 470;
 	private static final int COL2_X = 1093;
 	private static final int COL2_W = 480;
+	/** The Tera type's picker, beside the "terastallized from the start" switch (2026-11-24). */
+	private static final int TERA_W = 230;
+	private static final int PRE_TERA_X = 1333;
+	private static final int PRE_TERA_W = 240;
 	private static final int BOX_H = 56;
 	/** Row 1: nickname (narrower than a full column), then the gender box up to the column's right edge. */
 	private static final int NICKNAME_W = 320;
@@ -145,6 +149,8 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 
 	private int natureIndex;
 	private ElementalType teraType;
+	/** Terastallized from the start of every battle (League request, 2026-11-24): data key {@code pre_tera}. */
+	private boolean preTera;
 	private boolean shiny;
 	/** Stored gender: {@code "M"}, {@code "F"} or {@code ""} (not set — Showdown's "random"). Only editable for mixed-ratio species, see {@link #fixedGender}. */
 	private String gender = "";
@@ -231,6 +237,7 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		natureIndex = Math.max(0, indexOf(NATURES, original.nature()));
 		Object teraRaw = data.get("tera_type");
 		teraType = teraRaw != null ? Look.safeType(teraRaw.toString()) : null;
+		preTera = Boolean.TRUE.equals(data.get("pre_tera"));
 		abilityId = original.ability() == null ? null : com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.slugConcat(original.ability());
 		heldItemId = stringOf(data.get("held_item"));
 		List<Object> initialMoves = asList(data.get("moves"));
@@ -342,6 +349,11 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			data.put("tera_type", teraType.getName().toLowerCase(Locale.ROOT));
 		} else {
 			data.remove("tera_type");
+		}
+		if (preTera) {
+			data.put("pre_tera", true);
+		} else {
+			data.remove("pre_tera");
 		}
 		if (genderEditable()) {
 			if (gender.isEmpty()) {
@@ -764,8 +776,13 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			openPicker(Picker.NATURE, -1, COL1_X, ROW3_Y, COL1_W, BOX_H);
 			return true;
 		}
-		if (inside(x, y, COL2_X, ROW3_Y, COL2_W, BOX_H)) {
-			openPicker(Picker.TERA, -1, COL2_X, ROW3_Y, COL2_W, BOX_H);
+		if (inside(x, y, COL2_X, ROW3_Y, TERA_W, BOX_H)) {
+			openPicker(Picker.TERA, -1, COL2_X, ROW3_Y, TERA_W, BOX_H);
+			return true;
+		}
+		if (inside(x, y, PRE_TERA_X, ROW3_Y, PRE_TERA_W, BOX_H)) {
+			preTera = !preTera;
+			edited();
 			return true;
 		}
 		for (int i = 0; i < 4; i++) {
@@ -1128,7 +1145,11 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 		renderPickerField(g, Picker.ABILITY, COL1_X, ROW2_Y, COL1_W, "phantasmon.trade.screen.ability", mx, my);
 		renderPickerField(g, Picker.ITEM, COL2_X, ROW2_Y, COL2_W, "phantasmon.trade.screen.held_item", mx, my);
 		renderPickerField(g, Picker.NATURE, COL1_X, ROW3_Y, COL1_W, "phantasmon.trade.screen.nature", mx, my);
-		renderPickerField(g, Picker.TERA, COL2_X, ROW3_Y, COL2_W, "phantasmon.trade.screen.tera", mx, my);
+		renderPickerField(g, Picker.TERA, COL2_X, ROW3_Y, TERA_W, "phantasmon.trade.screen.tera", mx, my);
+		boolean preTeraHovered = inside(mx, my, PRE_TERA_X, ROW3_Y, PRE_TERA_W, BOX_H);
+		renderFieldFrame(g, PRE_TERA_X, ROW3_Y, PRE_TERA_W, BOX_H, "phantasmon.pc.editor.pre_tera", false, preTeraHovered);
+		drawText(g, Component.translatable(preTera ? "phantasmon.pc.editor.yes" : "phantasmon.pc.editor.no").getString(),
+				PRE_TERA_X + 9, ROW3_Y + 26, VALUE_SCALE, preTera ? CYAN : TEXT2, false, 0f);
 
 		renderStatsBox(g, mx, my);
 		renderMovesBox(g, mx, my);

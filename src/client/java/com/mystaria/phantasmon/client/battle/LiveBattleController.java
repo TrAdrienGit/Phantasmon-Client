@@ -82,7 +82,8 @@ public final class LiveBattleController implements LiveBattleListener {
 	 */
 	/** The battle's ambiance, from BattleSessionStarted (Showtime A3). */
 	private String battleAmbiance;
-	private final java.util.concurrent.ConcurrentLinkedQueue<NetworkPacket<?>> hostHeld = new java.util.concurrent.ConcurrentLinkedQueue<>();
+	/** Packets for the host's own UI held during the intro, and the visuals (Runnable) that must follow them in order. */
+	private final java.util.concurrent.ConcurrentLinkedQueue<Object> hostHeld = new java.util.concurrent.ConcurrentLinkedQueue<>();
 	private volatile long holdHostUntil;
 	private final List<Map<String, Object>> heldPackets = new ArrayList<>();
 
@@ -396,9 +397,13 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		long nowMillis = System.currentTimeMillis();
 		if (!hostHeld.isEmpty() && nowMillis >= holdHostUntil) {
-			NetworkPacket<?> packet;
-			while ((packet = hostHeld.poll()) != null) {
-				CobblemonPackets.dispatchLocally(packet);
+			Object held;
+			while ((held = hostHeld.poll()) != null) {
+				if (held instanceof NetworkPacket<?> packet) {
+					CobblemonPackets.dispatchLocally(packet);
+				} else if (held instanceof Runnable visual) {
+					Minecraft.getInstance().execute(visual); // after the packets before it (same queue)
+				}
 			}
 		}
 		if (!heldPackets.isEmpty() && nowMillis >= holdRelayedUntil) {
@@ -872,7 +877,14 @@ public final class LiveBattleController implements LiveBattleListener {
 					@Override
 					public void formeChange(FormeChangeVisual change) {
 						// Played here and on the guest's client, same relay as the move animations (keeps the order).
-						Minecraft.getInstance().execute(() -> BattleVisuals.transform(change));
+						// Here after the packets held during the intro: a Terastallization from the start (2026-11-24)
+						// came before the battle's start, which then wiped its Tera glow.
+						Runnable visual = () -> BattleVisuals.transform(change);
+						if (System.currentTimeMillis() < holdHostUntil || !hostHeld.isEmpty()) {
+							hostHeld.add(visual);
+						} else {
+							Minecraft.getInstance().execute(visual);
+						}
 						if (!solo) {
 							send("BattlePacket", Map.of("battle_uuid", currentBattle, "id", FormeChangeVisual.PACKET_ID,
 									"payload", Base64.getEncoder().encodeToString(change.toBytes())));
