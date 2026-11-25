@@ -41,7 +41,7 @@
 		"java": ">=21",
 		"fabric-api": "*",
 		"cobblemon": ">=1.8.1",
-		"cobblemon_battle_showtime": ">=1.7.30 <2.0.0"
+		"cobblemon_battle_showtime": ">=1.7.39 <2.0.0"
 	},
 	"suggests": {
 		"voicechat": "*",

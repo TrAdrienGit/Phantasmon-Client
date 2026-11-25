@@ -3,7 +3,9 @@ package com.mystaria.phantasmon.client.battle;
 import net.minecraft.network.chat.Component;
 
 import com.mystaria.phantasmon.client.hub.HubAvatars;
+import com.mystaria.phantasmon.client.gui.menu.MenuUi;
 import com.mystaria.showtime.api.BattleButton;
+import com.mystaria.showtime.api.BattlePanelStyle;
 import com.mystaria.showtime.api.ShowtimeHooks;
 
 /**
@@ -15,6 +17,19 @@ import com.mystaria.showtime.api.ShowtimeHooks;
 public final class ShowtimeBridge {
 
 	private ShowtimeBridge() {
+	}
+
+	private static final BattlePanelStyle COBBLEMON = style(MenuUi.Palette.COBBLEMON, 0xFF5A5A5A);
+	private static final BattlePanelStyle V1 = style(MenuUi.Palette.V1, 0xFF24395F);
+
+	private static BattlePanelStyle panelStyle() {
+		return MenuUi.p() == MenuUi.Palette.COBBLEMON ? COBBLEMON : V1;
+	}
+
+	/** The menu's colours on Showtime's panel: its card, keys, accent, good and danger colours. */
+	private static BattlePanelStyle style(MenuUi.Palette c, int hover) {
+		return new BattlePanelStyle(0xE0000000 | (c.dark() & 0xFFFFFF), c.edge(), c.raised(), c.panel(), hover, c.raised(),
+				c.black(), c.accent(), c.good(), c.light(), c.danger(), c.white());
 	}
 
 	public static void register(LiveBattleController controller) {
@@ -32,6 +47,8 @@ public final class ShowtimeBridge {
 		ShowtimeHooks.setAmbianceOverride(controller::battleAmbiance);
 		// Reserved intros and ambiances (TODO-37): only those the player won.
 		com.mystaria.phantasmon.client.pokemon.RewardContent.register();
+		// The battle panel (music, camera, timer) in the look chosen in the Phantasmon menu (2026-11-25).
+		ShowtimeHooks.setPanelStyle(ShowtimeBridge::panelStyle);
 		// Once on, the timer button becomes the countdown (Adrien 2026-10-05).
 		ShowtimeHooks.addButton(new BattleButton(BattleButton.CAMERA_ORDER + 10, BattleVisuals::filmed,
 				() -> {
