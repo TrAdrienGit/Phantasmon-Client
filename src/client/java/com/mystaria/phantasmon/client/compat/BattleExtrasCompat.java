@@ -44,15 +44,50 @@ public final class BattleExtrasCompat {
 	private BattleExtrasCompat() {
 	}
 
+	/** Species of each side's Pokémon seen K.O. in this Phantasmon battle (namespace-free, lower case). */
+	private static final java.util.Set<String> OWN_FAINTED = new java.util.HashSet<>();
+	private static final java.util.Set<String> OPPONENT_FAINTED = new java.util.HashSet<>();
+	/** Set while Battle Extras draws the slot of a fainted Pokémon: its portrait is drawn red. Render thread only. */
+	private static boolean redPortrait;
+
 	/** In a Phantasmon battle, Battle Extras' team columns show portraits, not Poké Balls (Adrien 2026-11-08). */
 	public static boolean portraitsOnly() {
 		return PRESENT && phantasmonBattle;
 	}
 
-	/** Whether Battle Extras knows that slot of that actor as fainted: then its darkened ball stays. */
+	/** Battle Extras is about to draw a slot (true: a fainted Pokémon's, drawn red) or is done with it (false). */
+	public static void redPortrait(boolean on) {
+		redPortrait = on;
+	}
+
+	/**
+	 * Battle Extras' arguments to Cobblemon's {@code drawPosablePortrait} (17 of them, the last four the colour): a
+	 * K.O. Pokémon's portrait is tinted red, so it reads as out of play (2026-11-25).
+	 */
+	public static void tint(Object[] args) {
+		if (redPortrait && args != null && args.length == 17) {
+			args[14] = 0.25F; // green
+			args[15] = 0.25F; // blue
+		}
+	}
+
+	/**
+	 * Whether that slot of that actor is K.O.: as Battle Extras knows it (its own data, which a Phantasmon battle
+	 * doesn't feed), or, in a Phantasmon battle, as seen in Cobblemon's battle ({@link #trackFaints}).
+	 */
 	public static boolean fainted(java.util.UUID actor, int slot, com.cobblemon.mod.common.pokemon.Pokemon pokemon) {
 		if (pokemon != null && pokemon.isFainted()) {
 			return true;
+		}
+		if (phantasmonBattle) {
+			if (actor != null && actor.equals(opponent)) {
+				if (slot >= 0 && slot < opponentTeam.size() && OPPONENT_FAINTED.contains(speciesKey(opponentTeam.get(slot)[0]))) {
+					return true;
+				}
+			} else if (pokemon != null && pokemon.getSpecies() != null
+					&& OWN_FAINTED.contains(speciesKey(pokemon.getSpecies().getResourceIdentifier().getPath()))) {
+				return true;
+			}
 		}
 		if (actor == null || slot < 0) {
 			return false;
@@ -156,6 +191,43 @@ public final class BattleExtrasCompat {
 	/** A Phantasmon battle begins on this client. */
 	public static void phantasmonBattleStarted() {
 		phantasmonBattle = true;
+		OWN_FAINTED.clear();
+		OPPONENT_FAINTED.clear();
+	}
+
+	/**
+	 * Notes which Pokémon on the field are at 0 HP (Cobblemon's client battle, each tick): Battle Extras learns of a
+	 * faint from its server side, which never sees a Phantasmon battle. A faint shows long enough (its animation) for
+	 * a tick to catch it; a Pokémon back above 0 (Revival Blessing) is no longer K.O.
+	 */
+	private static void trackFaints() {
+		com.cobblemon.mod.common.client.battle.ClientBattle battle = CobblemonClient.INSTANCE.getBattle();
+		if (battle == null) {
+			return;
+		}
+		for (com.cobblemon.mod.common.client.battle.ClientBattleSide side : java.util.List.of(battle.getSide1(), battle.getSide2())) {
+			for (com.cobblemon.mod.common.client.battle.ClientBattleActor actor : side.getActors()) {
+				java.util.Set<String> fainted = actor.getUuid().equals(opponent) ? OPPONENT_FAINTED : OWN_FAINTED;
+				for (com.cobblemon.mod.common.client.battle.ActiveClientBattlePokemon active : actor.getActivePokemon()) {
+					com.cobblemon.mod.common.client.battle.ClientBattlePokemon pokemon = active.getBattlePokemon();
+					if (pokemon == null || pokemon.getSpecies() == null) {
+						continue;
+					}
+					String key = speciesKey(pokemon.getSpecies().getResourceIdentifier().getPath());
+					if (pokemon.getHpValue() <= 0) {
+						fainted.add(key);
+					} else {
+						fainted.remove(key);
+					}
+				}
+			}
+		}
+	}
+
+	/** {@code cobblemon:Mr_Mime} and {@code mrmime} alike. */
+	private static String speciesKey(String species) {
+		String id = species == null ? "" : species.substring(species.indexOf(':') + 1);
+		return id.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]", "");
 	}
 
 	/** Every client tick: the calculator stays off while a Phantasmon battle is on, then comes back as it was. */
@@ -170,10 +242,17 @@ public final class BattleExtrasCompat {
 			opponentModels = java.util.List.of();
 			ownTeam = java.util.List.of();
 			ownModels = java.util.List.of();
+			OWN_FAINTED.clear();
+			OPPONENT_FAINTED.clear();
 		}
 		if (phantasmonBattle) {
 			force();
 			shareOpponentTeam();
+			try {
+				trackFaints();
+			} catch (RuntimeException ex) {
+				LOG.debug("K.O. tracking skipped this tick", ex);
+			}
 		} else {
 			if (forced) {
 				restore();

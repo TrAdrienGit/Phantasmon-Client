@@ -1,5 +1,6 @@
 package com.mystaria.phantasmon.client.mixin;
 
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,7 +22,7 @@ import net.minecraft.world.item.ItemStack;
 
 /**
  * Cobblemon Battle Extras' own team column (optional, Adrien 2026-11-08): in a Phantasmon battle every slot shows its
- * Pokémon, not a Poké Ball (only a fainted one keeps its darkened ball), and Phantasmon's virtual items show in the
+ * Pokémon, not a Poké Ball; a K.O. one's portrait turns red (2026-11-25). Phantasmon's virtual items show in the
  * tooltip. Targets are Battle Extras' runtime (intermediary) names: nothing here is remapped.
  */
 @Pseudo
@@ -31,14 +32,29 @@ public abstract class BattleExtrasSlotsMixin {
 	@ModifyVariable(method = "renderPartySlotForeground", at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 0)
 	private static boolean phantasmon$portrait(boolean portrait, @Local(argsOnly = true) Pokemon pokemon,
 			@Local(argsOnly = true, ordinal = 0) int slot, @Local(argsOnly = true) UUID actor) {
-		return BattleExtrasCompat.portraitsOnly() ? !BattleExtrasCompat.fainted(actor, slot, pokemon) : portrait;
+		boolean phantasmon = BattleExtrasCompat.portraitsOnly();
+		BattleExtrasCompat.redPortrait(phantasmon && BattleExtrasCompat.fainted(actor, slot, pokemon));
+		return phantasmon || portrait;
+	}
+
+	@Inject(method = "renderPartySlotForeground", at = @At("RETURN"), require = 0)
+	private static void phantasmon$slotDone(CallbackInfo ci) {
+		BattleExtrasCompat.redPortrait(false);
 	}
 
 	@Inject(method = "renderPartySlotBall", at = @At("HEAD"), cancellable = true, require = 0)
 	private static void phantasmon$noBall(GuiGraphics g, Pokemon pokemon, int slot, UUID actor, int x, int y, CallbackInfo ci) {
-		if (BattleExtrasCompat.portraitsOnly() && !BattleExtrasCompat.fainted(actor, slot, pokemon)) {
+		if (BattleExtrasCompat.portraitsOnly()) {
 			ci.cancel();
 		}
+	}
+
+	/** Cobblemon's portrait call (by reflection): a K.O. Pokémon's portrait is tinted red. */
+	@WrapOperation(method = "invokeDrawPosablePortrait", require = 0,
+			at = @At(value = "INVOKE", target = "Ljava/lang/reflect/Method;invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;"))
+	private static Object phantasmon$redPortrait(Method method, Object target, Object[] args, Operation<Object> original) {
+		BattleExtrasCompat.tint(args);
+		return original.call(method, target, args);
 	}
 
 	@Inject(method = "safeHeldItem", at = @At("HEAD"), cancellable = true, require = 0)
