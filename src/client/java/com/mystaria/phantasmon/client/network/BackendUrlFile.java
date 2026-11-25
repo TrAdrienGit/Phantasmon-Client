@@ -15,39 +15,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Reads the backend URL from a JSON file ({@code "backend_url"}) — see {@link BackendConfig}. The file is created
- * with {@link #DEFAULT_URL} when missing; a missing, unreadable or invalid value falls back to the default with a
- * warning in the log. No Minecraft/Fabric dependency, so it is unit-tested.
+ * Reads the backend URL from a JSON file ({@code "backend_url"}) — see {@link BackendConfig}. There is no default
+ * address (2026-11-25, for publication: the mod must not connect anywhere the player did not choose): the file is
+ * created with an empty value when missing, and a missing, empty, unreadable or invalid value means "no backend", with
+ * a line in the log. No Minecraft/Fabric dependency, so it is unit-tested.
  */
 public final class BackendUrlFile {
 
 	private static final Logger LOG = LoggerFactory.getLogger(BackendUrlFile.class);
 	private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-	public static final String DEFAULT_URL = "https://server-linux.tail192969.ts.net";
 	private static final String KEY = "backend_url";
 
 	private BackendUrlFile() {
 	}
 
+	/** The backend's URL, or null when none is set (or the value is not a valid address). */
 	static URI load(Path file) {
 		if (!Files.exists(file)) {
-			writeDefault(file);
-			return URI.create(DEFAULT_URL);
+			writeEmpty(file);
+			return null;
 		}
 		try {
 			JsonObject json = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
 			String value = json == null || !json.has(KEY) || json.get(KEY).isJsonNull() ? null : json.get(KEY).getAsString();
 			URI uri = parse(value);
 			if (uri == null) {
-				LOG.warn("Invalid '{}' in {}: {} — using {}", KEY, file, value, DEFAULT_URL);
-				return URI.create(DEFAULT_URL);
+				if (value == null || value.isBlank()) {
+					LOG.info("No backend URL in {}: Phantasmon stays offline until one is set (Settings page)", file);
+				} else {
+					LOG.warn("Invalid '{}' in {}: {} — Phantasmon stays offline", KEY, file, value);
+				}
+				return null;
 			}
 			LOG.info("Backend URL: {} (from {})", uri, file);
 			return uri;
 		} catch (IOException | JsonParseException | IllegalStateException | UnsupportedOperationException ex) {
-			LOG.warn("Cannot read {} — using {}", file, DEFAULT_URL, ex);
-			return URI.create(DEFAULT_URL);
+			LOG.warn("Cannot read {} — Phantasmon stays offline", file, ex);
+			return null;
 		}
 	}
 
@@ -72,15 +77,15 @@ public final class BackendUrlFile {
 		}
 	}
 
-	private static void writeDefault(Path file) {
+	private static void writeEmpty(Path file) {
 		JsonObject json = new JsonObject();
-		json.addProperty(KEY, DEFAULT_URL);
+		json.addProperty(KEY, "");
 		try {
 			Files.createDirectories(file.getParent());
 			Files.writeString(file, GSON.toJson(json) + System.lineSeparator(), StandardCharsets.UTF_8);
-			LOG.info("Created {} with the default backend URL {}", file, DEFAULT_URL);
+			LOG.info("Created {} with no backend URL: set one on the Settings page", file);
 		} catch (IOException ex) {
-			LOG.warn("Cannot create {} — using {}", file, DEFAULT_URL, ex);
+			LOG.warn("Cannot create {}", file, ex);
 		}
 	}
 
@@ -109,7 +114,7 @@ public final class BackendUrlFile {
 		}
 	}
 
-	/** The URL written in the file now (maybe not the one in use until the next launch); the default if none. */
+	/** The URL written in the file now (maybe not the one in use until the next launch); empty if none. */
 	public static String saved(Path file) {
 		try {
 			JsonObject json = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);
@@ -117,8 +122,8 @@ public final class BackendUrlFile {
 				return json.get(KEY).getAsString();
 			}
 		} catch (IOException | JsonParseException | IllegalStateException | UnsupportedOperationException ex) {
-			// default below
+			// none below
 		}
-		return DEFAULT_URL;
+		return "";
 	}
 }

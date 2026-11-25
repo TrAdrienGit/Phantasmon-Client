@@ -39,7 +39,7 @@ All player-facing text is translated (French and English); backend errors arrive
 
 - **JDK 25** to build (Loom requirement). JDK 21 is enough to *play*.
 - A Minecraft 1.21.1 client with Fabric Loader, Fabric API and Cobblemon 1.8.1.
-- A reachable Phantasmon Backend. Its address is `backend_url` in `config/phantasmon.json` (created on first launch; restart the game after editing it).
+- A reachable Phantasmon Backend. There is no default address: enter your community's in the Phantasmon menu (**H**, Settings page) or as `backend_url` in `config/phantasmon.json` (created empty on first launch), then restart the game. Without one, the mod connects nowhere.
 - A premium (Microsoft) Minecraft account — offline accounts are not supported.
 
 ## Build & run

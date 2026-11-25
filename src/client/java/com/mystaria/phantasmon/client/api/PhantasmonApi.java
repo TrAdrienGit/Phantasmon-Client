@@ -204,6 +204,25 @@ public final class PhantasmonApi {
 		return List.copyOf(MENU_PAGES);
 	}
 
+	/**
+	 * A switch an add-on adds to the Phantasmon menu's Settings page (Phantasmon Events: sending the mirror hubs'
+	 * blocks): its {@code label}, a {@code hint} under it (or null), whether it is {@code on} now, and what a click does
+	 * ({@code toggle}: the add-on keeps and saves its own value).
+	 */
+	public record SettingToggle(Component label, Component hint, java.util.function.BooleanSupplier on, Runnable toggle) {
+	}
+
+	private static final List<SettingToggle> SETTING_TOGGLES = new CopyOnWriteArrayList<>();
+
+	/** Adds a switch to the Settings page, under "Add-ons", in registration order. */
+	public static void registerSettingToggle(SettingToggle toggle) {
+		SETTING_TOGGLES.add(toggle);
+	}
+
+	public static List<SettingToggle> settingToggles() {
+		return List.copyOf(SETTING_TOGGLES);
+	}
+
 	/** Opens the Phantasmon menu on an add-on's page ({@link #registerMenuPage}), or its first page if hidden. */
 	public static void openMenu(String pageId) {
 		Minecraft mc = Minecraft.getInstance();

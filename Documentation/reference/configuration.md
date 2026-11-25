@@ -9,13 +9,13 @@
 
 ```json
 {
-  "backend_url": "https://server-linux.tail192969.ts.net"
+  "backend_url": ""
 }
 ```
 
 | Clé | Valeur par défaut | Règles |
 |---|---|---|
-| `backend_url` | `https://server-linux.tail192969.ts.net` (backend de production sur le serveur Ubuntu, publié par Tailscale Funnel, depuis le 2026-10-19 ; avant : `http://100.116.43.32:8080`, machine de dev) | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur absente ou invalide, ou fichier illisible : valeur par défaut et avertissement dans le log (`BackendUrlFile`). |
+| `backend_url` | vide : **aucune adresse par défaut** depuis le 2026-11-25 (avant : `https://server-linux.tail192969.ts.net`, notre backend). Le joueur saisit l'adresse de sa communauté dans le menu H, page Réglages ; les instances déjà installées gardent la leur. | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur vide, absente ou invalide, ou fichier illisible : aucun backend, le mod ne se connecte nulle part (ligne dans le log, `BackendUrlFile`). |
 
 ## 1. Constantes du code
 

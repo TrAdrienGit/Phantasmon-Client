@@ -19,11 +19,12 @@ class BackendUrlFileTest {
 	Path dir;
 
 	@Test
-	void missingFileIsCreatedWithTheDefault() throws IOException {
+	void missingFileIsCreatedWithNoBackend() throws IOException {
 		Path file = dir.resolve("config/phantasmon.json");
 
-		assertEquals(URI.create(BackendUrlFile.DEFAULT_URL), BackendUrlFile.load(file));
-		assertTrue(Files.readString(file).contains("\"backend_url\": \"" + BackendUrlFile.DEFAULT_URL + "\""));
+		assertNull(BackendUrlFile.load(file));
+		assertTrue(Files.readString(file).contains("\"backend_url\": \"\""));
+		assertEquals("", BackendUrlFile.saved(file));
 	}
 
 	@Test
@@ -34,12 +35,12 @@ class BackendUrlFileTest {
 	}
 
 	@Test
-	void invalidContentFallsBackToTheDefault() throws IOException {
-		URI fallback = URI.create(BackendUrlFile.DEFAULT_URL);
-		assertEquals(fallback, BackendUrlFile.load(write("not json {")));
-		assertEquals(fallback, BackendUrlFile.load(write("{}")));
-		assertEquals(fallback, BackendUrlFile.load(write("{\"backend_url\": \"ftp://host\"}")));
-		assertEquals(fallback, BackendUrlFile.load(write("{\"backend_url\": 42}")));
+	void emptyOrInvalidContentMeansNoBackend() throws IOException {
+		assertNull(BackendUrlFile.load(write("not json {")));
+		assertNull(BackendUrlFile.load(write("{}")));
+		assertNull(BackendUrlFile.load(write("{\"backend_url\": \"\"}")));
+		assertNull(BackendUrlFile.load(write("{\"backend_url\": \"ftp://host\"}")));
+		assertNull(BackendUrlFile.load(write("{\"backend_url\": 42}")));
 	}
 
 	@Test

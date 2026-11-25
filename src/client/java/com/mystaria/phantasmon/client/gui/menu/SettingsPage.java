@@ -15,8 +15,8 @@ import com.mystaria.phantasmon.client.network.BackendConfig;
 import com.mystaria.phantasmon.client.network.BackendUrlFile;
 
 /**
- * Settings: the backend's address ({@code config/phantasmon.json}, our server's by default), tested and saved for the
- * next launch; the look (Cobblemon or V1).
+ * Settings: the backend's address ({@code config/phantasmon.json}, none by default: the player enters their
+ * community's), tested and saved for the next launch; the look (Cobblemon or V1).
  */
 final class SettingsPage implements MenuPage {
 
@@ -26,7 +26,7 @@ final class SettingsPage implements MenuPage {
 
 	SettingsPage(PhantasmonMenuScreen screen) {
 		this.screen = screen;
-		this.url = new RowList.Field(BackendUrlFile.saved(BackendConfig.FILE), 200, BackendUrlFile.DEFAULT_URL,
+		this.url = new RowList.Field(BackendUrlFile.saved(BackendConfig.FILE), 200, "https://phantasmon.example.org",
 				value -> BackendUrlFile.parse(value) != null, this::save);
 		rebuild();
 	}
@@ -39,13 +39,10 @@ final class SettingsPage implements MenuPage {
 	private void rebuild() {
 		list.clear();
 		list.header(Component.translatable("phantasmon.settings.backend"));
-		list.note(Component.translatable("phantasmon.settings.in_use", BackendConfig.BASE_URL.toString()));
+		list.note(BackendConfig.isSet() ? Component.translatable("phantasmon.settings.in_use", BackendConfig.BASE_URL.toString())
+				: Component.translatable("phantasmon.settings.none_in_use"));
 		list.field(Component.translatable("phantasmon.settings.url"), url);
 		list.buttons(RowList.button(Component.translatable("phantasmon.settings.test"), this::test),
-				RowList.button(Component.translatable("phantasmon.settings.default"), () -> {
-					url.value = BackendUrlFile.DEFAULT_URL;
-					screen.status(Component.translatable("phantasmon.settings.default_set"), MenuUi.p().muted());
-				}),
 				RowList.primary(Component.translatable("phantasmon.settings.save"), this::save));
 		list.note(Component.translatable("phantasmon.settings.hint"));
 		list.header(Component.translatable("phantasmon.settings.other"));
@@ -54,6 +51,19 @@ final class SettingsPage implements MenuPage {
 					PhantasmonTheme.toggle();
 					rebuild();
 				});
+		var toggles = com.mystaria.phantasmon.client.api.PhantasmonApi.settingToggles();
+		if (!toggles.isEmpty()) {
+			list.header(Component.translatable("phantasmon.settings.addons"));
+			for (var each : toggles) {
+				list.toggle(each.label(), each.on().getAsBoolean(), () -> {
+					each.toggle().run();
+					rebuild();
+				});
+				if (each.hint() != null) {
+					list.note(each.hint());
+				}
+			}
+		}
 	}
 
 	private void test() {

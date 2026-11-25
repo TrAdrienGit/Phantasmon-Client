@@ -155,6 +155,9 @@ Refonte des menus au niveau du menu de Cobblemon Battle Showtime (référence de
   chacune) et PLACER UNE ANCRE : nom facultatif, puis le menu se ferme et `hub/HubPlacement` montre la zone du hub à
   la position du joueur, tournée au quart de tour selon son regard, verte si libre, rouge sinon ; boutons du chat
   [Accepter] / [Annuler] ; H abandonne aussi. Route : `GET /hubs/overview`.
+- **Réglages d'add-ons** (2026-11-25) : `PhantasmonApi.registerSettingToggle(SettingToggle)` ajoute un interrupteur
+  à la page Réglages, sous « Extensions » (libellé, note sous la ligne, état, action au clic ; l'add-on garde et
+  enregistre sa valeur). Phantasmon Events : « Envoyer les blocs aux hubs miroirs ».
 - **Pages d'add-ons** (2026-11-11) : `PhantasmonApi.registerMenuPage(MenuPageEntry)` ajoute une catégorie au menu,
   après Hubs (Phantasmon Events : « Tournois ») ; la page implémente `MenuPage` (publique), dessine avec `MenuUi`
   (publics aussi : `width`, `paragraph` pour un texte qui passe à la ligne) et reçoit un `MenuHost` (ligne d'état,

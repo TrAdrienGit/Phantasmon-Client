@@ -86,7 +86,11 @@ public final class PhantasmonMenuScreen extends Screen {
 		category = categories.stream().filter(nav -> nav.key().equals(startKey)).findFirst()
 				.orElse(categories.get(categories.size() - 1));
 		statusColor = MenuUi.p().muted();
-		if (hubAccess != null && !hubAccess.session().isAuthenticated()) {
+		if (!com.mystaria.phantasmon.client.network.BackendConfig.isSet()) {
+			// No backend address yet (none by default, 2026-11-25): H lands on Settings, which asks for one.
+			status = Component.translatable("phantasmon.menu.no_backend");
+			statusColor = MenuUi.p().danger();
+		} else if (hubAccess != null && !hubAccess.session().isAuthenticated()) {
 			// Opened without a connection (H, 2026-11-18): say why the backend's pages are missing.
 			status = Component.translatable("phantasmon.menu.not_connected");
 			statusColor = MenuUi.p().danger();

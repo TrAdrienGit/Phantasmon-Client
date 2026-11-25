@@ -34,12 +34,13 @@ public final class BackendHealthPinger {
 
 	private ScheduledExecutorService scheduler;
 
+	/** {@code healthUri}: null when no backend is set (the pinger then never starts). */
 	public BackendHealthPinger(URI healthUri) {
 		this.healthUri = healthUri;
 	}
 
 	public synchronized void start() {
-		if (scheduler != null) {
+		if (scheduler != null || healthUri == null) { // no backend set: nothing to ping
 			return;
 		}
 		scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {

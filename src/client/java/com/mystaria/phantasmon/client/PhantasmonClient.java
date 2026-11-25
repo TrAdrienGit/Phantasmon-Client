@@ -22,7 +22,8 @@ import com.mystaria.phantasmon.client.trade.LiveTradeController;
 public class PhantasmonClient implements ClientModInitializer {
 
 	private final BackendJsonClient httpClient = new BackendJsonClient();
-	private final BackendHealthPinger healthPinger = new BackendHealthPinger(BackendConfig.BASE_URL.resolve("/health"));
+	private final BackendHealthPinger healthPinger = new BackendHealthPinger(
+			BackendConfig.isSet() ? BackendConfig.BASE_URL.resolve("/health") : null);
 	private final PingToggle pingToggle = new PingToggle(healthPinger);
 	private final AuthSession authSession = new AuthSession();
 	private final AuthService authService = new AuthService(httpClient, authSession);

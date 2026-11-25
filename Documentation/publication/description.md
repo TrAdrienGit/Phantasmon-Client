@@ -17,8 +17,9 @@ community hosts for its players (see [Who is it for](#who-is-it-for)). Only play
 
 Phantasmon was made for a Cobblemon community, which hosts its own backend. You can use it in two ways:
 
-- **Join a community that runs Phantasmon:** install the mod and you are ready, if your community's address is
-  already set (or it gives you the one to enter in the settings).
+- **Join a community that runs Phantasmon:** install the mod, press **H** and enter the backend address your
+  community gives you on the Settings page, then restart the game. There is no default address: the mod connects
+  nowhere until you enter one.
 - **Run it for your own community:** host the backend yourself (free and open source, a small Java program and a
   PostgreSQL database), then give your address to your players. The guide is linked below.
 
@@ -26,7 +27,7 @@ Without a backend to connect to, the mod does nothing.
 
 ## A PC of your own
 
-Press **P**. Your team and 16 boxes of 30, with a full card for each Pokémon (3D model, types, item, nature, ability,
+Press **P** (**U** when LeagueWay is installed: it keeps P for its PokéPhone). Your team and 16 boxes of 30, with a full card for each Pokémon (3D model, types, item, nature, ability,
 Tera type, moves, IVs and EVs). Drag and drop between any slots. Import a team straight from a Pokémon Showdown paste.
 
 ## An editor for every detail
@@ -81,33 +82,45 @@ give them from the game.
 
 ## For admins
 
-Admins (listed in the backend) get the admin menu in game: players, hubs and their builds, rewards, a solo battle to
-test a team. Everything is done from the game, nothing on the Minecraft server.
+Admins (listed in the backend by whoever hosts it) get the admin menu in game: players, hubs and their builds,
+rewards, a solo battle to test a team. Everything is done from the game, nothing on the Minecraft server.
+
+**What an admin can do to players**, so you know before you join a community: open any player's PC, edit or delete
+their Pokémon, stop a battle they are in, mute them in the hubs' chat, lock that chat to admins only, and restart the backend. Pick a
+community whose admins you trust.
 
 ## How to use
 
-- **P** opens your PC, **H** the Phantasmon menu (hubs and your anchors, rewards, music, settings including the
-  backend address; when the backend can't be reached, H opens straight on the settings). Change them in
+- **P** opens your PC (**U** with LeagueWay), **H** the Phantasmon menu (hubs and your anchors, rewards, music, settings including the
+  backend address; while no backend is set or reachable, H opens straight on the settings). Change them in
   Options → Controls → Phantasmon.
 - **O** (Cobblemon's party key) cycles to your Ghost team; **R** sends the picked Ghost out or recalls it.
 - **R** (Cobblemon's wheel) on a player: Ghost Trade, Ghost Battle, Watch the battle.
-- `/phantasmon` commands do everything the screens do.
+- Everything is done from the screens and the chat buttons. The few commands left: `/phantasmon login` (log in
+  again by hand), `/phantasmon hub leave`, and `/hc <message>` for the hub's chat.
 - French and English.
 
 ## Network and privacy
 
 Phantasmon is an online mod: it needs a backend, and it talks to it while you play.
 
-- **The backend** (the address in Settings, `config/phantasmon.json`): by default, **the backend of the Phantasmon
-  community that made this mod**. Change it to your own community's. The mod sends it:
+- **The backend**: only the one whose address **you** enter in Settings (`config/phantasmon.json`). There is no
+  default: until you enter one, the mod connects nowhere. Whoever hosts that backend is responsible for the data it
+  keeps. The mod sends it:
   - your Minecraft UUID and username (your account there);
   - your Pokémon, trades, battles and their results;
-  - while you play: which server you are on, as a **hash** of its address (never the address itself), your
-    dimension, and your position, so that players on the same server and dimension see your Ghost; in a hub, only
-    your position inside the hub's zone.
+  - while you play: which server you are on, as a SHA-256 hash of its address rather than the address in clear (a
+    hash of a known public address can still be matched to it), your dimension, and your position, so that players
+    on the same server and dimension see your Ghost; in a hub, only your position inside the hub's zone;
+  - your emotes, your pose and whether your microphone is on, so the other players see them;
+  - the moves of your Ghost battles, relayed by the backend to your opponent and the spectators;
+  - in a hub: your **chat messages**, relayed to the hub's players and written with your username in the backend's
+    log files (kept until they rotate out, 5 GB by default), so admins can moderate; your **voice** (Simple Voice
+    Chat), relayed to the hub's players as it is and never recorded;
+  - for an admin who copies a zone of their world into a hub's build: the blocks of that zone.
 - **Mojang**: to log in, the mod proves your Minecraft session to Mojang's session server, the same check a Minecraft
   server makes; your password and tokens never reach the backend. Player skins come from Mojang as in vanilla.
-- Nothing is sent when no backend is reachable, and the backend owner only sees what is listed above.
+- Nothing is sent when no backend is set or reachable, and the backend owner only sees what is listed above.
 
 ## Dependencies
 
@@ -118,7 +131,7 @@ Phantasmon is an online mod: it needs a backend, and it talks to it while you pl
 | [Fabric Loader](https://fabricmc.net/use/) | 0.18.1 or later, Minecraft 1.21.1, Java 21 |
 | [Fabric API](https://modrinth.com/mod/fabric-api) | any for 1.21.1 |
 | [Cobblemon](https://modrinth.com/mod/cobblemon) | 1.8.1 or later |
-| [Cobblemon Battle Showtime](https://modrinth.com/mod/cobblemon-battle-showtime) | 1.2.0 or later (1.x) |
+| [Cobblemon Battle Showtime](https://modrinth.com/mod/cobblemon-battle-showtime) | 1.7.30 or later (1.x) |
 
 **Optional mods**
 
@@ -142,13 +155,17 @@ games on top of Phantasmon.
 ## How it was made
 
 Phantasmon was developed with the help of generative AI coding tools, under its author's direction, design and testing
-in game with the community. Pokémon models, animations and battles come from each player's own Cobblemon; the mod
-contains no game assets and no music.
+in game with the community. The held item icons are drawn by scripts that were also written with AI; the mod's icon
+is hand-made. Pokémon models, animations and battles come from each player's own Cobblemon; the mod contains no game
+assets and no music.
 
 ## Links
 
 - Mod source and issues: https://github.com/TrAdrienGit/Phantasmon-Client
 - Backend source: https://github.com/TrAdrienGit/Phantasmon-Backend
 - License: Apache 2.0
+- Author: Mystaria. Contact: the issue tracker, https://github.com/TrAdrienGit/Phantasmon-Client/issues
+
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.**
 
 *A fan project, not affiliated with Nintendo, The Pokémon Company, Game Freak or the Cobblemon team.*

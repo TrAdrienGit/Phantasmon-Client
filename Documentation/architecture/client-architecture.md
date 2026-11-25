@@ -72,8 +72,10 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 ## 5. Réseau
 
 - **URL du backend** : `BackendConfig.BASE_URL`, lue au lancement dans `config/phantasmon.json` (`"backend_url"`) par
-  `BackendUrlFile` (défaut `https://server-linux.tail192969.ts.net`, le backend du serveur Ubuntu ; voir
-  [`reference/configuration.md`](../reference/configuration.md)).
+  `BackendUrlFile`. **Aucune adresse par défaut** depuis le 2026-11-25 (publication : le mod ne doit se connecter
+  nulle part sans que le joueur l'ait choisi) : sans adresse, `BASE_URL` est `null`, `BackendConfig.isSet()` est faux
+  et rien ne se connecte (ni connexion automatique, ni ping, ni WebSocket) ; H ouvre la page Réglages. Voir
+  [`reference/configuration.md`](../reference/configuration.md).
 - **REST** : `BackendJsonClient` (Gson, `LOWER_CASE_WITH_UNDERSCORES`) : les DTO restent en camelCase. En-tête
   `Authorization: Bearer` ajouté pour les routes protégées. Une erreur structurée devient `BackendApiException`
   (dont le code est traduit, jamais affiché tel quel). `GsonUuidSanityTest` garantit qu'un `UUID` est sérialisé en

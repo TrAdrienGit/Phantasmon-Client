@@ -62,6 +62,10 @@ public final class AuthService {
 			report("phantasmon.auth.already_connected");
 			return;
 		}
+		if (!BackendConfig.isSet()) {
+			report("phantasmon.auth.no_backend");
+			return;
+		}
 
 		Minecraft client = Minecraft.getInstance();
 		User user = client.getUser();
@@ -88,8 +92,8 @@ public final class AuthService {
 	 * errors when the player explicitly runs {@code /phantasmon login}.
 	 */
 	public void autoLoginIfBackendHealthy() {
-		if (session.isAuthenticated()) {
-			return;
+		if (session.isAuthenticated() || !BackendConfig.isSet()) {
+			return; // no backend set: no connection at all, and no message on every join
 		}
 		httpClient.get(BackendConfig.BASE_URL.resolve("/health"), HealthResponseDto.class)
 				.thenAccept(health -> {
