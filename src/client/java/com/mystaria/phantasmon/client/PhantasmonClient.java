@@ -23,7 +23,7 @@ public class PhantasmonClient implements ClientModInitializer {
 
 	private final BackendJsonClient httpClient = new BackendJsonClient();
 	private final BackendHealthPinger healthPinger = new BackendHealthPinger(
-			BackendConfig.isSet() ? BackendConfig.BASE_URL.resolve("/health") : null);
+			() -> BackendConfig.isSet() ? BackendConfig.BASE_URL.resolve("/health") : null);
 	private final PingToggle pingToggle = new PingToggle(healthPinger);
 	private final AuthSession authSession = new AuthSession();
 	private final AuthService authService = new AuthService(httpClient, authSession);
@@ -50,6 +50,7 @@ public class PhantasmonClient implements ClientModInitializer {
 			// Reserved intros and ambiances won (TODO-37), shown by Showtime only to their owners.
 			com.mystaria.phantasmon.client.pokemon.RewardContent.refresh();
 		});
+		com.mystaria.phantasmon.client.admin.AdminSession.bind(adminClient, authSession);
 		ghostSession.setLiveTradeListener(liveTrade);
 		ghostSession.setLiveBattleListener(liveBattle);
 		ghostSession.setHubListener(hub);
@@ -65,16 +66,21 @@ public class PhantasmonClient implements ClientModInitializer {
 		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
 			pingToggle.onDisconnect();
 			refreshScheduler.stop();
-			ghostSession.stop();
-			hub.reset();
-			com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
 			com.mystaria.phantasmon.client.battle.BattleVisuals.clear();
 			com.mystaria.phantasmon.client.battle.BattleFieldScenes.clear();
 			com.mystaria.showtime.audio.BattleMusic.stop();
-			com.mystaria.phantasmon.client.admin.AdminSession.clear();
-			com.mystaria.phantasmon.client.pokemon.RewardContent.clear();
-			com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
-			authSession.clear();
+			leaveBackend();
+		});
+		// Another backend address saved in Settings (2026-11-25): used at once, no restart. The old backend's session
+		// ends; in a world, the login on the new one starts (and says how it went in the chat).
+		BackendConfig.setOnChange(() -> {
+			boolean switching = authSession.isAuthenticated();
+			if (switching) {
+				leaveBackend();
+			}
+			if (BackendConfig.isSet() && net.minecraft.client.Minecraft.getInstance().player != null) {
+				authService.login();
+			}
 		});
 		// Hub builds (D-34): a chunk the server (re)sends has lost its client-only blocks — built again.
 		net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientChunkEvents.CHUNK_LOAD.register((level, chunk) ->
@@ -129,6 +135,17 @@ public class PhantasmonClient implements ClientModInitializer {
 		com.mystaria.phantasmon.client.admin.AdminCommands.register(adminClient, authSession, pcOpener, pingToggle, liveBattle);
 		com.mystaria.phantasmon.client.hub.HubCommands.register(hub);
 		PhantasmonCommands.register(authService, ghostSession, liveTrade, liveBattle);
+	}
+
+	/** Ends the session on the backend: presence, hubs, admin rights, rewards, then the tokens. */
+	private void leaveBackend() {
+		ghostSession.stop();
+		hub.reset();
+		com.mystaria.phantasmon.client.hub.HubPlacement.cancel();
+		com.mystaria.phantasmon.client.admin.AdminSession.clear();
+		com.mystaria.phantasmon.client.pokemon.RewardContent.clear();
+		com.mystaria.phantasmon.client.admin.CommandTreeRefresher.clear();
+		authSession.clear();
 	}
 
 	/** Key H: the Phantasmon menu on its Hubs page (an admin's manager or a player's); not logged in: a message. */

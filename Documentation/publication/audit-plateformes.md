@@ -63,7 +63,7 @@ de données et sur l'IA.
 | # | Décision |
 |---|---|
 | D1 | Garder les collisions des constructions de hub : LeagueWay fait pareil sans souci. |
-| D2 | Une option côté joueur, **activée par défaut** : Réglages du menu H → « Envoyer les blocs aux hubs miroirs » (`MirrorSharing`, `config/phantasmon-events.json`, `share_mirror_blocks`). Désactivée, `MirrorCapture` ne lit et n'envoie plus rien. La page d'Events le dit, avec « only set up a mirror hub on a server whose owners agree ». |
+| D2 | Une option côté joueur, **activée par défaut** : Réglages du menu H → « Synchronisation des terrains de hub » (`MirrorSharing`, `config/phantasmon-events.json`, `share_mirror_blocks`). Désactivée, `MirrorCapture` ne lit et n'envoie plus rien. La page d'Events le dit, avec « only set up a mirror hub on a server whose owners agree ». |
 | D3 | Aucune adresse par défaut (fait, voir plus haut). |
 | D4 | Aucune mention d'âge, comme Simple Voice Chat (sa page Modrinth n'en a pas). |
 | D5 | Rien à trancher : le compte GitHub est celui de la personne, « Mystaria » le nom d'auteur sur Modrinth et CurseForge. |

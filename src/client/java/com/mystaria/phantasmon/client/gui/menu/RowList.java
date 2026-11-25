@@ -108,7 +108,17 @@ final class RowList {
 	}
 
 	private int height(Row row) {
-		return row.style() == Style.FIELD ? PITCH + 10 : PITCH;
+		return switch (row.style()) {
+			case FIELD -> PITCH + 10;
+			// A note wraps (2026-11-25: a long one shrank to fit one line and could not be read).
+			case NOTE -> Math.max(PITCH, MenuUi.paragraphHeight(row.text(), noteWidth()) + 8);
+			default -> PITCH;
+		};
+	}
+
+	/** A note's width, the scrollbar's room always kept: measured before knowing whether the list scrolls. */
+	private int noteWidth() {
+		return right - BAR_W - 4 - x;
 	}
 
 	private int total() {
@@ -141,7 +151,7 @@ final class RowList {
 				continue;
 			}
 			switch (row.style()) {
-				case NOTE -> MenuUi.text(g, row.text(), x, rowTop + 5, w, c.muted());
+				case NOTE -> MenuUi.paragraph(g, row.text(), x, rowTop + 5, noteWidth(), c.muted());
 				case HEADER -> {
 					MenuUi.text(g, row.text().copy().withStyle(s -> s.withBold(true)), x, rowTop + 6, w, c.accent());
 					g.fill(x, rowTop + 16, x + w, rowTop + 17, c.edge());

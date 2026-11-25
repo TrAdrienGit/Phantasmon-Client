@@ -15,7 +15,7 @@
 
 | Clé | Valeur par défaut | Règles |
 |---|---|---|
-| `backend_url` | vide : **aucune adresse par défaut** depuis le 2026-11-25 (avant : `https://server-linux.tail192969.ts.net`, notre backend). Le joueur saisit l'adresse de sa communauté dans le menu H, page Réglages ; les instances déjà installées gardent la leur. | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Lu une seule fois au lancement du jeu : redémarrer après modification. Valeur vide, absente ou invalide, ou fichier illisible : aucun backend, le mod ne se connecte nulle part (ligne dans le log, `BackendUrlFile`). |
+| `backend_url` | vide : **aucune adresse par défaut** depuis le 2026-11-25 (avant : `https://server-linux.tail192969.ts.net`, notre backend). Le joueur saisit l'adresse de sa communauté dans le menu H, page Réglages ; les instances déjà installées gardent la leur. | `http://` ou `https://` + hôte + port éventuel, sans chemin ni paramètres (une barre finale est tolérée). `https` donne un WebSocket `wss`. Enregistrée depuis la page Réglages (menu H), l'adresse sert tout de suite : déconnexion de l'ancien backend et connexion au nouveau, sans redémarrer (2026-11-25). Modifié à la main, le fichier n'est relu qu'au lancement du jeu. Valeur vide, absente ou invalide, ou fichier illisible : aucun backend, le mod ne se connecte nulle part (ligne dans le log, `BackendUrlFile`). |
 
 ## 1. Constantes du code
 

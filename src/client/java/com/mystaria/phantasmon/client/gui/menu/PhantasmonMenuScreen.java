@@ -22,7 +22,7 @@ import com.mystaria.phantasmon.client.hub.HubController;
  */
 public final class PhantasmonMenuScreen extends Screen {
 
-	public enum Category { HUBS, REWARDS, MUSIC, SETTINGS }
+	public enum Category { HUBS, REWARDS, ADMINS, MUSIC, SETTINGS }
 
 	private static final int HEADER_H = 24;
 	private static final int SIDEBAR_W = 92;
@@ -47,6 +47,8 @@ public final class PhantasmonMenuScreen extends Screen {
 	private final List<Nav> categories = new ArrayList<>();
 	private final java.util.Map<String, MenuPage> pages = new java.util.HashMap<>();
 	private Nav category;
+	/** {@link #signature()} when the sidebar was last made. */
+	private String signature;
 	private final Host host = new Host();
 	private MenuDialog dialog;
 	private Component status = Component.empty();
@@ -55,6 +57,11 @@ public final class PhantasmonMenuScreen extends Screen {
 	private int top;
 	private int right;
 	private int bottom;
+
+	/** Whether the player is logged in to the backend now. */
+	boolean connected() {
+		return hubAccess != null && hubAccess.session().isAuthenticated();
+	}
 
 	/** Phantasmon's client gives the Hubs page its access once, at startup. */
 	public static void bindHubs(HubAccess access) {
@@ -68,21 +75,8 @@ public final class PhantasmonMenuScreen extends Screen {
 	private PhantasmonMenuScreen(Screen parent, String startKey) {
 		super(Component.translatable("phantasmon.menu.title"));
 		this.parent = parent;
-		boolean hubs = hubAccess != null && hubAccess.session().isAuthenticated()
-				&& net.minecraft.client.Minecraft.getInstance().player != null;
-		if (hubs) {
-			categories.add(new Nav(Category.HUBS, null));
-		}
-		for (var addon : com.mystaria.phantasmon.client.api.PhantasmonApi.menuPages()) {
-			if (addon.visible().getAsBoolean()) {
-				categories.add(new Nav(null, addon));
-			}
-		}
-		if (hubs && AdminSession.isAdmin()) {
-			categories.add(new Nav(Category.REWARDS, null)); // admins give the looks (TODO-37)
-		}
-		categories.add(new Nav(Category.MUSIC, null));
-		categories.add(new Nav(Category.SETTINGS, null));
+		categories.addAll(navs());
+		signature = signature();
 		category = categories.stream().filter(nav -> nav.key().equals(startKey)).findFirst()
 				.orElse(categories.get(categories.size() - 1));
 		statusColor = MenuUi.p().muted();
@@ -95,6 +89,60 @@ public final class PhantasmonMenuScreen extends Screen {
 			status = Component.translatable("phantasmon.menu.not_connected");
 			statusColor = MenuUi.p().danger();
 		}
+	}
+
+	/** The sidebar's categories for the session as it is now. */
+	private static List<Nav> navs() {
+		List<Nav> navs = new ArrayList<>();
+		boolean hubs = hubAccess != null && hubAccess.session().isAuthenticated()
+				&& net.minecraft.client.Minecraft.getInstance().player != null;
+		if (hubs) {
+			navs.add(new Nav(Category.HUBS, null));
+		}
+		for (var addon : com.mystaria.phantasmon.client.api.PhantasmonApi.menuPages()) {
+			if (addon.visible().getAsBoolean()) {
+				navs.add(new Nav(null, addon));
+			}
+		}
+		if (hubs && AdminSession.isAdmin()) {
+			navs.add(new Nav(Category.REWARDS, null)); // admins give the looks (TODO-37)
+			navs.add(new Nav(Category.ADMINS, null)); // admins manage the admins (2026-11-25)
+		}
+		navs.add(new Nav(Category.MUSIC, null));
+		navs.add(new Nav(Category.SETTINGS, null));
+		return navs;
+	}
+
+	/** What the backend's pages depend on: the categories shown, the account and its admin rights. */
+	private static String signature() {
+		StringBuilder out = new StringBuilder();
+		navs().forEach(nav -> out.append(nav.key()).append(','));
+		boolean in = hubAccess != null && hubAccess.session().isAuthenticated();
+		return out.append(in ? hubAccess.session().playerUuid() : "-").append(AdminSession.isAdmin()).toString();
+	}
+
+	/**
+	 * The session changed while the menu is open (another backend saved in Settings, a login done, admin rights
+	 * known, 2026-11-25): the sidebar and the backend's pages are made again, with no need to close and reopen it.
+	 * The page shown stays if it still exists, else Settings; Settings and Music keep what they hold.
+	 */
+	private void refreshSession() {
+		String now = signature();
+		if (now.equals(signature)) {
+			return;
+		}
+		signature = now;
+		String shown = category.key();
+		page().close();
+		categories.clear();
+		categories.addAll(navs());
+		pages.keySet().removeIf(key -> !key.equals(Category.SETTINGS.name()) && !key.equals(Category.MUSIC.name()));
+		category = categories.stream().filter(nav -> nav.key().equals(shown)).findFirst()
+				.orElse(categories.get(categories.size() - 1));
+		if (connected()) {
+			status(Component.translatable("phantasmon.menu.refreshed"), MenuUi.p().good());
+		}
+		rebuildWidgets(); // the frame may change size, and the page is laid out again
 	}
 
 	/** The menu opened on an add-on's page ({@code PhantasmonApi.openMenu}). */
@@ -115,6 +163,7 @@ public final class PhantasmonMenuScreen extends Screen {
 		return pages.computeIfAbsent(each.key(), key -> each.addon() != null ? each.addon().factory().apply(host) : switch (each.builtIn()) {
 			case HUBS -> new HubsPage(this, hubAccess.client(), hubAccess.session(), hubAccess.controller(), AdminSession.isAdmin());
 			case REWARDS -> new RewardsPage(this);
+			case ADMINS -> new AdminsPage(this);
 			case MUSIC -> new MusicPage();
 			case SETTINGS -> new SettingsPage(this);
 		});
@@ -202,6 +251,9 @@ public final class PhantasmonMenuScreen extends Screen {
 
 	@Override
 	public void tick() {
+		if (minecraft.level == null || minecraft.level.getGameTime() % 10 == 0) {
+			refreshSession();
+		}
 		page().tick();
 	}
 

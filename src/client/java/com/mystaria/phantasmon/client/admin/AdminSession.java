@@ -9,6 +9,8 @@ import com.mystaria.phantasmon.client.auth.AuthSession;
 public final class AdminSession {
 
 	private static volatile boolean admin;
+	private static AdminClient boundClient;
+	private static AuthSession boundSession;
 
 	private AdminSession() {
 	}
@@ -28,6 +30,23 @@ public final class AdminSession {
 					set(false);
 					return null;
 				});
+	}
+
+	/** Phantasmon's client gives what {@link #refreshNow} needs, once, at startup. */
+	public static void bind(AdminClient client, AuthSession session) {
+		boundClient = client;
+		boundSession = session;
+	}
+
+	/**
+	 * The backend says this player was made admin or removed ({@code AdminChanged}, 2026-11-25): asked again, without
+	 * dropping the current rights meanwhile; the menu and the commands follow the answer, no reconnection.
+	 */
+	public static void refreshNow() {
+		if (boundClient == null || boundSession == null || !boundSession.isAuthenticated()) {
+			return;
+		}
+		boundClient.me(boundSession.accessToken()).thenAccept(me -> set(me != null && me.admin()));
 	}
 
 	public static void clear() {

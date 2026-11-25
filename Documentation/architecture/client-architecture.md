@@ -74,7 +74,10 @@ ou de l'écran (`PokemonCommandHandler`, `LiveTradeController`…). Les DTO sont
 - **URL du backend** : `BackendConfig.BASE_URL`, lue au lancement dans `config/phantasmon.json` (`"backend_url"`) par
   `BackendUrlFile`. **Aucune adresse par défaut** depuis le 2026-11-25 (publication : le mod ne doit se connecter
   nulle part sans que le joueur l'ait choisi) : sans adresse, `BASE_URL` est `null`, `BackendConfig.isSet()` est faux
-  et rien ne se connecte (ni connexion automatique, ni ping, ni WebSocket) ; H ouvre la page Réglages. Voir
+  et rien ne se connecte (ni connexion automatique, ni ping, ni WebSocket) ; H ouvre la page Réglages. Depuis le
+  2026-11-25, une adresse enregistrée dans Réglages sert tout de suite (`BackendConfig.use`) : la session sur l'ancien
+  backend est fermée (`PhantasmonClient.leaveBackend`) et la connexion au nouveau part aussitôt, sans redémarrer ; le
+  menu H ouvert refait sa barre latérale et les pages du backend quand la session change (`refreshSession`). Voir
   [`reference/configuration.md`](../reference/configuration.md).
 - **REST** : `BackendJsonClient` (Gson, `LOWER_CASE_WITH_UNDERSCORES`) : les DTO restent en camelCase. En-tête
   `Authorization: Bearer` ajouté pour les routes protégées. Une erreur structurée devient `BackendApiException`

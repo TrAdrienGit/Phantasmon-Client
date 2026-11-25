@@ -18,7 +18,7 @@ community hosts for its players (see [Who is it for](#who-is-it-for)). Only play
 Phantasmon was made for a Cobblemon community, which hosts its own backend. You can use it in two ways:
 
 - **Join a community that runs Phantasmon:** install the mod, press **H** and enter the backend address your
-  community gives you on the Settings page, then restart the game. There is no default address: the mod connects
+  community gives you on the Settings page, and save: it is used at once. There is no default address: the mod connects
   nowhere until you enter one.
 - **Run it for your own community:** host the backend yourself (free and open source, a small Java program and a
   PostgreSQL database), then give your address to your players. The guide is linked below.

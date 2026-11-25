@@ -89,7 +89,7 @@ public final class BackendUrlFile {
 		}
 	}
 
-	/** Writes {@code url} as the backend URL (settings screen); read at the next launch. False if it could not. */
+	/** Writes {@code url} as the backend URL (settings screen, which then uses it at once). False if it could not. */
 	public static boolean save(Path file, URI url) {
 		JsonObject json = new JsonObject();
 		try {
@@ -106,7 +106,7 @@ public final class BackendUrlFile {
 		try {
 			Files.createDirectories(file.getParent());
 			Files.writeString(file, GSON.toJson(json) + System.lineSeparator(), StandardCharsets.UTF_8);
-			LOG.info("Backend URL saved in {}: {} (next launch)", file, url);
+			LOG.info("Backend URL saved in {}: {}", file, url);
 			return true;
 		} catch (IOException ex) {
 			LOG.warn("Cannot write {}", file, ex);
@@ -114,7 +114,7 @@ public final class BackendUrlFile {
 		}
 	}
 
-	/** The URL written in the file now (maybe not the one in use until the next launch); empty if none. */
+	/** The URL written in the file now (a hand edit is not in use until the next launch); empty if none. */
 	public static String saved(Path file) {
 		try {
 			JsonObject json = GSON.fromJson(Files.readString(file, StandardCharsets.UTF_8), JsonObject.class);

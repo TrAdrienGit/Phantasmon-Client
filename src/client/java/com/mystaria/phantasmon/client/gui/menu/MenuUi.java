@@ -257,9 +257,13 @@ public final class MenuUi {
 			text(g, Component.literal(placeholder), x + 4, textY, w - 8, c.edge());
 		} else {
 			String shown = fit(value, w - 14);
-			text(g, Component.literal(shown), x + 4, textY, w - 8, invalid ? c.danger() : c.white());
+			// Drawn here, not through Cobblemon's helper, to know where the drawn text really ends: in the modpack the
+			// font draws narrower than it measures, so a caret placed at the measured width ran far past the text
+			// (2026-11-25, the same fix as the PC's search field on 2026-11-21).
+			int end = g.drawString(Minecraft.getInstance().font, Component.literal(shown).withStyle(s -> s.withFont(UNIFORM)),
+					x + 4, textY, invalid ? c.danger() : c.white(), true);
 			if (focused && (System.currentTimeMillis() / 500) % 2 == 0) {
-				int caret = x + 4 + Minecraft.getInstance().font.width(shown) + 1;
+				int caret = shown.isEmpty() ? x + 4 : end;
 				g.fill(caret, textY - 1, caret + 1, textY + 8, c.accent());
 			}
 		}
@@ -267,9 +271,8 @@ public final class MenuUi {
 
 	/** The end of {@code value} that fits in {@code width} (the caret stays visible while typing). */
 	private static String fit(String value, int width) {
-		var font = Minecraft.getInstance().font;
 		String shown = value;
-		while (!shown.isEmpty() && font.width(shown) > width) {
+		while (!shown.isEmpty() && width(Component.literal(shown)) > width) {
 			shown = shown.substring(1);
 		}
 		return shown;

@@ -27,20 +27,20 @@ public final class BackendHealthPinger {
 	private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(2);
 	private static final long PING_INTERVAL_SECONDS = 30;
 
-	private final URI healthUri;
+	/** The backend's {@code /health}, asked at each ping (the address can change while playing); null: none set. */
+	private final java.util.function.Supplier<URI> healthUri;
 	private final HttpClient httpClient = HttpClient.newBuilder()
 			.connectTimeout(REQUEST_TIMEOUT)
 			.build();
 
 	private ScheduledExecutorService scheduler;
 
-	/** {@code healthUri}: null when no backend is set (the pinger then never starts). */
-	public BackendHealthPinger(URI healthUri) {
+	public BackendHealthPinger(java.util.function.Supplier<URI> healthUri) {
 		this.healthUri = healthUri;
 	}
 
 	public synchronized void start() {
-		if (scheduler != null || healthUri == null) { // no backend set: nothing to ping
+		if (scheduler != null) {
 			return;
 		}
 		scheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
@@ -60,7 +60,11 @@ public final class BackendHealthPinger {
 	}
 
 	private void pingOnce() {
-		HttpRequest request = HttpRequest.newBuilder(healthUri)
+		URI uri = healthUri.get();
+		if (uri == null) {
+			return; // no backend set: nothing to ping
+		}
+		HttpRequest request = HttpRequest.newBuilder(uri)
 				.timeout(REQUEST_TIMEOUT)
 				.GET()
 				.build();

@@ -32,8 +32,8 @@ contient des chemins propres aux machines d'Adrien) : il n'existe que sur la mac
 | Serveur Ubuntu (`100.101.1.79`) | — | — | Backend + PostgreSQL (`guides/deploying-ubuntu.md` du dépôt Backend), et notre serveur Minecraft Cobblemon Academy (port 25565) où jouent les deux clients |
 
 Les deux clients doivent viser **le même backend** (celui du serveur Ubuntu) : `backend_url` de
-`config/phantasmon.json` dans chaque instance, modifiable dans les paramètres de Phantasmon (Mod Menu → Configurer),
-au prochain lancement.
+`config/phantasmon.json` dans chaque instance, modifiable dans les Réglages du menu H (ou Mod Menu → Configurer),
+pris en compte dès l'enregistrement.
 
 ### Rejoindre la même partie
 

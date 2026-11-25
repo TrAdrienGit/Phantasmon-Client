@@ -16,7 +16,7 @@ import com.mystaria.phantasmon.client.network.BackendUrlFile;
 
 /**
  * Settings: the backend's address ({@code config/phantasmon.json}, none by default: the player enters their
- * community's), tested and saved for the next launch; the look (Cobblemon or V1).
+ * community's), tested, saved and used at once (2026-11-25: no restart); the look (Cobblemon or V1).
  */
 final class SettingsPage implements MenuPage {
 
@@ -94,8 +94,14 @@ final class SettingsPage implements MenuPage {
 			return;
 		}
 		url.value = uri.toString();
-		screen.status(Component.translatable(uri.equals(BackendConfig.BASE_URL) ? "phantasmon.settings.saved_same"
-				: "phantasmon.settings.saved_restart"), MenuUi.p().good());
+		boolean same = uri.equals(BackendConfig.BASE_URL);
+		boolean connected = screen.connected();
+		if (!same || !connected) {
+			BackendConfig.use(uri); // the old session ends, the login on this one starts
+		}
+		screen.status(Component.translatable(same && connected ? "phantasmon.settings.saved_same"
+				: "phantasmon.settings.saved_applied"), MenuUi.p().good());
+		rebuild();
 	}
 
 	@Override
