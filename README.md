@@ -13,13 +13,14 @@ Full documentation (player guide, commands, architecture, build and QA guides, s
 | Feature | How |
 |---|---|
 | **Login** | Automatic on world/server join when the backend is up (Mojang session proof → JWT, kept in memory and auto-refreshed). Manual fallback: `/phantasmon login`. Version handshake first; outdated clients get a download link. |
-| **PC** | `/phantasmon pc` or **P**. Team rail, full Pokémon card (3D model, types, item, nature ±, ability, Tera, Hidden Power, moves with types, IV/EV), 16 boxes × 30 slots. Drag & drop between any slots (move or swap), mouse wheel to change box — also mid-drag. Showdown import from the clipboard. Delete with confirmation. |
-| **Editor** | **ÉDITER** in the PC. Live preview card + form: nickname, gender (when the species allows it), level, shiny, ability (species' own), held item (battle items, searchable), nature, Tera type, IVs/EVs (live EV total, Hidden Power), 4 moves (searchable, no duplicates). Showdown paste pre-fills the form. |
-| **Ghost Pokémon** | **O** or `/phantasmon sendout` toggles your team lead out/in, with Cobblemon's Poké Ball animations. Rendered client-side with Cobblemon's own models (forms, gender, shiny), follows you smoothly, roams around when you stand still, despawns on recall, death, dimension change or disconnect. |
-| **Live trade** | **G** while looking at a player, Cobblemon's interaction wheel (**R** → *Ghost Trade*), or `/phantasmon trade invite <name>`. The other player clicks **[Accept]** in chat; both get the trade screen, pick an offer, flag *ready* — the backend swaps both Pokémon atomically (each takes the other's team slot). |
-| **Ghost battle** | **B** while looking at a player, the wheel (**R** → *Ghost Battle*), or `/phantasmon battle invite <name>`. The backend picks a host client (alternating), which runs Cobblemon's own battle engine; both players get Cobblemon's native battle UI, send-out/recall and move animations. Optional 90 s turn timer (`/phantasmon battle timer`). |
-| **Async trade (commands)** | `/phantasmon trade propose\|accept\|cancel\|view\|list` — offer by UUID, accepted later. |
-| **Commands** | `/phantasmon pokemon import\|list\|pc\|delete\|clone\|edit\|team` for everything the screens do. Full list: [`commands-and-keybinds.md`](./Documentation/reference/commands-and-keybinds.md). |
+| **PC** | **P** (**U** when LeagueWay is installed). Team rail, full Pokémon card (3D model, types, item, nature ±, ability, Tera, Hidden Power, moves with types, IV/EV), 16 boxes × 30 slots, loose boxes or team boxes (one team per row), named boxes, word search. Drag & drop between any slots (move or swap), multi-pick, whole team into a row. Showdown import window (paste, live check, model preview) and export. Delete with confirmation. |
+| **Editor** | **ÉDITER** in the PC. Live preview card + form: nickname, gender (when the species allows it), level, shiny, ability (species' own), held item (battle items, Z-Crystals and Mega Stones held virtually, searchable), nature, Tera type, *terastallized from the start*, IVs/EVs (live EV total, Hidden Power), 4 moves (searchable, no duplicates). |
+| **Ghost Pokémon** | Cobblemon's party keys on the Ghost overlay (**O** cycles to it, up / down picks, **R** sends out or recalls), with Cobblemon's Poké Ball animations. Rendered client-side with Cobblemon's own models (forms, gender, shiny, looks won as rewards), follows you smoothly, roams around when you stand still, despawns on recall, death, dimension change or disconnect. |
+| **Live trade** | Cobblemon's interaction wheel (**R** on a player → *Ghost Trade*). The other player clicks **[Accept]** in chat; both get the trade screen, pick an offer, flag *ready*: the backend swaps both Pokémon atomically. |
+| **Ghost battle** | The wheel (**R** on a player → *Ghost Battle*), or an event NPC (Phantasmon Events). A lobby to pick the format (Smogon formats), the intro, the scene and the field; the backend picks a host client, which runs Cobblemon's own battle engine; both players get Cobblemon's native battle UI, staged by Cobblemon Battle Showtime. Optional 90 s turn timer. Spectators through the wheel (*Watch the Ghost battle*), also mid-battle. |
+| **Hubs** (Phantasmon Network) | Players of different servers meet in shared hubs: avatars with skins, chat, 3D voice (Simple Voice Chat), emotes, trades and battles across servers. Managed in the Phantasmon menu (**H**). |
+| **Rewards** | Looks (recoloured textures, glowing shells, auras, size) and reserved intros and ambiances, given by an admin. |
+| **Commands** | Only `/phantasmon login`, `/phantasmon hub leave\|chat`, `/hc` and the admin ones (D-39). Full list: [`commands-and-keybinds.md`](./Documentation/reference/commands-and-keybinds.md). |
 
 All player-facing text is translated (French and English); backend errors arrive as `ERROR_*` codes and are translated locally. Keybinds are rebindable under *Options → Controls → Phantasmon*.
 
@@ -61,23 +62,29 @@ A local, untracked `scripts/deploy-to-prod-server.sh` builds once and copies the
 
 ```text
 src/client/java/com/mystaria/phantasmon/client/
+├── admin/       # admin commands (player PC, stop battle, reboot, solo battle, hub chat moderation)
+├── api/         # PhantasmonApi: extension points for add-ons (Phantasmon Events)
+├── audio/       # sound effects
 ├── auth/        # Mojang join proof, JWT session, auto-refresh
-├── battle/      # Ghost battles: host-side Cobblemon engine, relay, visuals, move animations
-├── command/     # /phantasmon … (Brigadier, client-side)
-├── ghost/       # presence WebSocket session, client-only Ghost entities
-├── gui/         # PC, editor and trade screens on a shared canvas "design system"
-├── mixin/       # 9 Mixins (battle choices, pure-client Showdown, move animations, interaction wheel, Ghost labels)
+├── battle/      # Ghost battles: lobby, host-side Cobblemon engine, relay, visuals, spectators
+├── command/     # /phantasmon login and chat actions (Brigadier, client-side)
+├── compat/      # optional mods (Battle Extras, Mod Menu, Emotecraft, Simple Voice Chat)
+├── ghost/       # presence WebSocket session, client-only Ghost entities, looks
+├── gui/         # PC, editor, trade screens and the Phantasmon menu
+├── hub/         # hubs (Phantasmon Network): avatars, builds, chat, hub manager
+├── mixin/       # Mixins (interaction wheel, party keys, Ghost labels, hub builds, Battle Extras, looks)
 ├── network/     # REST + WebSocket clients, error-code translation
 ├── pokemon/     # DTOs, Showdown parser/mapper, natures, Hidden Power, gender
-├── trade/       # live trade state/controller, async trade commands
+├── trade/       # live trade state/controller
 ├── version/     # client/backend version compatibility
-└── wheel/       # Ghost Trade / Ghost Battle entries in Cobblemon's interaction wheel
+├── voice/       # hub voice through Simple Voice Chat
+└── wheel/       # Ghost Trade / Ghost Battle / Watch entries in Cobblemon's interaction wheel
 src/main/resources/assets/phantasmon/
 ├── lang/        # fr_fr.json, en_us.json
 └── textures/gui/  # PC sprites + trade/ (generated by scripts/generate_trade_textures.py)
 ```
 
-The three screens extend `gui/PhantasmonCanvasScreen`: a 1600×900 px layout drawn at 80 % of the window, with pixel-snapped lines and text, shared panels, slots, Pokémon card, buttons and modals.
+The PC, editor and trade screens extend `gui/PhantasmonCanvasScreen`: a 1600×900 px layout drawn at 80 % of the window, with pixel-snapped lines and text, shared panels, slots, Pokémon card, buttons and modals.
 
 ## Tests
 

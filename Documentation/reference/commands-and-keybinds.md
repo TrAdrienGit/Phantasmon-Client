@@ -1,7 +1,7 @@
 # Commandes et touches
 
 > Source : `command/PhantasmonCommands.java`, `PhantasmonKeybinds.java`, `wheel/GhostWheelOptions.java`.
-> Vérifié le 2026-10-03. Toutes les commandes sont **côté client** (Brigadier Fabric) : elles fonctionnent sur
+> Vérifié le 2026-11-25. Toutes les commandes sont **côté client** (Brigadier Fabric) : elles fonctionnent sur
 > n'importe quel serveur, sans permission.
 
 ## 1. Touches
@@ -12,7 +12,7 @@ Catégorie « Phantasmon » dans *Options → Commandes*. Les choix du joueur so
 | Identifiant | Touche par défaut | Action |
 |---|---|---|
 | `key.cobblemon_battle_showtime.music_menu` (touche de Cobblemon Battle Showtime depuis D-37) | **N** | Ouvre le menu des musiques de Phantasmon (cocher les morceaux du pack à jouer, les écouter) |
-| `key.phantasmon.open_pc` | **P** | Ouvrir le PC |
+| `key.phantasmon.open_pc` | **P** (**U** quand LeagueWay est installé, 2026-11-19) | Ouvrir le PC |
 | `key.phantasmon.hub_manager` | **H** | Menu Phantasmon, ouvert sur les hubs (placer, supprimer ses ancres ; gestion complète pour un admin). Sans connexion au backend, il s'ouvre quand même, sur les Réglages (adresse du backend), sans les pages qui ont besoin du backend (2026-11-18) |
 
 **Touche « Cacher l'équipe » de Cobblemon** (`key.cobblemon.hideparty`, **O** par défaut) : fait défiler équipe
@@ -40,21 +40,9 @@ dans la barre de saisie.
 
 ### PC et Pokémon
 
-L'écran PC s'ouvre uniquement avec sa touche (**P** par défaut, TODO-22).
-
-| Commande | Effet |
-|---|---|
-| `/phantasmon pokemon import` | Crée un ou plusieurs Pokémon depuis le texte Showdown du presse-papiers |
-| `/phantasmon pokemon export [uuid]` | Copie l'équipe active (ou le Pokémon donné) au format Showdown dans le presse-papiers |
-| `/phantasmon pokemon list` | Liste tous ses Pokémon (espèce, niveau, UUID) |
-| `/phantasmon pokemon pc <boîte 1-16>` | Contenu d'une boîte |
-| `/phantasmon pokemon pc move <uuid> <boîte 1-16> <case 1-30>` | Déplace vers une case du PC (échange si occupée) |
-| `/phantasmon pokemon team` | Affiche l'équipe active |
-| `/phantasmon pokemon team set <uuid> <emplacement 1-6>` | Place dans l'équipe (échange si occupé) |
-| `/phantasmon pokemon team clear <uuid> <boîte 1-16> <case 1-30>` | Retire de l'équipe vers une case précise du PC |
-| `/phantasmon pokemon edit <uuid> level <1-100>` | Change le niveau |
-| `/phantasmon pokemon clone <uuid>` | Clone (première case libre) |
-| `/phantasmon pokemon delete <uuid>` | Supprime définitivement (sans confirmation, contrairement à l'écran PC) |
+Aucune commande (D-39) : tout se fait dans l'écran PC, ouvert par sa touche (**P** par défaut, **U** quand LeagueWay
+est installé) : import Showdown (fenêtre de collage avec vérification en direct), export, édition, déplacements,
+clonage, suppression, recherche et boîtes d'équipe.
 
 ### Ghost
 
@@ -63,25 +51,21 @@ pour choisir, R pour sortir / rappeler). Caméra de combat, musique suivante et 
 
 ### Échange en direct
 
-Pas de commande pour inviter (TODO-22) : l'invitation passe par la roue d'interaction de Cobblemon (**R** sur un
-joueur → « Échange Ghost »). Ces commandes ne servent qu'aux boutons du chat.
-
-| Commande | Effet |
-|---|---|
-| `/phantasmon trade join` | Accepte l'invitation reçue (bouton [Accepter] du chat) |
-| `/phantasmon trade decline` | Refuse (bouton [Refuser]) |
+Pas de commande (TODO-22, D-39) : l'invitation passe par la roue d'interaction de Cobblemon (**R** sur un
+joueur → « Échange Ghost »). Le joueur invité répond avec les boutons [Accepter] / [Refuser] du chat (actions de chat,
+`command/ChatActions`, plus des commandes depuis le 2026-10-30).
 
 ### Combat
 
-Pas de commande pour inviter (TODO-22) : roue d'interaction de Cobblemon (**R** sur un joueur → « Combat Ghost »).
-Ces commandes ne servent qu'aux boutons du chat.
+Pas de commande (TODO-22, D-39) : roue d'interaction de Cobblemon (**R** sur un joueur → « Combat Ghost »). Les
+réponses passent par les boutons du chat (actions de chat, plus des commandes depuis le 2026-10-30) :
 
-| Commande | Effet |
+| Bouton | Effet |
 |---|---|
-| `/phantasmon battle join [ghost\|cobblemon]` | Accepte (bouton [Accepter]) et ouvre le lobby ; `cobblemon` présélectionne votre équipe Cobblemon (modifiable dans le lobby) |
-| `/phantasmon battle decline` | Refuse (bouton [Refuser]) |
+| [Accepter] | Accepte et ouvre le lobby (au choix avec l'équipe Ghost ou l'équipe Cobblemon, modifiable dans le lobby) |
+| [Refuser] | Refuse |
+| [Activer le chrono] | En combat : active le chrono de 90 s pour les deux joueurs, définitivement pour ce combat. Dans le lobby, le bouton Timer active son timer de 150 s |
 | (roue) « Regarder le combat Ghost » | **R** sur un joueur (ou un avatar du Hub) en combat Ghost : regarder ce combat, comme dans Cobblemon ; bouton Retour de l'écran de combat pour arrêter (D-31) |
-| `/phantasmon battle timer` | Dans le lobby : active son timer de 150 s (bouton Timer). En combat : active le chrono de 90 s pour les deux joueurs (bouton [Activer le chrono]), définitivement pour ce combat |
 
 ### Global Hub (Phantasmon Network)
 
@@ -115,9 +99,5 @@ d'un serveur) ; invisibles pour les autres. Le backend vérifie chaque demande l
 | `/hc !!<message>` | **Admin** : annonce, en surbrillance dans le chat et en grand à l'écran de chaque membre, avec un son |
 | `/phantasmon admin ping` | Active/désactive l'affichage de `GET /health` toutes les 30 s dans le chat (ancien `toggle-ping`) |
 
-Les aperçus de mise en scène appartiennent désormais à Cobblemon Battle Showtime (D-37), ouverts à tous les joueurs :
-
-| Commande | Effet |
-|---|---|
-| `/showtime preview <mega\|primal\|zmove\|tera> [type]` | Joue la mise en scène de Méga-Évolution, Retour primal, capacité Z ou Téracristallisation (type : fire, water…, stellar) sur le Pokémon le plus proche, sans le modifier (ancien `/phantasmon admin debug spectacle`) |
-| `/showtime preview intro <xy\|sword_shield\|diamond_pearl\|emerald\|black_white>` | Joue une des intros de combat seule, contre le joueur le plus proche (ou soi-même), sans combat ni musique derrière (ancien `/phantasmon admin debug intro`) |
+Les aperçus de mise en scène appartiennent à Cobblemon Battle Showtime (D-37), qui n'a aucune commande : les intros,
+ambiances et stades se prévisualisent dans son menu (touche **N**).
