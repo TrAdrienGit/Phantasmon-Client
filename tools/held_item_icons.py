@@ -41,6 +41,25 @@ MEGA = {
     "Tyranitarite": ("688858", "384030"), "Venusaurite": ("48A080", "E85878"),
 }
 
+# New Mega stones (Legends Z-A / Champions), colours from each Mega form's look.
+MEGA.update({
+    "Absolite Z": ("2A2E48", "9A70D8"), "Barbaracite": ("7A6A58", "58C8B8"), "Baxcalibrite": ("5A88C8", "E8F0F8"),
+    "Chandelurite": ("5A3A88", "F08838"), "Chesnaughtite": ("4A8A3A", "C8A060"), "Chimechite": ("88C0D8", "E8E8F0"),
+    "Clefablite": ("F0A8C8", "A8D8F0"), "Crabominite": ("E8F0F8", "C83838"), "Darkranite": ("2A2A38", "D83838"),
+    "Delphoxite": ("E88838", "F8D860"), "Dragalgite": ("5A4A78", "58B8A0"), "Dragoninite": ("E8A048", "58A8D8"),
+    "Drampanite": ("E8E0D0", "5A9AB8"), "Eelektrossite": ("3A5A88", "F0D840"), "Emboarite": ("D85028", "F0B048"),
+    "Excadrite": ("8A8E98", "E8C040"), "Falinksite": ("C8A848", "A83838"), "Feraligite": ("3070B8", "D84848"),
+    "Floettite": ("F0B8D8", "F8F0A8"), "Froslassite": ("A8D8F0", "6A5A98"), "Garchompite Z": ("3A4A88", "58D8E0"),
+    "Glimmoranite": ("8A5A98", "F0A8D8"), "Golisopite": ("4A8AB8", "E8E8E0"), "Golurkite": ("5A8A78", "D8C070"),
+    "Greninjite": ("2F5CA8", "E86890"), "Hawluchanite": ("D84838", "58B848"), "Heatranite": ("5A5A68", "F08030"),
+    "Lucarionite Z": ("3878C0", "C8D8E8"), "Magearnite": ("D8D8E0", "E8688A"), "Malamarite": ("4A3A78", "D86AA8"),
+    "Meganiumite": ("68B858", "F098B8"), "Meowsticite": ("5A5AC8", "F0D858"), "Pyroarite": ("D87828", "F8E0A8"),
+    "Raichunite X": ("E8A838", "3A3A48"), "Raichunite Y": ("F0C838", "D86838"), "Scolipite": ("A83A5A", "E8C858"),
+    "Scovillainite": ("58A848", "D83828"), "Scraftinite": ("C85838", "F0D8A0"), "Skarmorite": ("8898B0", "D8404A"),
+    "Staraptite": ("8A6A58", "E88848"), "Starminite": ("8A58C8", "F0D858"), "Tatsugirinite": ("E85838", "F0C848"),
+    "Victreebelite": ("D8C038", "58A848"), "Zeraorite": ("F0D030", "5A4A98"), "Zygardite": ("2A3A48", "58D8A0"),
+})
+
 Z_TYPES = {
     "Buginium Z": "bug", "Darkinium Z": "dark", "Dragonium Z": "dragon", "Electrium Z": "electric", "Fairium Z": "fairy",
     "Fightinium Z": "fighting", "Firium Z": "fire", "Flyinium Z": "flying", "Ghostium Z": "ghost", "Grassium Z": "grass",

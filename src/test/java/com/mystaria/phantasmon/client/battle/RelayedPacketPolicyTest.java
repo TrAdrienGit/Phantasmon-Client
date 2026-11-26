@@ -30,5 +30,8 @@ class RelayedPacketPolicyTest {
 		org.junit.jupiter.api.Assertions.assertEquals("mega_y", FormeChangeVisual.megaAspect("mewtwonitey"));
 		org.junit.jupiter.api.Assertions.assertEquals("mega", FormeChangeVisual.megaAspect("venusaurite"));
 		org.junit.jupiter.api.Assertions.assertEquals("mega", FormeChangeVisual.megaAspect(null));
+		org.junit.jupiter.api.Assertions.assertEquals("mega_z", FormeChangeVisual.megaAspect("absolitez"));
+		org.junit.jupiter.api.Assertions.assertEquals("mega_y", FormeChangeVisual.megaAspect("raichunitey"));
+		org.junit.jupiter.api.Assertions.assertEquals("mega", FormeChangeVisual.megaAspect("clefablite"));
 	}
 }

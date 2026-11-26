@@ -613,5 +613,19 @@
   "phantasmon.battle.lobby.scene.tab.stadiums": "Stadiums",
   "phantasmon.battle.lobby.scene.tab.ambiances": "Ambiances",
   "phantasmon.battle.lobby.scene.stadium_each": "each their own",
-  "phantasmon.battle.lobby.scene.stadium_field": "the field's own"
+  "phantasmon.battle.lobby.scene.stadium_field": "the field's own",
+  "cobblemon.ability.megasol": "Mega Sol",
+  "cobblemon.ability.megasol.desc": "The Pokémon's moves act as if the sunlight were harsh.",
+  "cobblemon.ability.dragonize": "Dragonize",
+  "cobblemon.ability.dragonize.desc": "Normal-type moves become Dragon-type moves and are a little stronger.",
+  "cobblemon.ability.auraguard": "Aura Guard",
+  "cobblemon.ability.auraguard.desc": "Halves the damage taken from moves that make contact.",
+  "cobblemon.ability.piercingdrill": "Piercing Drill",
+  "cobblemon.ability.piercingdrill.desc": "Contact moves hit through Protect and similar moves, for a quarter of their damage.",
+  "cobblemon.ability.eelevate": "Eelevate",
+  "cobblemon.ability.eelevate.desc": "The Pokémon floats, immune to Ground-type moves. Knocking out a foe raises its best stat.",
+  "cobblemon.ability.firemane": "Fire Mane",
+  "cobblemon.ability.firemane.desc": "Powers up Fire-type moves.",
+  "cobblemon.ability.spicyspray": "Spicy Spray",
+  "cobblemon.ability.spicyspray.desc": "Burns the attacker when the Pokémon is hit by a move."
 }

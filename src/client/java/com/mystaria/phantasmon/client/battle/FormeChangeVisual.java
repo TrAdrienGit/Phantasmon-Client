@@ -12,7 +12,7 @@ import com.mystaria.showtime.api.Transformation;
  * Cobblemon's engine only announces it ({@code MEGA_EVOLUTION} / {@code FORME_CHANGE} events) — on a Cobblemon Delta
  * server, Delta's server mod then gives the Pokémon its aspect; here the host does it ({@link GhostBattles}) and
  * relays this to the guest. {@code aspect} is what the model resolvers of the pack's resource pack (CCC) key on:
- * {@code mega}, {@code mega_x}, {@code mega_y}, {@code primal}.
+ * {@code mega}, {@code mega_x}, {@code mega_y}, {@code mega_z}, {@code primal}.
  *
  * @param pnx     battle position ({@code p1a}...), see {@link BattleVisuals#entityAt}
  * @param uuid    the battle Pokémon's uuid
@@ -67,16 +67,18 @@ public record FormeChangeVisual(String pnx, String uuid, String species, String 
 	}
 
 	/**
-	 * The Mega aspect from the Mega Stone held: {@code …ite x} → {@code mega_x}, {@code …ite y} → {@code mega_y}
-	 * (Charizard, Mewtwo), anything else — including no stone (Rayquaza) — {@code mega}.
+	 * The Mega aspect from the Mega Stone held (a Minecraft item's path or a virtual stone's Showdown id):
+	 * {@code …ite x/y/z} → {@code mega_x}/{@code mega_y}/{@code mega_z} (Charizard, Mewtwo, Raichu; Absol, Garchomp,
+	 * Lucario), anything else — including no stone (Rayquaza) — {@code mega}. The one place aspect names are decided:
+	 * if a later Cobblemon or modpack names its new Megas otherwise, only this changes.
 	 */
 	public static String megaAspect(String heldItemPath) {
 		if (heldItemPath != null && heldItemPath.contains("ite")) {
-			if (heldItemPath.endsWith("x")) {
-				return "mega_x";
-			}
-			if (heldItemPath.endsWith("y")) {
-				return "mega_y";
+			String path = heldItemPath.toLowerCase(java.util.Locale.ROOT);
+			for (String letter : new String[] {"x", "y", "z"}) {
+				if (path.endsWith(letter)) {
+					return "mega_" + letter;
+				}
 			}
 		}
 		return "mega";

@@ -613,5 +613,19 @@
   "phantasmon.battle.lobby.scene.tab.stadiums": "Stades",
   "phantasmon.battle.lobby.scene.tab.ambiances": "Ambiances",
   "phantasmon.battle.lobby.scene.stadium_each": "chacun le sien",
-  "phantasmon.battle.lobby.scene.stadium_field": "celui du terrain"
+  "phantasmon.battle.lobby.scene.stadium_field": "celui du terrain",
+  "cobblemon.ability.megasol": "Mega Sol",
+  "cobblemon.ability.megasol.desc": "Les capacités du Pokémon agissent comme sous un soleil intense.",
+  "cobblemon.ability.dragonize": "Dragonize",
+  "cobblemon.ability.dragonize.desc": "Les capacités de type Normal deviennent de type Dragon et gagnent un peu en puissance.",
+  "cobblemon.ability.auraguard": "Aura Guard",
+  "cobblemon.ability.auraguard.desc": "Divise par deux les dégâts des capacités directes.",
+  "cobblemon.ability.piercingdrill": "Piercing Drill",
+  "cobblemon.ability.piercingdrill.desc": "Les capacités directes passent à travers Abri et ses semblables, avec un quart de leurs dégâts.",
+  "cobblemon.ability.eelevate": "Eelevate",
+  "cobblemon.ability.eelevate.desc": "Le Pokémon flotte et ne craint pas les capacités de type Sol. Mettre un ennemi K.O. augmente sa meilleure stat.",
+  "cobblemon.ability.firemane": "Fire Mane",
+  "cobblemon.ability.firemane.desc": "Augmente la puissance des capacités de type Feu.",
+  "cobblemon.ability.spicyspray": "Spicy Spray",
+  "cobblemon.ability.spicyspray.desc": "Brûle l'attaquant quand le Pokémon est touché par une capacité."
 }

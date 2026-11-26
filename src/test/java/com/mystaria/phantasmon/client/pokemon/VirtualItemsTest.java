@@ -18,7 +18,7 @@ class VirtualItemsTest {
 		assertEquals("charizarditex", VirtualItems.showdownId("charizardite_x"));
 		assertTrue(VirtualItems.isVirtual("booster_energy"));
 		assertTrue(VirtualItems.isVirtual("hearthflame_mask"));
-		assertEquals(137, VirtualItems.ids().size());
+		assertEquals(182, VirtualItems.ids().size());
 	}
 
 	@Test

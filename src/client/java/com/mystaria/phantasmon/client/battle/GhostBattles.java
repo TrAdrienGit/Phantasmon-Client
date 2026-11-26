@@ -107,6 +107,14 @@ public final class GhostBattles {
 	}
 
 	private static String heldItemPath(BattlePokemon pokemon) {
+		// A Ghost's Mega Stone is virtual (2026-11-26: Charizardite X was read as no item, so "mega", not "mega_x").
+		String virtual = pokemon == null ? null : GhostVirtualItems.held(pokemon.getEffectedPokemon());
+		if (virtual == null && pokemon != null) {
+			virtual = GhostVirtualItems.held(pokemon.getOriginalPokemon());
+		}
+		if (virtual != null) {
+			return virtual;
+		}
 		var stack = pokemon == null ? null : pokemon.getEffectedPokemon().heldItem();
 		return stack == null || stack.isEmpty() ? null
 				: net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();

@@ -108,6 +108,7 @@ public class PhantasmonClient implements ClientModInitializer {
 
 		com.mystaria.phantasmon.client.battle.ShowtimeBridge.register(liveBattle);
 		com.mystaria.phantasmon.client.battle.GhostVirtualItems.register();
+		com.mystaria.phantasmon.client.battle.NewMegas.register();
 		com.mystaria.phantasmon.client.wheel.GhostWheelOptions.bind(liveTrade, liveBattle);
 		PhantasmonKeybinds.register();
 		// Looks (TODO-37): the glowing shell drawn over Phantasmon's Pokémon in the world.

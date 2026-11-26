@@ -93,6 +93,12 @@ Pendant le combat, la caméra filme le match (plans autour du terrain, plans sur
 droite de l'écran de combat passent à la musique suivante, basculent caméra cinéma / libre et activent le chrono
 (qui devient alors le compte à rebours).
 
+**Nouvelles Méga-Évolutions** (Légendes Z-A / Champions, D-42) : 49 formes, dont Méga-Mélodelfe, Méga-Dracolosse,
+Méga-Raichu X/Y et Méga-Absol Z. Donnez sa Méga-Gemme au Pokémon dans l'éditeur (elle s'importe aussi d'un set
+Showdown) ; elles ne marchent que dans les combats Phantasmon, en format « Libre ». Pour voir leurs modèles, activez
+le pack de ressources « Phantasmon Megas » (sans lui, le Pokémon garde son modèle normal ; Heatran, Darkrai,
+Zeraora, Tatsugiri, Magearna et Zygarde n'ont pas encore de modèle).
+
 **Musiques** (jouées par Cobblemon Battle Showtime depuis D-37) : installez le pack de ressources « Cobblemon Battle Showtime
 Music » (modèle dans `resourcepack-template/` du dépôt `Cobblemon-Battle-Showtime`) et déposez vos `.ogg` dans ses dossiers
 `lobby`, `intro`, `battle`, `victory`, `defeat` (voir son `LISEZ-MOI.txt`) ; un ancien pack « Phantasmon Music »

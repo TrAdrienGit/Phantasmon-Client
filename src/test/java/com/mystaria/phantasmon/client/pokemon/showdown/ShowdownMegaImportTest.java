@@ -37,4 +37,30 @@ class ShowdownMegaImportTest {
 		assertEquals("hisui", map("Samurott-Hisui", "Torrent", List.of("torrent")).form());
 		assertEquals("torrent", map("Samurott-Hisui", "Torrent", List.of("other")).ability());
 	}
+
+	@Test
+	void newMegasBecomeTheirBaseForm() {
+		PokemonCreateRequestDto absol = map("Absol-Mega-Z", "Magic Bounce", List.of("pressure"));
+		assertEquals("absol", absol.species());
+		assertNull(absol.form());
+		assertEquals("pressure", absol.ability());
+		assertNull(map("Raichu-Mega-X", "Static", List.of("static")).form());
+		assertNull(map("Clefable-Mega", "Magic Guard", List.of("magicguard")).form());
+	}
+
+	@Test
+	void baseFormIsKeptForFormedSpecies() {
+		PokemonCreateRequestDto meowstic = map("Meowstic-F-Mega", "Keen Eye", List.of("keeneye"));
+		assertEquals("meowstic", meowstic.species());
+		assertEquals("f", meowstic.form());
+		assertEquals("eternal", map("Floette-Mega", "Fairy Aura", List.of("flowerveil")).form());
+		assertNull(map("Tatsugiri-Curly-Mega", "Commander", List.of("commander")).form());
+		assertEquals("droopy", map("Tatsugiri-Droopy-Mega", "Commander", List.of("commander")).form());
+		assertNull(map("Meowstic-M-Mega", "Trace", List.of("keeneye", "infiltrator")).form());
+		assertEquals("original", map("Magearna-Original-Mega", "Soul-Heart", List.of("soulheart")).form());
+		PokemonCreateRequestDto zygarde = map("Zygarde-Mega", "Aura Break", List.of("aurabreak", "powerconstruct"));
+		assertEquals("zygarde", zygarde.species());
+		assertEquals("50c", zygarde.form());
+		assertEquals("powerconstruct", zygarde.ability());
+	}
 }

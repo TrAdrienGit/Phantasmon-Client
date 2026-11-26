@@ -21,8 +21,18 @@ import com.mystaria.phantasmon.client.pokemon.showdown.CobblemonIdentifiers.Spec
  */
 public final class ShowdownImportMapper {
 
-	/** Forms only taken during a battle: Mega, Mega-X, Mega-Y, Primal. */
-	private static final Pattern BATTLE_FORM = Pattern.compile("mega[xy]?|primal");
+	/**
+	 * Forms only taken during a battle: Mega, Mega-X/Y/Z, Primal. The group before the suffix is the base form that
+	 * stays (Meowstic-F-Mega -> "f", Magearna-Original-Mega -> "original").
+	 */
+	private static final Pattern BATTLE_FORM = Pattern.compile("(.*?)(?:mega[xyz]?|primal)");
+	/** Showdown names a default form Cobblemon leaves unnamed: Meowstic-M-Mega, Tatsugiri-Curly-Mega. */
+	private static final java.util.Set<String> DEFAULT_FORMS = java.util.Set.of("m", "curly");
+	/**
+	 * Megas whose base form Showdown doesn't name (2026-11-26): Floette-Mega comes from the Eternal Flower, and
+	 * Zygarde-Mega from Zygarde-Complete, which only Power Construct's 50% form reaches during a battle.
+	 */
+	private static final Map<String, String> MEGA_BASE_FORMS = Map.of("floette", "eternal", "zygarde", "50c");
 	private static final int DEFAULT_IV = 31;
 	private static final int DEFAULT_EV = 0;
 	private static final List<String> STATS = List.of("hp", "atk", "def", "spa", "spd", "spe");
@@ -47,12 +57,22 @@ public final class ShowdownImportMapper {
 
 		SpeciesForm speciesForm = CobblemonIdentifiers.splitSpeciesForm(parsed.speciesToken());
 		String ability = CobblemonIdentifiers.slugConcat(parsed.ability()); // Cobblemon's ability ids: "roughskin"
-		if (speciesForm.form() != null && BATTLE_FORM.matcher(speciesForm.form()).matches()) {
+		java.util.regex.Matcher battleForm = speciesForm.form() == null ? null : BATTLE_FORM.matcher(speciesForm.form());
+		if (battleForm != null && battleForm.matches()) {
 			List<String> abilities = baseAbilities.apply(speciesForm.species());
 			if (!abilities.isEmpty() && !abilities.contains(CobblemonIdentifiers.slugConcat(parsed.ability()))) {
 				ability = abilities.get(0);
 			}
-			speciesForm = new SpeciesForm(speciesForm.species(), null);
+			String baseForm = battleForm.group(1);
+			if (baseForm.isEmpty()) {
+				baseForm = MEGA_BASE_FORMS.get(speciesForm.species());
+			} else if (DEFAULT_FORMS.contains(baseForm)) {
+				baseForm = null;
+			}
+			if ("50c".equals(baseForm)) {
+				ability = "powerconstruct";
+			}
+			speciesForm = new SpeciesForm(speciesForm.species(), baseForm);
 		}
 
 		Map<String, Object> data = new HashMap<>();
