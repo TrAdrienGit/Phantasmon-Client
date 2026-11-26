@@ -28,6 +28,7 @@ Identifiants : `BUG-n` (comportement incorrect), `SEC-n` (sécurité, voir [`sec
 | TODO-34 | basse | Client + Backend | Network, vocal du hub (D-36) : la voix passe par le WebSocket (TCP) ; sur un réseau qui perd des paquets elle prend du retard au lieu de sauter. Si besoin : canal UDP / WebRTC dédié. |
 | TODO-39 | basse | Client + Backend | Combats contre des joueurs de Pokémon Showdown en ligne : plan dans `research/Phantasmon_Showdown_Integration_Plan.md` (backend adaptateur, Showdown arbitre, POC à deux comptes sur un serveur local d'abord). |
 | TODO-40 | basse | Client + Events | Augmenter le nombre de cosmétiques (Adrien 2026-11-11) : nouveaux filtres, auras, intros et ambiances réservées, à donner en récompense (TODO-37). |
+| TODO-41 | basse | Client + Events + Showtime | Se libérer des droits d'auteur de tiers (idée du 2026-11-27, pas pour maintenant) : remplacer par nos propres créations ce qui vient d'autres projets, pour pouvoir tout publier sous notre licence. À recenser d'abord. Déjà connus : les modèles du pack « Phantasmon Megas » (Mega Showdown, CC BY-NC-SA, publication interdite sans accord, D-42) et les packs de musique (hors jars, voir `publication/audit-plateformes.md`). Méthode : partir des artworks officiels. On peut lire leurs fichiers pour noter les techniques, avec nos propres mots, mais on modélise sans les avoir ouverts, en gardant les fichiers de travail datés comme preuve de création indépendante. Le design des Pokémon reste à Nintendo dans tous les cas. |
 
 ## 3. Dette technique
 
