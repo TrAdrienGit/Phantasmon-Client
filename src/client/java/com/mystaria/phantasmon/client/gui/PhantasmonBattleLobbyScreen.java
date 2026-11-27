@@ -168,7 +168,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			}
 			return true;
 		}
-		if (inside(x, y, 715, 15, 170, 48)) {
+		if (inside(x, y, 715, 15, 170, 48) && (state.ownReady() || state.teamsGenerated())) {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.lobbyToggleReady();
 		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
@@ -193,9 +193,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			controller.lobbySwitchTeam();
 		} else {
 			int slot = slotAt(x, y);
-			if (slot >= 0 && state.randomTeam()) {
-				// Random format: the team is generated at the start, nothing to pick.
-			} else if (slot >= 0 && state.pickMode()) {
+			if (slot >= 0 && state.pickMode()) {
 				controller.lobbyTogglePick(slot);
 			} else if (slot >= 0) {
 				controller.lobbySelectLead(slot);
@@ -303,11 +301,12 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		int y = 15;
 		int w = 170;
 		int h = 48;
-		renderPrimaryButtonFrame(g, x, y, w, h, inside(mx, my, x, y, w, h), state.ownReady());
+		boolean waiting = !state.ownReady() && !state.teamsGenerated();
+		renderPrimaryButtonFrame(g, x, y, w, h, !waiting && inside(mx, my, x, y, w, h), state.ownReady());
 		String label = state.ownReady() ? Component.translatable("phantasmon.battle.lobby.ready").getString()
 				: upper(Component.translatable("phantasmon.battle.lobby.ready_button").getString());
 		float width = textWidth(label, 2f, true, 1f);
-		drawText(g, label, x + (w - width) / 2f, y + 17, 2f, state.ownReady() ? READY_TEXT : CYAN, true, 1f);
+		drawText(g, label, x + (w - width) / 2f, y + 17, 2f, state.ownReady() ? READY_TEXT : waiting ? DIM : CYAN, true, 1f);
 	}
 
 	// ---- Rails ----
@@ -315,7 +314,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private void renderOwnRail(GuiGraphics g, BattleLobbyState state, double mx, double my) {
 		renderRailFrame(g, 15, 72, 194, 758,
 				Component.translatable("phantasmon.battle.lobby.team", controller.localPlayerName()).getString(),
-				state.randomTeam() ? Component.translatable("phantasmon.battle.lobby.rail_hint_random")
+				state.randomTeam() && state.ownTeamSize() == 0 ? Component.translatable("phantasmon.battle.lobby.rail_hint_random")
 						: state.doubles()
 						? Component.translatable("phantasmon.battle.lobby.rail_hint_own_doubles", state.ownPicks().size(), state.battleSize())
 						: state.pickMode()
@@ -323,13 +322,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 						: Component.translatable("phantasmon.battle.lobby.rail_hint_own"));
 		int hovered = state.ownReady() ? -1 : slotAt(mx, my);
 		for (int i = 0; i < BattleLobbyState.TEAM_SIZE; i++) {
-			if (state.randomTeam()) {
-				renderHiddenSlot(g, slotX(i), slotY(i));
-				continue;
-			}
 			PokemonDto pokemon = state.ownSlot(i);
 			int pick = state.pickMode() ? state.ownPickNumber(i) : 0;
-			boolean chosen = !state.randomTeam() && (state.pickMode() ? pick > 0 : state.ownLeadSlot(i) >= 0);
+			boolean chosen = state.pickMode() ? pick > 0 : state.ownLeadSlot(i) >= 0;
 			SlotLook look = pokemon != null && chosen ? SlotLook.SELECTED
 					: (i == hovered && pokemon != null ? SlotLook.HOVER : SlotLook.NORMAL);
 			renderSlot(g, slotX(i), slotY(i), 85, 214, pokemon, look, RAIL_SLOT);
@@ -414,10 +409,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		infoBox(g, x + 9, 506, 559, 200, own
 				? (twoLeads ? "phantasmon.battle.lobby.own_leads" : "phantasmon.battle.lobby.own_lead")
 				: (twoLeads ? "phantasmon.battle.lobby.opponent_leads" : "phantasmon.battle.lobby.opponent_lead"));
-		if (state.randomTeam()) {
-			drawCentered(g, "?", x + 288, 548, 6f, TITLE, true, 0f);
-			drawCentered(g, Component.translatable("phantasmon.battle.lobby.random_team").getString(), x + 288, 640, 2f, DIM, false, 0f);
-		} else if (own && twoLeads) {
+		if (own && twoLeads) {
 			List<Integer> leads = state.ownLeads();
 			renderOwnLeadCompact(g, leads.isEmpty() ? null : state.ownSlot(leads.get(0)), x + 9, "phantasmon.battle.lobby.lead_left");
 			renderOwnLeadCompact(g, leads.size() < 2 ? null : state.ownSlot(leads.get(1)), x + 288, "phantasmon.battle.lobby.lead_right");
@@ -621,6 +613,12 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		if (state.lastErrorCode() != null) {
 			return stripPrefix(Component.translatable(BackendErrorMessages.translationKey(state.lastErrorCode())).getString());
+		}
+		if (!state.ownTeamGenerated()) {
+			return Component.translatable("phantasmon.battle.lobby.generating_own_team").getString();
+		}
+		if (!state.teamsGenerated()) {
+			return Component.translatable("phantasmon.battle.lobby.generating_opponent_team", state.opponentName()).getString();
 		}
 		if (state.ownReady() && !state.opponentReady()) {
 			return Component.translatable("phantasmon.battle.lobby.waiting_opponent", state.opponentName()).getString();

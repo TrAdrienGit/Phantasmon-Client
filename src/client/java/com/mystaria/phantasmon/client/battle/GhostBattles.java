@@ -295,8 +295,8 @@ public final class GhostBattles {
 	/**
 	 * {@code doubles}: two Pokémon per side (combat-double-plan.md), the first two of each team leading.
 	 * {@code pickedTeamSize}: Pokémon the AI guest brings out of its team (VGC: 4), 0 = all; a player's team comes
-	 * already cut by the backend. {@code randomFormat}: a random format's Showdown id (2026-11-27), both teams are then
-	 * generated here by Showdown ({@link RandomTeams}) instead of {@code hostTeam} / {@code guestTeam}; null otherwise.
+	 * already cut by the backend. {@code randomFormat}: a random format's Showdown id (2026-11-27): a side without a
+	 * team (an NPC's) gets one generated here by Showdown ({@link RandomTeams}); null otherwise.
 	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
@@ -310,8 +310,8 @@ public final class GhostBattles {
 				ShowdownExtensions.apply();
 				List<BattlePokemon> preTera = new ArrayList<>();
 				boolean random = randomFormat != null && !randomFormat.isEmpty();
-				List<BattlePokemon> hostPokemon = battleTeam(random ? RandomTeams.generate(randomFormat) : hostTeam, preTera);
-				List<BattlePokemon> guestPokemon = battleTeam(random ? RandomTeams.generate(randomFormat) : guestTeam, preTera);
+				List<BattlePokemon> hostPokemon = battleTeam(random && hostTeam.isEmpty() ? RandomTeams.generate(randomFormat) : hostTeam, preTera);
+				List<BattlePokemon> guestPokemon = battleTeam(random && guestTeam.isEmpty() ? RandomTeams.generate(randomFormat) : guestTeam, preTera);
 				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
 					// An add-on's AI may pick its lead against the player's team, as at team preview (Adrien 2026-11-03).
 					guestPokemon = addonAi.orderTeam(guestPokemon, hostPokemon);

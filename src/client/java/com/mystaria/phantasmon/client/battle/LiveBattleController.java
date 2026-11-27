@@ -735,6 +735,55 @@ public final class LiveBattleController implements LiveBattleListener {
 		}
 		lobby.apply(data);
 		lastOpponentTeamSize = lobby.opponentTeamSize();
+		requestRandomTeam();
+	}
+
+	/** The lobby and format a random team was last generated for ("lobby/format"), so each is generated once. */
+	private String randomTeamFor;
+
+	/**
+	 * Random formats (2026-11-27): this player's team is generated here by Showdown as soon as the format is picked,
+	 * then sent to the backend, which shows it in the lobby (the player picks their lead) and keeps it secret from the
+	 * opponent. A new random format, or coming back to one, generates a new team.
+	 */
+	private void requestRandomTeam() {
+		BattleLobbyState state = lobby;
+		if (state == null || !state.randomTeam()) {
+			randomTeamFor = null;
+			return;
+		}
+		String key = state.lobbyUuid() + "/" + state.formatId();
+		if (state.ownTeamSize() > 0 || key.equals(randomTeamFor)) {
+			return;
+		}
+		randomTeamFor = key;
+		UUID lobbyUuid = state.lobbyUuid();
+		String formatId = state.formatId();
+		BattleThread.get().submit(() -> {
+			BattleThread.get().ensureShowdown();
+			List<PokemonDto> team = RandomTeams.generate(formatId);
+			List<Map<String, Object>> members = new java.util.ArrayList<>();
+			for (PokemonDto pokemon : team) {
+				Map<String, Object> member = new HashMap<>();
+				member.put("uuid", pokemon.uuid().toString());
+				member.put("species", pokemon.species());
+				member.put("form", pokemon.form());
+				member.put("level", pokemon.level());
+				member.put("nature", pokemon.nature());
+				member.put("ability", pokemon.ability());
+				member.put("is_shiny", pokemon.isShiny());
+				member.put("cobblemon_data_version", pokemon.cobblemonDataVersion());
+				member.put("data", pokemon.data());
+				members.add(member);
+			}
+			Minecraft.getInstance().execute(() -> {
+				if (members.isEmpty()) {
+					randomTeamFor = null; // tried again on the next lobby update
+					return;
+				}
+				send("BattleLobbyRandomTeam", Map.of("lobby_uuid", lobbyUuid, "format_id", formatId, "team", members));
+			});
+		});
 	}
 
 	private void onLobbyCancelled(Map<String, Object> data) {

@@ -112,8 +112,9 @@ aléatoires en Simple / Double), du plus joué au moins joué. Chaque carte mont
 sur une colonne (ou sa barre, attrapée à la souris) pour la faire défiler, clic pour choisir, Échap pour revenir.
 
 **Formats aléatoires** (Random Battle, Random Doubles, Monotype Random, Hackmons Cup, Doubles Hackmons Cup) : vos
-équipes ne servent pas (le lobby montre des « ? » des deux côtés), Showdown génère six Pokémon pour chaque joueur au début du combat (sets et niveaux de
-Showdown). Pas de version National Dex ni Champions : le moteur de Cobblemon ne les a pas.
+équipes ne servent pas : dès que le format est choisi, Showdown vous génère six Pokémon (sets et niveaux de Showdown, comme
+sur Showdown), que vous voyez dans le lobby et dont vous choisissez le lead (ou les Pokémon, en double). L'équipe adverse reste
+cachée (« ? »). Rechoisir un format aléatoire génère une nouvelle équipe. Pas de version National Dex ni Champions : le moteur de Cobblemon ne les a pas.
 
 **Battle Stadium Singles** (BSS Reg I, Champions BSS) : 6 montrés, **3 choisis** dans l'ordre (le 1 commence), niveau 50.
 

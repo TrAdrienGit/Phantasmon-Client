@@ -37,6 +37,8 @@ public final class BattleLobbyState {
 	private boolean pickMode;
 	/** Showdown generates both teams at the start (random formats): nothing to pick. */
 	private boolean randomTeam;
+	/** Random format: false while the opponent's generated team has not reached the backend. */
+	private boolean opponentTeamGenerated = true;
 	/** Doubles: the Pokémon we picked, in order (1 and 2 lead, left then right). */
 	private List<Integer> ownPicks = List.of();
 	/** Pokémon that go into the battle (VGC: 4 of 6). */
@@ -101,6 +103,7 @@ public final class BattleLobbyState {
 		doubles = "doubles".equals(data.get("game_type"));
 		pickMode = data.get("pick_mode") instanceof Boolean mode ? mode : doubles;
 		randomTeam = Boolean.TRUE.equals(data.get("random_team"));
+		opponentTeamGenerated = !Boolean.FALSE.equals(data.get("opponent_team_generated"));
 		List<Integer> leads = new ArrayList<>();
 		if (data.get("own_leads") instanceof List<?> list) {
 			list.forEach(index -> {
@@ -296,6 +299,15 @@ public final class BattleLobbyState {
 	}
 
 	/** A random format: the players' teams are not used. */
+	/** Random format: false while one of the two teams is still being generated, "Ready" waits for both. */
+	public boolean teamsGenerated() {
+		return !randomTeam || ownTeamSize() > 0 && opponentTeamGenerated;
+	}
+
+	public boolean ownTeamGenerated() {
+		return !randomTeam || ownTeamSize() > 0;
+	}
+
 	public boolean randomTeam() {
 		return randomTeam;
 	}

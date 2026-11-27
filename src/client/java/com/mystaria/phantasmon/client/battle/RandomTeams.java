@@ -21,7 +21,7 @@ import com.mystaria.phantasmon.client.pokemon.showdown.ShowdownPokemon;
  * by Showdown's own team generators, in the engine Cobblemon runs on this client ({@code Teams.generate}), exported
  * as a Showdown paste and read back the way a pasted team is imported. Never stored: they only live for the battle.
  */
-final class RandomTeams {
+public final class RandomTeams {
 
 	private static final Logger LOG = LoggerFactory.getLogger(RandomTeams.class);
 
@@ -32,7 +32,7 @@ final class RandomTeams {
 	 * A team of {@code formatId} (a Showdown id, e.g. "gen9randombattle"), empty if the engine can't make one. Must run
 	 * on the battle thread, after the engine booted.
 	 */
-	static List<PokemonDto> generate(String formatId) {
+	public static List<PokemonDto> generate(String formatId) {
 		String id = formatId == null ? "" : formatId.replaceAll("[^a-z0-9]", "");
 		if (id.isEmpty()) {
 			return List.of();
