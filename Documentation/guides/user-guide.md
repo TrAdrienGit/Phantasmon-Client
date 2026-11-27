@@ -81,7 +81,7 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 1. Visez un joueur et ouvrez la roue de Cobblemon (**R**) → « Combat Ghost ».
 2. L'autre joueur clique **[Accepter]** : l'écran de préparation s'ouvre chez les deux. Vous y voyez votre équipe et
    seulement les modèles et noms des Pokémon adverses. Choisissez vos Ghost ou votre équipe Cobblemon (bouton
-   ⇄), choisissez ensemble le **format** (liste en bas à gauche : Libre, National Dex, Gen 9, Champions, doubles — les Pokémon qui ne
+   ⇄), choisissez ensemble le **format** (bouton en bas à gauche : il ouvre la fenêtre des formats, voir plus bas — les Pokémon qui ne
    le respectent pas sont entourés en rouge, survolez les vôtres pour savoir pourquoi), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
    commence quand les deux joueurs sont prêts. **Timer** (en bas) : 150 s, ensuite le premier Pokémon est choisi
    pour qui n'est pas prêt, et le chrono de combat s'active.
@@ -104,12 +104,25 @@ Pokémon Champions (Pokémon, objets, attaques et talents disponibles dans ce je
 fois, pas de Téracristallisation). Le combat lui-même reste celui de la Gen 9 : vos EV comptent comme d'habitude,
 pas de points de stats à la Champions.
 
-**Combat double** (Doubles OU, Doubles Ubers, Doubles UU, National Dex Doubles, Champions Doubles, Champions VGC, en
-bas de la liste des formats) : deux Pokémon par côté. Dans l'écran de préparation, cliquez vos Pokémon **dans l'ordre** :
+**Fenêtre des formats** : 53 formats Showdown compatibles avec le moteur, en quatre colonnes — **Simple**, **Double**,
+**Aléatoire**, **Autres** (Libre et les « Other Metagames » : AAA, STABmons, Monoletter, Balanced Hackmons, Monocolor,
+NFE…). Chaque colonne est rangée en sous-groupes (National Dex d'abord, puis Gen 9, puis Champions ; les
+aléatoires en Simple / Double), du plus joué au moins joué. Chaque carte montre ses
+étiquettes : NatDex, Champions, niveau imposé, « 3 sur 6 » (Pokémon envoyés au combat), équipes aléatoires. Molette
+sur une colonne (ou sa barre, attrapée à la souris) pour la faire défiler, clic pour choisir, Échap pour revenir.
+
+**Formats aléatoires** (Random Battle, Random Doubles, Monotype Random, Hackmons Cup, Doubles Hackmons Cup) : vos
+équipes ne servent pas (le lobby montre des « ? » des deux côtés), Showdown génère six Pokémon pour chaque joueur au début du combat (sets et niveaux de
+Showdown). Pas de version National Dex ni Champions : le moteur de Cobblemon ne les a pas.
+
+**Battle Stadium Singles** (BSS Reg I, Champions BSS) : 6 montrés, **3 choisis** dans l'ordre (le 1 commence), niveau 50.
+
+**Combat double** (Doubles OU, Doubles Ubers, Doubles UU, National Dex Doubles, Champions Doubles, VGC…, colonne
+Double) : deux Pokémon par côté. Dans l'écran de préparation, cliquez vos Pokémon **dans l'ordre** :
 le 1 commence à gauche, le 2 à droite, les suivants attendent sur le banc dans cet ordre ; recliquer un Pokémon le
 retire (les suivants remontent). Ceux que vous ne choisissez pas suivent dans l'ordre de l'équipe. **Champions VGC**
 se joue comme en tournoi officiel : 6 Pokémon montrés, **4 choisis** pour le combat, niveau 50, sans légendaires
-restreints ni fabuleux. En combat,
+restreints ni fabuleux ; **VGC 2024 Reg G** en autorise un, **VGC 2025 Reg I** deux. En combat,
 l'interface de Cobblemon demande une action pour chacun de vos deux Pokémon, puis la cible. Les PNJ de Phantasmon Events
 peuvent aussi être réglés sur un format double ; pas encore de tournoi en double.
 

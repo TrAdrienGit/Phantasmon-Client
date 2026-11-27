@@ -45,15 +45,16 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static final int TIMER_W = 200;
 	private static final int MUSIC_X = 1055;
 	private static final int MUSIC_W = 200;
-	/** The music screen opens over the lobby: leaving the lobby screen for it is not leaving the lobby. */
-	private boolean openingMusic;
+	/**
+	 * The music screen and the format picker open over the lobby: leaving the lobby screen for them is not leaving the
+	 * lobby.
+	 */
+	private boolean openingOverlay;
 
-	// ---- Battle format drop-down (TODO-24), bottom left; its list opens upward ----
+	// ---- Battle format button (TODO-24), bottom left; it opens the format picker (2026-11-27) ----
 	private static final int FORMAT_X = 27;
 	private static final int FORMAT_W = 280;
 	private static final int FORMAT_ROW_H = 30;
-	/** The format list is long (Smogon, Champions, doubles): its rows are tighter. */
-	private static final int FORMAT_LIST_ROW_H = 26;
 	// ---- Battle ambiance drop-down (Showtime A3), beside the format's; its list opens upward too ----
 	private static final int AMBIANCE_X = FORMAT_X + FORMAT_W + 10;
 	private static final int AMBIANCE_W = 250;
@@ -61,7 +62,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static final int INTRO_X = AMBIANCE_X + AMBIANCE_W + 10;
 	private static final int INTRO_W = 250;
 	private static final int STATUS_X = INTRO_X + INTRO_W + 14;
-	private boolean formatListOpen;
 	private boolean ambianceListOpen;
 	private boolean introListOpen;
 	// ---- Battle field (League Reborn, 2026-11-18): top right of our card's model window; a grid of fields ----
@@ -99,8 +99,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public void removed() {
-		if (openingMusic) {
-			openingMusic = false;
+		if (openingOverlay) {
+			openingOverlay = false;
 			return;
 		}
 		controller.onLobbyScreenRemoved();
@@ -111,7 +111,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	// =====================================================================
 
 	private boolean anyListOpen() {
-		return formatListOpen || ambianceListOpen || introListOpen || fieldListOpen || quitConfirmOpen;
+		return ambianceListOpen || introListOpen || fieldListOpen || quitConfirmOpen;
 	}
 
 	@Override
@@ -122,17 +122,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		double x = toCanvasX(mouseX);
 		double y = toCanvasY(mouseY);
-		if (formatListOpen) {
-			List<BattleLobbyState.FormatOption> formats = state.formats();
-			int top = formatListTop(formats.size(), FORMAT_LIST_ROW_H);
-			for (int i = 0; i < formats.size(); i++) {
-				if (inside(x, y, FORMAT_X, top + i * FORMAT_LIST_ROW_H, FORMAT_W, FORMAT_LIST_ROW_H)) {
-					controller.lobbySetFormat(formats.get(i).id());
-				}
-			}
-			formatListOpen = false;
-			return true;
-		}
 		if (ambianceListOpen) {
 			for (int t = 0; t < 3; t++) {
 				if (inside(x, y, fieldCellX(t), SCENE_TABS_Y, FIELD_W, FORMAT_ROW_H)) {
@@ -183,7 +172,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.lobbyToggleReady();
 		} else if (inside(x, y, FORMAT_X, 849, FORMAT_W, 28)) {
-			formatListOpen = !state.formatFixed();
+			if (!state.formatFixed()) {
+				openingOverlay = true;
+				minecraft.setScreen(new PhantasmonFormatPickerScreen(this, controller));
+			}
 		} else if (inside(x, y, AMBIANCE_X, 849, AMBIANCE_W, 28)) {
 			ambianceListOpen = !state.ambianceFixed();
 		} else if (inside(x, y, INTRO_X, 849, INTRO_W, 28)) {
@@ -193,7 +185,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		} else if (inside(x, y, 1475, 849, 97, 28)) {
 			quitConfirmOpen = true;
 		} else if (inside(x, y, MUSIC_X, 849, MUSIC_W, 28)) {
-			openingMusic = true;
+			openingOverlay = true;
 			minecraft.setScreen(new com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen(this, com.mystaria.phantasmon.client.gui.menu.PhantasmonMenuScreen.Category.MUSIC));
 		} else if (inside(x, y, TIMER_X, 849, TIMER_W, 28)) {
 			controller.lobbyEnableTimer();
@@ -201,7 +193,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			controller.lobbySwitchTeam();
 		} else {
 			int slot = slotAt(x, y);
-			if (slot >= 0 && state.doubles()) {
+			if (slot >= 0 && state.randomTeam()) {
+				// Random format: the team is generated at the start, nothing to pick.
+			} else if (slot >= 0 && state.pickMode()) {
 				controller.lobbyTogglePick(slot);
 			} else if (slot >= 0) {
 				controller.lobbySelectLead(slot);
@@ -214,9 +208,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	@Override
 	public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 		if (keyCode == 256) {
-			if (formatListOpen || ambianceListOpen || introListOpen || fieldListOpen) {
+			if (ambianceListOpen || introListOpen || fieldListOpen) {
 				fieldListOpen = false;
-				formatListOpen = false;
 				ambianceListOpen = false;
 				introListOpen = false;
 				return true;
@@ -257,7 +250,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (state == null) {
 			return;
 		}
-		boolean listOpen = formatListOpen || ambianceListOpen || introListOpen || fieldListOpen;
+		boolean listOpen = ambianceListOpen || introListOpen || fieldListOpen;
 		double mx = quitConfirmOpen || listOpen ? -1 : toCanvasX(mouseX);
 		double my = quitConfirmOpen || listOpen ? -1 : toCanvasY(mouseY);
 		int hovered = slotAt(mx, my);
@@ -274,9 +267,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		renderPlayerCard(graphics, state, false, lookX, lookY, mx, my);
 		renderFooter(graphics, state, mx, my);
 		endCanvas(graphics);
-		if (formatListOpen) {
-			renderFormatList(graphics, state, mouseX, mouseY);
-		}
 		if (ambianceListOpen) {
 			renderAmbianceList(graphics, state, mouseX, mouseY);
 		}
@@ -325,14 +315,21 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private void renderOwnRail(GuiGraphics g, BattleLobbyState state, double mx, double my) {
 		renderRailFrame(g, 15, 72, 194, 758,
 				Component.translatable("phantasmon.battle.lobby.team", controller.localPlayerName()).getString(),
-				state.doubles()
+				state.randomTeam() ? Component.translatable("phantasmon.battle.lobby.rail_hint_random")
+						: state.doubles()
 						? Component.translatable("phantasmon.battle.lobby.rail_hint_own_doubles", state.ownPicks().size(), state.battleSize())
+						: state.pickMode()
+						? Component.translatable("phantasmon.battle.lobby.rail_hint_own_picks", state.ownPicks().size(), state.battleSize())
 						: Component.translatable("phantasmon.battle.lobby.rail_hint_own"));
 		int hovered = state.ownReady() ? -1 : slotAt(mx, my);
 		for (int i = 0; i < BattleLobbyState.TEAM_SIZE; i++) {
+			if (state.randomTeam()) {
+				renderHiddenSlot(g, slotX(i), slotY(i));
+				continue;
+			}
 			PokemonDto pokemon = state.ownSlot(i);
-			int pick = state.doubles() ? state.ownPickNumber(i) : 0;
-			boolean chosen = state.doubles() ? pick > 0 : state.ownLeadSlot(i) >= 0;
+			int pick = state.pickMode() ? state.ownPickNumber(i) : 0;
+			boolean chosen = !state.randomTeam() && (state.pickMode() ? pick > 0 : state.ownLeadSlot(i) >= 0);
 			SlotLook look = pokemon != null && chosen ? SlotLook.SELECTED
 					: (i == hovered && pokemon != null ? SlotLook.HOVER : SlotLook.NORMAL);
 			renderSlot(g, slotX(i), slotY(i), 85, 214, pokemon, look, RAIL_SLOT);
@@ -340,8 +337,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 				renderRuleBreak(g, slotX(i), slotY(i));
 			}
 			if (pokemon != null && pick > 0) {
-				// Doubles: the pick order; 1 and 2 lead, on the left and on the right.
-				String label = pick == 1 ? "1 · " + Component.translatable("phantasmon.battle.lobby.lead_left").getString()
+				// The pick order: in doubles 1 and 2 lead, on the left and on the right; in singles 1 leads.
+				String label = !state.doubles() ? (pick == 1 ? "1 · " + Component.translatable("phantasmon.battle.lobby.lead_first").getString()
+						: String.valueOf(pick))
+						: pick == 1 ? "1 · " + Component.translatable("phantasmon.battle.lobby.lead_left").getString()
 						: pick == 2 ? "2 · " + Component.translatable("phantasmon.battle.lobby.lead_right").getString()
 						: String.valueOf(pick);
 				drawText(g, label, slotX(i) + 6, slotY(i) + 6, 1f, CYAN, true, 1f);
@@ -354,11 +353,21 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 				Component.translatable("phantasmon.battle.lobby.team", state.opponentName()).getString(),
 				Component.translatable("phantasmon.battle.lobby.rail_hint_opponent", state.opponentName()));
 		for (int i = 0; i < BattleLobbyState.TEAM_SIZE; i++) {
+			if (state.randomTeam()) {
+				renderHiddenSlot(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i));
+				continue;
+			}
 			renderSlot(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i), 85, 214, state.opponentSlot(i), SlotLook.NORMAL, RAIL_SLOT, false);
 			if (state.opponentSlot(i) != null && state.opponentFlagged(i)) {
 				renderRuleBreak(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i));
 			}
 		}
+	}
+
+	/** A random format's slot: the team is generated when the battle starts, unknown to both until then. */
+	private void renderHiddenSlot(GuiGraphics g, int x, int y) {
+		renderSlot(g, x, y, 85, 214, null, SlotLook.NORMAL, RAIL_SLOT, false);
+		drawCentered(g, "?", x + 42.5f, y + 80, 6f, TITLE, true, 0f);
 	}
 
 	// ---- Player cards ----
@@ -405,7 +414,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		infoBox(g, x + 9, 506, 559, 200, own
 				? (twoLeads ? "phantasmon.battle.lobby.own_leads" : "phantasmon.battle.lobby.own_lead")
 				: (twoLeads ? "phantasmon.battle.lobby.opponent_leads" : "phantasmon.battle.lobby.opponent_lead"));
-		if (own && twoLeads) {
+		if (state.randomTeam()) {
+			drawCentered(g, "?", x + 288, 548, 6f, TITLE, true, 0f);
+			drawCentered(g, Component.translatable("phantasmon.battle.lobby.random_team").getString(), x + 288, 640, 2f, DIM, false, 0f);
+		} else if (own && twoLeads) {
 			List<Integer> leads = state.ownLeads();
 			renderOwnLeadCompact(g, leads.isEmpty() ? null : state.ownSlot(leads.get(0)), x + 9, "phantasmon.battle.lobby.lead_left");
 			renderOwnLeadCompact(g, leads.size() < 2 ? null : state.ownSlot(leads.get(1)), x + 288, "phantasmon.battle.lobby.lead_right");
@@ -576,8 +588,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 		boolean formatHovered = !state.formatFixed() && inside(mx, my, FORMAT_X, 849, FORMAT_W, 28);
 		renderPrimaryButtonFrame(g, FORMAT_X, 849, FORMAT_W, 28, formatHovered, false);
-		String label = Component.translatable("phantasmon.battle.lobby.format", formatName(state.format())).getString()
-				+ (state.formatFixed() ? "" : "  ▲");
+		String label = Component.translatable("phantasmon.battle.lobby.format",
+				PhantasmonFormatPickerScreen.formatName(state.format())).getString() + (state.formatFixed() ? "" : "  ▸");
 		drawText(g, fitText(label, FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8, 856, 2f, CYAN, false, 0f);
 		// Imposed by an event NPC (2026-11-18): no arrow, no hover, the list stays shut.
 		boolean ambianceHovered = !state.ambianceFixed() && inside(mx, my, AMBIANCE_X, 849, AMBIANCE_W, 28);
@@ -639,14 +651,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	private static int formatListTop(int count, int rowHeight) {
 		return 845 - count * rowHeight;
-	}
-
-	private static String formatName(BattleLobbyState.FormatOption format) {
-		if ("free".equals(format.id())) {
-			return Component.translatable("phantasmon.battle.lobby.format.free").getString();
-		}
-		// "[Gen 9 Champions] National Dex" does not fit the list: "Champions National Dex".
-		return format.name().replace("[Gen 9 Champions] ", "Champions ");
 	}
 
 	// ---- Battle scene (Showtime 1.3, 2026-11-19): presets, stadiums, ambiances, in one string "<ambiance>|<stadium>" ----
@@ -818,33 +822,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			}
 			drawText(g, fitText((selected ? "✔ " : "   ") + sceneOptionName(id), FIELD_W - 16, 2f, false, 0f), cellX + 8,
 					cellY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
-		}
-		endModalLayer(g);
-	}
-
-	/** Above everything (models included), on the canvas transform. */
-	private void renderFormatList(GuiGraphics g, BattleLobbyState state, int mouseX, int mouseY) {
-		beginModalLayer(g, 0f);
-		double mx = toCanvasX(mouseX);
-		double my = toCanvasY(mouseY);
-		List<BattleLobbyState.FormatOption> formats = state.formats();
-		int top = formatListTop(formats.size(), FORMAT_LIST_ROW_H);
-		g.fill(FORMAT_X - 4, top - 4, FORMAT_X + FORMAT_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
-		outline(g, FORMAT_X - 4, top - 4, FORMAT_W + 8, 849 - top + 4, CYAN);
-		for (int i = 0; i < formats.size(); i++) {
-			BattleLobbyState.FormatOption format = formats.get(i);
-			int rowY = top + i * FORMAT_LIST_ROW_H;
-			boolean selected = format.id().equals(state.formatId());
-			boolean hovered = inside(mx, my, FORMAT_X, rowY, FORMAT_W, FORMAT_LIST_ROW_H);
-			if (hovered || selected) {
-				g.fill(FORMAT_X, rowY, FORMAT_X + FORMAT_W, rowY + FORMAT_LIST_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
-			}
-			// A thin line between "Free", the National Dex formats, the Gen 9 ones and the Champions ones.
-			if (i == 1 || "gen9ou".equals(format.id()) || "gen9championsou".equals(format.id()) || "gen9doublesou".equals(format.id())) {
-				g.fill(FORMAT_X + 6, rowY, FORMAT_X + FORMAT_W - 6, rowY + 1, LINE_30);
-			}
-			drawText(g, fitText((selected ? "✔ " : "   ") + formatName(format), FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8,
-					rowY + 5, 2f, selected ? READY_TEXT : WHITE, false, 0f);
 		}
 		endModalLayer(g);
 	}

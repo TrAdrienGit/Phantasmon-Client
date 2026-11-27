@@ -288,18 +288,19 @@ public final class GhostBattles {
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
 			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, String guestAi, HostCallbacks callbacks) {
-		startHostedBattle(hostUuid, hostName, hostTeam, guestUuid, guestName, guestTeam, battleRules, adjustLevel, false, 0,
+		startHostedBattle(hostUuid, hostName, hostTeam, guestUuid, guestName, guestTeam, battleRules, adjustLevel, false, 0, null,
 				hostSink, guestSink, guestAi, callbacks);
 	}
 
 	/**
 	 * {@code doubles}: two Pokémon per side (combat-double-plan.md), the first two of each team leading.
 	 * {@code pickedTeamSize}: Pokémon the AI guest brings out of its team (VGC: 4), 0 = all; a player's team comes
-	 * already cut by the backend.
+	 * already cut by the backend. {@code randomFormat}: a random format's Showdown id (2026-11-27), both teams are then
+	 * generated here by Showdown ({@link RandomTeams}) instead of {@code hostTeam} / {@code guestTeam}; null otherwise.
 	 */
 	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
-			boolean doubles, int pickedTeamSize, java.util.function.Consumer<NetworkPacket<?>> hostSink,
+			boolean doubles, int pickedTeamSize, String randomFormat, java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, String guestAi, HostCallbacks callbacks) {
 		boolean guestIsAi = guestAi != null;
 		com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai = guestIsAi ? ai(guestAi) : null;
@@ -308,8 +309,9 @@ public final class GhostBattles {
 				BattleThread.get().ensureShowdown();
 				ShowdownExtensions.apply();
 				List<BattlePokemon> preTera = new ArrayList<>();
-				List<BattlePokemon> hostPokemon = battleTeam(hostTeam, preTera);
-				List<BattlePokemon> guestPokemon = battleTeam(guestTeam, preTera);
+				boolean random = randomFormat != null && !randomFormat.isEmpty();
+				List<BattlePokemon> hostPokemon = battleTeam(random ? RandomTeams.generate(randomFormat) : hostTeam, preTera);
+				List<BattlePokemon> guestPokemon = battleTeam(random ? RandomTeams.generate(randomFormat) : guestTeam, preTera);
 				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
 					// An add-on's AI may pick its lead against the player's team, as at team preview (Adrien 2026-11-03).
 					guestPokemon = addonAi.orderTeam(guestPokemon, hostPokemon);
