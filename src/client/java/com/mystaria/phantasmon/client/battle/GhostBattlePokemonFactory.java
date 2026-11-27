@@ -43,6 +43,15 @@ public final class GhostBattlePokemonFactory {
 	private GhostBattlePokemonFactory() {
 	}
 
+	/** Every battle copy this factory built (weak: they go with their battle). */
+	private static final Set<Pokemon> COPIES = java.util.Collections.synchronizedSet(
+			java.util.Collections.newSetFromMap(new java.util.WeakHashMap<>()));
+
+	/** A throwaway battle copy built here (hosted Ghost / Cobblemon-team battles), not a real Pokémon. */
+	public static boolean isBattleCopy(Pokemon pokemon) {
+		return COPIES.contains(pokemon);
+	}
+
 	/** {@code null} if the species isn't known to this client's Cobblemon data (can't be battled). */
 	public static Pokemon create(PokemonDto dto) {
 		Species species = PokemonSpecies.INSTANCE.getByName(dto.species());
@@ -52,6 +61,7 @@ public final class GhostBattlePokemonFactory {
 		Map<String, Object> data = dto.data() != null ? dto.data() : Map.of();
 
 		Pokemon pokemon = new Pokemon();
+		COPIES.add(pokemon);
 		pokemon.setSpecies(species);
 		FormData form = PokemonGuiRendering.resolveForm(species, dto.form());
 		if (form != null) {

@@ -11,6 +11,7 @@
 		"InteractWheelGuiAccessor",
 		"InteractWheelGuiFactoryMixin",
 		"PokemonEntityMixin",
+		"PokemonHeldItemSwapMixin",
 		"PokemonRendererMixin",
 		"HidePartyBindingMixin",
 		"PartyShiftBindingMixin",
