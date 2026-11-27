@@ -81,7 +81,7 @@ Pour sortir un autre Pokémon, placez-le d'abord en emplacement 1 dans le PC.
 1. Visez un joueur et ouvrez la roue de Cobblemon (**R**) → « Combat Ghost ».
 2. L'autre joueur clique **[Accepter]** : l'écran de préparation s'ouvre chez les deux. Vous y voyez votre équipe et
    seulement les modèles et noms des Pokémon adverses. Choisissez vos Ghost ou votre équipe Cobblemon (bouton
-   ⇄), choisissez ensemble le **format** (liste en bas à gauche : Libre, National Dex, Gen 9 — les Pokémon qui ne
+   ⇄), choisissez ensemble le **format** (liste en bas à gauche : Libre, National Dex, Gen 9, Champions, doubles — les Pokémon qui ne
    le respectent pas sont entourés en rouge, survolez les vôtres pour savoir pourquoi), cliquez le Pokémon à envoyer en premier (votre lead, que l'adversaire ne voit pas), puis **PRÊT**. Le combat
    commence quand les deux joueurs sont prêts. **Timer** (en bas) : 150 s, ensuite le premier Pokémon est choisi
    pour qui n'est pas prêt, et le chrono de combat s'active.
@@ -95,9 +95,23 @@ droite de l'écran de combat passent à la musique suivante, basculent caméra c
 
 **Nouvelles Méga-Évolutions** (Légendes Z-A / Champions, D-42) : 49 formes, dont Méga-Mélodelfe, Méga-Dracolosse,
 Méga-Raichu X/Y et Méga-Absol Z. Donnez sa Méga-Gemme au Pokémon dans l'éditeur (elle s'importe aussi d'un set
-Showdown) ; elles ne marchent que dans les combats Phantasmon, en format « Libre ». Pour voir leurs modèles, activez
+Showdown) ; elles ne marchent que dans les combats Phantasmon, en format « Libre » ou Champions. Pour voir leurs modèles, activez
 le pack de ressources « Phantasmon Megas » (sans lui, le Pokémon garde son modèle normal ; Heatran, Darkrai,
 Zeraora, Tatsugiri, Magearna et Zygarde n'ont pas encore de modèle).
+
+**Formats Champions** (Champions OU, Champions UU, Champions National Dex) : les équipes suivent les règles de
+Pokémon Champions (Pokémon, objets, attaques et talents disponibles dans ce jeu, niveau 50, un même objet une seule
+fois, pas de Téracristallisation). Le combat lui-même reste celui de la Gen 9 : vos EV comptent comme d'habitude,
+pas de points de stats à la Champions.
+
+**Combat double** (Doubles OU, Doubles Ubers, Doubles UU, National Dex Doubles, Champions Doubles, Champions VGC, en
+bas de la liste des formats) : deux Pokémon par côté. Dans l'écran de préparation, cliquez vos Pokémon **dans l'ordre** :
+le 1 commence à gauche, le 2 à droite, les suivants attendent sur le banc dans cet ordre ; recliquer un Pokémon le
+retire (les suivants remontent). Ceux que vous ne choisissez pas suivent dans l'ordre de l'équipe. **Champions VGC**
+se joue comme en tournoi officiel : 6 Pokémon montrés, **4 choisis** pour le combat, niveau 50, sans légendaires
+restreints ni fabuleux. En combat,
+l'interface de Cobblemon demande une action pour chacun de vos deux Pokémon, puis la cible. Les PNJ de Phantasmon Events
+peuvent aussi être réglés sur un format double ; pas encore de tournoi en double.
 
 **Musiques** (jouées par Cobblemon Battle Showtime depuis D-37) : installez le pack de ressources « Cobblemon Battle Showtime
 Music » (modèle dans `resourcepack-template/` du dépôt `Cobblemon-Battle-Showtime`) et déposez vos `.ogg` dans ses dossiers

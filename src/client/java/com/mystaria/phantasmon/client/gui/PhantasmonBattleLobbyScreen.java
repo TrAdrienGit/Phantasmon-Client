@@ -52,6 +52,8 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private static final int FORMAT_X = 27;
 	private static final int FORMAT_W = 280;
 	private static final int FORMAT_ROW_H = 30;
+	/** The format list is long (Smogon, Champions, doubles): its rows are tighter. */
+	private static final int FORMAT_LIST_ROW_H = 26;
 	// ---- Battle ambiance drop-down (Showtime A3), beside the format's; its list opens upward too ----
 	private static final int AMBIANCE_X = FORMAT_X + FORMAT_W + 10;
 	private static final int AMBIANCE_W = 250;
@@ -108,6 +110,10 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	// Input
 	// =====================================================================
 
+	private boolean anyListOpen() {
+		return formatListOpen || ambianceListOpen || introListOpen || fieldListOpen || quitConfirmOpen;
+	}
+
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
 		BattleLobbyState state = controller.lobby();
@@ -118,9 +124,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		double y = toCanvasY(mouseY);
 		if (formatListOpen) {
 			List<BattleLobbyState.FormatOption> formats = state.formats();
-			int top = formatListTop(formats.size());
+			int top = formatListTop(formats.size(), FORMAT_LIST_ROW_H);
 			for (int i = 0; i < formats.size(); i++) {
-				if (inside(x, y, FORMAT_X, top + i * FORMAT_ROW_H, FORMAT_W, FORMAT_ROW_H)) {
+				if (inside(x, y, FORMAT_X, top + i * FORMAT_LIST_ROW_H, FORMAT_W, FORMAT_LIST_ROW_H)) {
 					controller.lobbySetFormat(formats.get(i).id());
 				}
 			}
@@ -195,7 +201,9 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			controller.lobbySwitchTeam();
 		} else {
 			int slot = slotAt(x, y);
-			if (slot >= 0) {
+			if (slot >= 0 && state.doubles()) {
+				controller.lobbyTogglePick(slot);
+			} else if (slot >= 0) {
 				controller.lobbySelectLead(slot);
 			}
 			// Right rail: read-only preview.
@@ -317,15 +325,26 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	private void renderOwnRail(GuiGraphics g, BattleLobbyState state, double mx, double my) {
 		renderRailFrame(g, 15, 72, 194, 758,
 				Component.translatable("phantasmon.battle.lobby.team", controller.localPlayerName()).getString(),
-				Component.translatable("phantasmon.battle.lobby.rail_hint_own"));
+				state.doubles()
+						? Component.translatable("phantasmon.battle.lobby.rail_hint_own_doubles", state.ownPicks().size(), state.battleSize())
+						: Component.translatable("phantasmon.battle.lobby.rail_hint_own"));
 		int hovered = state.ownReady() ? -1 : slotAt(mx, my);
 		for (int i = 0; i < BattleLobbyState.TEAM_SIZE; i++) {
 			PokemonDto pokemon = state.ownSlot(i);
-			SlotLook look = pokemon != null && i == state.ownLead() ? SlotLook.SELECTED
+			int pick = state.doubles() ? state.ownPickNumber(i) : 0;
+			boolean chosen = state.doubles() ? pick > 0 : state.ownLeadSlot(i) >= 0;
+			SlotLook look = pokemon != null && chosen ? SlotLook.SELECTED
 					: (i == hovered && pokemon != null ? SlotLook.HOVER : SlotLook.NORMAL);
 			renderSlot(g, slotX(i), slotY(i), 85, 214, pokemon, look, RAIL_SLOT);
 			if (pokemon != null && !state.ownIssues(i).isEmpty()) {
 				renderRuleBreak(g, slotX(i), slotY(i));
+			}
+			if (pokemon != null && pick > 0) {
+				// Doubles: the pick order; 1 and 2 lead, on the left and on the right.
+				String label = pick == 1 ? "1 · " + Component.translatable("phantasmon.battle.lobby.lead_left").getString()
+						: pick == 2 ? "2 · " + Component.translatable("phantasmon.battle.lobby.lead_right").getString()
+						: String.valueOf(pick);
+				drawText(g, label, slotX(i) + 6, slotY(i) + 6, 1f, CYAN, true, 1f);
 			}
 		}
 	}
@@ -382,8 +401,15 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		}
 
 		// Lead.
-		infoBox(g, x + 9, 506, 559, 200, own ? "phantasmon.battle.lobby.own_lead" : "phantasmon.battle.lobby.opponent_lead");
-		if (own) {
+		boolean twoLeads = state.doubles();
+		infoBox(g, x + 9, 506, 559, 200, own
+				? (twoLeads ? "phantasmon.battle.lobby.own_leads" : "phantasmon.battle.lobby.own_lead")
+				: (twoLeads ? "phantasmon.battle.lobby.opponent_leads" : "phantasmon.battle.lobby.opponent_lead"));
+		if (own && twoLeads) {
+			List<Integer> leads = state.ownLeads();
+			renderOwnLeadCompact(g, leads.isEmpty() ? null : state.ownSlot(leads.get(0)), x + 9, "phantasmon.battle.lobby.lead_left");
+			renderOwnLeadCompact(g, leads.size() < 2 ? null : state.ownSlot(leads.get(1)), x + 288, "phantasmon.battle.lobby.lead_right");
+		} else if (own) {
 			renderOwnLead(g, state.ownLeadPokemon(), x);
 		} else {
 			drawCentered(g, "?", x + 288, 548, 6f, TITLE, true, 0f);
@@ -440,6 +466,37 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		String itemName = PokemonGuiRendering.heldItemName(heldItemId(lead));
 		if (itemName != null && PokemonGuiRendering.renderHeldItem(g, heldItemId(lead), textX, 640, 20)) {
 			drawText(g, fitText(itemName, maxWidth - 26, 2f, false, 0f), textX + 26, 643, 2f, TEXT2, false, 0f);
+		}
+	}
+
+	/** Doubles: one of our two leads in half the box ({@code x}..{@code x + 279}), its side's label above its name. */
+	private void renderOwnLeadCompact(GuiGraphics g, PokemonDto lead, int x, String sideKey) {
+		if (lead == null) {
+			drawCentered(g, "—", x + 140, 600, 2f, DIM, false, 0f);
+			return;
+		}
+		int boxX = x + 6;
+		int boxY = 540;
+		int boxW = 110;
+		int boxH = 158;
+		g.flush();
+		enableCanvasScissor(g, boxX, boxY, boxW, boxH);
+		PokemonGuiRendering.renderModel(g, lead.species(), lead.form(), lead.isShiny(), PokemonGuiRendering.storedGender(lead),
+				boxX + boxW / 2f, slotModelAnchorY(boxY + boxH / 2f, SLOT_MODEL_SCALE * 0.9f), SLOT_MODEL_SCALE * 0.9f);
+		g.disableScissor();
+		float textX = boxX + boxW + 8;
+		float maxWidth = x + 272 - textX;
+		drawText(g, upper(Component.translatable(sideKey).getString()), textX, 548, 1f, CYAN, true, 1f);
+		String star = lead.isShiny() ? "★ " : "";
+		float starWidth = textWidth(star, 2f, true, 0f);
+		if (!star.isEmpty()) {
+			drawText(g, star, textX, 572, 2f, STAR, true, 0f);
+		}
+		drawText(g, fitText(displayName(lead), maxWidth - starWidth, 2f, true, 0.6f), textX + starWidth, 572, 2f, WHITE, true, 0.6f);
+		drawText(g, Component.translatable("phantasmon.trade.screen.level", lead.level()).getString(), textX, 610, 2f, TEXT2, false, 0f);
+		String itemName = PokemonGuiRendering.heldItemName(heldItemId(lead));
+		if (itemName != null && PokemonGuiRendering.renderHeldItem(g, heldItemId(lead), textX, 645, 20)) {
+			drawText(g, fitText(itemName, maxWidth - 26, 2f, false, 0f), textX + 26, 648, 2f, TEXT2, false, 0f);
 		}
 	}
 
@@ -577,11 +634,19 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 	// ---- Format list ----
 
 	private static int formatListTop(int count) {
-		return 845 - count * FORMAT_ROW_H;
+		return formatListTop(count, FORMAT_ROW_H);
+	}
+
+	private static int formatListTop(int count, int rowHeight) {
+		return 845 - count * rowHeight;
 	}
 
 	private static String formatName(BattleLobbyState.FormatOption format) {
-		return "free".equals(format.id()) ? Component.translatable("phantasmon.battle.lobby.format.free").getString() : format.name();
+		if ("free".equals(format.id())) {
+			return Component.translatable("phantasmon.battle.lobby.format.free").getString();
+		}
+		// "[Gen 9 Champions] National Dex" does not fit the list: "Champions National Dex".
+		return format.name().replace("[Gen 9 Champions] ", "Champions ");
 	}
 
 	// ---- Battle scene (Showtime 1.3, 2026-11-19): presets, stadiums, ambiances, in one string "<ambiance>|<stadium>" ----
@@ -763,23 +828,23 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		double mx = toCanvasX(mouseX);
 		double my = toCanvasY(mouseY);
 		List<BattleLobbyState.FormatOption> formats = state.formats();
-		int top = formatListTop(formats.size());
+		int top = formatListTop(formats.size(), FORMAT_LIST_ROW_H);
 		g.fill(FORMAT_X - 4, top - 4, FORMAT_X + FORMAT_W + 4, 849, PhantasmonTheme.cobblemon() ? 0xF02F2F2F : 0xF0081422);
 		outline(g, FORMAT_X - 4, top - 4, FORMAT_W + 8, 849 - top + 4, CYAN);
 		for (int i = 0; i < formats.size(); i++) {
 			BattleLobbyState.FormatOption format = formats.get(i);
-			int rowY = top + i * FORMAT_ROW_H;
+			int rowY = top + i * FORMAT_LIST_ROW_H;
 			boolean selected = format.id().equals(state.formatId());
-			boolean hovered = inside(mx, my, FORMAT_X, rowY, FORMAT_W, FORMAT_ROW_H);
+			boolean hovered = inside(mx, my, FORMAT_X, rowY, FORMAT_W, FORMAT_LIST_ROW_H);
 			if (hovered || selected) {
-				g.fill(FORMAT_X, rowY, FORMAT_X + FORMAT_W, rowY + FORMAT_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
+				g.fill(FORMAT_X, rowY, FORMAT_X + FORMAT_W, rowY + FORMAT_LIST_ROW_H, selected ? SLOT_SELECTED_BG : SLOT_HOVER_BG);
 			}
-			// A thin line between "Free", the National Dex formats and the Gen 9 ones.
-			if (i == 1 || "gen9ou".equals(format.id())) {
+			// A thin line between "Free", the National Dex formats, the Gen 9 ones and the Champions ones.
+			if (i == 1 || "gen9ou".equals(format.id()) || "gen9championsou".equals(format.id()) || "gen9doublesou".equals(format.id())) {
 				g.fill(FORMAT_X + 6, rowY, FORMAT_X + FORMAT_W - 6, rowY + 1, LINE_30);
 			}
 			drawText(g, fitText((selected ? "✔ " : "   ") + formatName(format), FORMAT_W - 16, 2f, false, 0f), FORMAT_X + 8,
-					rowY + 8, 2f, selected ? READY_TEXT : WHITE, false, 0f);
+					rowY + 5, 2f, selected ? READY_TEXT : WHITE, false, 0f);
 		}
 		endModalLayer(g);
 	}

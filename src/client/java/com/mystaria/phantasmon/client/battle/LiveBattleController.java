@@ -260,10 +260,23 @@ public final class LiveBattleController implements LiveBattleListener {
 	}
 
 	/** Click on one of our rail slots: that Pokémon leads. Only we are told (the opponent must not know). */
+	/** Singles: picks the lead. Only we are told. */
 	public void lobbySelectLead(int index) {
-		if (lobby != null && !lobby.ownReady() && lobby.ownSlot(index) != null && index != lobby.ownLead()) {
-			send("BattleLobbySetLead", Map.of("lobby_uuid", lobby.lobbyUuid(), "index", index));
+		if (lobby == null || lobby.ownReady() || lobby.ownSlot(index) == null || lobby.ownLead() == index) {
+			return;
 		}
+		send("BattleLobbySetLead", Map.of("lobby_uuid", lobby.lobbyUuid(), "index", index));
+	}
+
+	/**
+	 * Doubles: picks this Pokémon next (1 and 2 lead, left then right; the next ones wait on the bench) or, picked
+	 * already, takes it out. Only we are told.
+	 */
+	public void lobbyTogglePick(int index) {
+		if (lobby == null || lobby.ownReady() || lobby.ownSlot(index) == null) {
+			return;
+		}
+		send("BattleLobbyPick", Map.of("lobby_uuid", lobby.lobbyUuid(), "index", index));
 	}
 
 	public void lobbyToggleReady() {
@@ -832,8 +845,8 @@ public final class LiveBattleController implements LiveBattleListener {
 		// Admin solo battle: the guest is a mirror played by Cobblemon's AI here, nothing is relayed to anyone.
 		java.util.function.Consumer<NetworkPacket<?>> guestSink = solo ? packet -> { } : this::relayToGuest;
 		GhostBattles.startHostedBattle(self, selfName, ownTeam, opponentUuid, opponentName, opponentTeam,
-				battleRules(data.get("format")), adjustLevel(data.get("format")),
-				this::deliverToHostUi, guestSink, solo ? soloAi : null, new GhostBattles.HostCallbacks() {
+				battleRules(data.get("format")), adjustLevel(data.get("format")), doubles(data.get("format")),
+				pickedTeamSize(data.get("format")), this::deliverToHostUi, guestSink, solo ? soloAi : null, new GhostBattles.HostCallbacks() {
 					@Override
 					public void started(UUID id) {
 						Minecraft.getInstance().execute(() -> {
@@ -1201,6 +1214,16 @@ public final class LiveBattleController implements LiveBattleListener {
 			list.forEach(rule -> rules.add(String.valueOf(rule)));
 		}
 		return rules;
+	}
+
+	/** Whether the picked format is a doubles one (two Pokémon per side). */
+	private static boolean doubles(Object format) {
+		return format instanceof Map<?, ?> map && "doubles".equals(map.get("game_type"));
+	}
+
+	/** Pokémon each side brings into the battle (VGC: 4 of 6), 0 = the whole team. */
+	private static int pickedTeamSize(Object format) {
+		return format instanceof Map<?, ?> map && map.get("picked_team_size") instanceof Number size ? size.intValue() : 0;
 	}
 
 	/** Level every Pokémon fights at in the picked format (100, 5 in Little Cup), 0 = its own. */

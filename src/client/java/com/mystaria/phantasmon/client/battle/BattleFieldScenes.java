@@ -264,6 +264,8 @@ public final class BattleFieldScenes {
 		final Set<PokemonEntity> leaving = new HashSet<>();
 		/** Battle Pokémon uuid → Tera type, so it glows again when sent back out. */
 		final Map<String, String> tera = new HashMap<>();
+		/** Active Pokémon per trainer: 2 in doubles, side by side. */
+		int slots = 1;
 		int generation;
 
 		Scene(ClientLevel level) {
@@ -282,6 +284,7 @@ public final class BattleFieldScenes {
 		}
 
 		void initialize(BattleInitializePacket init) {
+			slots = BattleVisuals.slotsPerActor(init);
 			for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 				for (var actor : side.getActors()) {
 					trainers.put(actor.getShowdownId(), actor.getUuid());
@@ -358,6 +361,8 @@ public final class BattleFieldScenes {
 			}
 			pending.remove(pnx);
 			PokemonEntity entity = BattleVisuals.sendOutEntity(level, dto, at, BattleVisuals.yawOf(facing), trainer, this::later);
+			Vec3 beside = BattleVisuals.besideOnSlot(at, facing, pnx, slots, entity.getBbWidth());
+			entity.setPos(beside.x, beside.y, beside.z);
 			entities.put(pnx, entity);
 			BattleShowtime.glow(entity, tera.get(dto.getUuid().toString()));
 		}

@@ -72,6 +72,13 @@ public final class BattleVisuals {
 	private static final double SEND_OUT_DISTANCE = 3.0;
 	/** When the opponent has no player entity in this world (debug AI), its Pokémon stands this far in front of us. */
 	private static final double FACING_DISTANCE = 7.0;
+	/**
+	 * Doubles: how far each Pokémon of a side stands from the middle, across the line between the trainers, at
+	 * least; a big one goes farther (its models overflow its hitbox: Mega Metagross touched its partner, 2026-11-27).
+	 */
+	private static final double SLOT_OFFSET = 2.0;
+	private static final double SLOT_WIDTH_FACTOR = 0.9;
+	private static final double SLOT_MARGIN = 1.0;
 
 	private static final ScheduledExecutorService TIMER = Executors.newSingleThreadScheduledExecutor(runnable -> {
 		Thread thread = new Thread(runnable, "phantasmon-battle-visuals");
@@ -81,6 +88,8 @@ public final class BattleVisuals {
 
 	/** Showdown actor id ("p1", "p2") → trainer uuid, from the battle's initialization. */
 	private static final Map<String, UUID> trainers = new HashMap<>();
+	/** Active Pokémon per trainer in this battle: 1, or 2 in doubles (side by side). */
+	private static int slots = 1;
 	/** Slot ("p1a"...) → entity currently standing for it. */
 	private static final Map<String, PokemonEntity> entities = new HashMap<>();
 	/** Entities playing their recall beam, removed once it's over (or right away by {@link #clear}). */
@@ -104,6 +113,11 @@ public final class BattleVisuals {
 		public Vec3 trainerPosition(boolean local) {
 			return BattleVisuals.trainerPosition(local);
 		}
+
+		@Override
+		public List<Entity> activePokemons(boolean local) {
+			return activeEntities(local);
+		}
 	};
 
 	private BattleVisuals() {
@@ -118,6 +132,7 @@ public final class BattleVisuals {
 				com.mystaria.phantasmon.client.compat.BattleExtrasCompat.phantasmonBattleStarted();
 				UUID player = Minecraft.getInstance().player == null ? null : Minecraft.getInstance().player.getUUID();
 				viewpoint = null;
+				slots = slotsPerActor(init);
 				for (var side : new BattleInitializePacket.BattleSideDTO[] { init.getSide1(), init.getSide2() }) {
 					for (var actor : side.getActors()) {
 						trainers.put(actor.getShowdownId(), actor.getUuid());
@@ -231,6 +246,21 @@ public final class BattleVisuals {
 		return null;
 	}
 
+	/** Every active Pokémon of a side, in slot order (two in doubles): Showtime's camera frames them together. */
+	public static List<Entity> activeEntities(boolean local) {
+		String actor = actorId(local);
+		List<Entity> active = new java.util.ArrayList<>();
+		if (actor == null) {
+			return active;
+		}
+		new java.util.TreeMap<>(entities).forEach((pnx, entity) -> {
+			if (pnx.startsWith(actor) && !entity.isRemoved()) {
+				active.add(entity);
+			}
+		});
+		return active;
+	}
+
 	/** Where a side's trainer stands, if loaded (the field before any Pokémon is out). */
 	public static Vec3 trainerPosition(boolean local) {
 		ClientLevel level = Minecraft.getInstance().level;
@@ -296,9 +326,12 @@ public final class BattleVisuals {
 		if (placement == null) {
 			return;
 		}
-
 		PokemonEntity entity = sendOutEntity(level, dto, placement.position(), placement.yaw(), placement.trainer(), BattleVisuals::later,
 				instant);
+		// Doubles: moved aside once its size is known, the bigger the farther.
+		Vec3 facing = Vec3.directionFromRotation(0f, placement.yaw());
+		Vec3 at = besideOnSlot(placement.position(), facing, pnx, slots, entity.getBbWidth());
+		entity.setPos(at.x, at.y, at.z);
 		entities.put(pnx, entity);
 		BattleShowtime.onSentOut(entity, dto.getUuid());
 	}
@@ -448,6 +481,42 @@ public final class BattleVisuals {
 	}
 
 	private record Placement(Vec3 position, float yaw, Player trainer) {
+	}
+
+	/** Active Pokémon per trainer in this battle (1 in singles, 2 in doubles). */
+	static int slotsPerActor(BattleInitializePacket init) {
+		try {
+			return Math.max(1, init.getBattleFormat().getBattleType().getSlotsPerActor());
+		} catch (RuntimeException ex) {
+			return 1;
+		}
+	}
+
+	/** Active Pokémon per trainer in the battle shown here (1 in singles, 2 in doubles): for Showtime's framing. */
+	public static int slots() {
+		return slots;
+	}
+
+	/**
+	 * Where the Pokémon of slot {@code pnx} ("p1a", "p1b"...) stands when its trainer has {@code slots} of them out:
+	 * {@code center} moved across the line to the opponent ({@code facing}), slot a on its trainer's left, as in
+	 * Showdown, farther the wider the Pokémon ({@code width}, its hitbox). One slot: {@code center}.
+	 */
+	static Vec3 besideOnSlot(Vec3 center, Vec3 facing, String pnx, int slots, double width) {
+		if (slots <= 1 || pnx.length() < 3) {
+			return center;
+		}
+		int index = Math.max(0, Math.min(slots - 1, pnx.charAt(2) - 'a'));
+		Vec3 flat = horizontal(facing);
+		if (flat.lengthSqr() < 1.0E-4) {
+			return center;
+		}
+		flat = flat.normalize();
+		// Minecraft: facing south (+z), the left hand points east (+x).
+		Vec3 left = new Vec3(flat.z, 0, -flat.x);
+		double step = Math.max(SLOT_OFFSET, width * SLOT_WIDTH_FACTOR + SLOT_MARGIN) * 2;
+		double offset = ((slots - 1) / 2.0 - index) * step;
+		return center.add(left.scale(offset));
 	}
 
 	/** In front of the trainer, toward the opponent's trainer; falls back to the local player's facing. */

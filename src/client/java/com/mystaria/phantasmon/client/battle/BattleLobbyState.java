@@ -30,6 +30,13 @@ public final class BattleLobbyState {
 	private List<PokemonDto> ownTeam = List.of();
 	private List<PokemonDto> opponentTeam = List.of();
 	private int ownLead;
+	/** Our leads in slot order: one, or two in doubles (left, then right). */
+	private List<Integer> ownLeads = List.of(0);
+	private boolean doubles;
+	/** Doubles: the Pokémon we picked, in order (1 and 2 lead, left then right). */
+	private List<Integer> ownPicks = List.of();
+	/** Pokémon that go into the battle (VGC: 4 of 6). */
+	private int battleSize = TEAM_SIZE;
 	private boolean ownReady;
 	private boolean opponentReady;
 	private int timerTotalSeconds = 150;
@@ -78,6 +85,26 @@ public final class BattleLobbyState {
 		ownTeam = ownTeam(data.get("own_team"));
 		opponentTeam = preview(data.get("opponent_team"));
 		ownLead = data.get("own_lead") instanceof Number lead ? lead.intValue() : 0;
+		doubles = "doubles".equals(data.get("game_type"));
+		List<Integer> leads = new ArrayList<>();
+		if (data.get("own_leads") instanceof List<?> list) {
+			list.forEach(index -> {
+				if (index instanceof Number number) {
+					leads.add(number.intValue());
+				}
+			});
+		}
+		ownLeads = leads.isEmpty() ? List.of(ownLead) : List.copyOf(leads);
+		List<Integer> picks = new ArrayList<>();
+		if (data.get("own_picks") instanceof List<?> list) {
+			list.forEach(index -> {
+				if (index instanceof Number number) {
+					picks.add(number.intValue());
+				}
+			});
+		}
+		ownPicks = List.copyOf(picks);
+		battleSize = data.get("battle_size") instanceof Number size ? size.intValue() : TEAM_SIZE;
 		ownReady = Boolean.TRUE.equals(data.get("own_ready"));
 		opponentReady = Boolean.TRUE.equals(data.get("opponent_ready"));
 		if (data.get("timer_total_seconds") instanceof Number total) {
@@ -211,6 +238,36 @@ public final class BattleLobbyState {
 
 	public PokemonDto ownLeadPokemon() {
 		return ownSlot(ownLead);
+	}
+
+	/** Our leads in slot order: one, or two in doubles (left, then right). */
+	public List<Integer> ownLeads() {
+		return ownLeads;
+	}
+
+	/** The lead slot of team member {@code index} (0 left, 1 right), or -1. */
+	public int ownLeadSlot(int index) {
+		return ownLeads.indexOf(index);
+	}
+
+	/** Doubles: the Pokémon we picked, in order. */
+	public List<Integer> ownPicks() {
+		return ownPicks;
+	}
+
+	/** Doubles: this team slot's place in our picks (1 = left lead, 2 = right lead, 3+ = bench), 0 = not picked. */
+	public int ownPickNumber(int index) {
+		return ownPicks.indexOf(index) + 1;
+	}
+
+	/** Pokémon that go into the battle (VGC: 4 of 6; else the whole team). */
+	public int battleSize() {
+		return battleSize;
+	}
+
+	/** The picked format is a doubles one: two leads. */
+	public boolean doubles() {
+		return doubles;
 	}
 
 	public boolean ownReady() {

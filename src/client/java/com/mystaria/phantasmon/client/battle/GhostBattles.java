@@ -288,6 +288,19 @@ public final class GhostBattles {
 			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
 			java.util.function.Consumer<NetworkPacket<?>> hostSink,
 			java.util.function.Consumer<NetworkPacket<?>> guestSink, String guestAi, HostCallbacks callbacks) {
+		startHostedBattle(hostUuid, hostName, hostTeam, guestUuid, guestName, guestTeam, battleRules, adjustLevel, false, 0,
+				hostSink, guestSink, guestAi, callbacks);
+	}
+
+	/**
+	 * {@code doubles}: two Pokémon per side (combat-double-plan.md), the first two of each team leading.
+	 * {@code pickedTeamSize}: Pokémon the AI guest brings out of its team (VGC: 4), 0 = all; a player's team comes
+	 * already cut by the backend.
+	 */
+	public static void startHostedBattle(UUID hostUuid, String hostName, List<PokemonDto> hostTeam,
+			UUID guestUuid, String guestName, List<PokemonDto> guestTeam, List<String> battleRules, int adjustLevel,
+			boolean doubles, int pickedTeamSize, java.util.function.Consumer<NetworkPacket<?>> hostSink,
+			java.util.function.Consumer<NetworkPacket<?>> guestSink, String guestAi, HostCallbacks callbacks) {
 		boolean guestIsAi = guestAi != null;
 		com.cobblemon.mod.common.api.battles.model.ai.BattleAI ai = guestIsAi ? ai(guestAi) : null;
 		BattleThread.get().submit(() -> {
@@ -300,6 +313,9 @@ public final class GhostBattles {
 				if (ai instanceof PhantasmonBattleAI addonAi && !hostPokemon.isEmpty() && guestPokemon.size() > 1) {
 					// An add-on's AI may pick its lead against the player's team, as at team preview (Adrien 2026-11-03).
 					guestPokemon = addonAi.orderTeam(guestPokemon, hostPokemon);
+				}
+				if (guestIsAi && pickedTeamSize > 0 && guestPokemon.size() > pickedTeamSize) {
+					guestPokemon = new ArrayList<>(guestPokemon.subList(0, pickedTeamSize));
 				}
 				if (hostPokemon.isEmpty() || guestPokemon.isEmpty()) {
 					callbacks.failed();
@@ -321,17 +337,17 @@ public final class GhostBattles {
 				};
 				GhostBattleActor guest = new GhostBattleActor(guestUuid, guestName, guestPokemon, sink);
 				guestRef[0] = guest;
-				// The picked format (TODO-24): Cobblemon's singles plus the rules Showdown's engine applies itself
-				// (Sleep Clause Mod, Terastal Clause...), and the format's level for everyone (0 = their own).
-				BattleFormat singles = BattleFormat.Companion.getGEN_9_SINGLES();
-				java.util.Set<String> rules = new java.util.LinkedHashSet<>(singles.getRuleSet());
+				// The picked format (TODO-24): Cobblemon's singles or doubles plus the rules Showdown's engine applies
+				// itself (Sleep Clause Mod, Terastal Clause...), and the format's level for everyone (0 = their own).
+				BattleFormat base = doubles ? BattleFormat.Companion.getGEN_9_DOUBLES() : BattleFormat.Companion.getGEN_9_SINGLES();
+				java.util.Set<String> rules = new java.util.LinkedHashSet<>(base.getRuleSet());
 				rules.addAll(battleRules);
 				String preTeraRule = PreTerastallization.rule(preTera);
 				if (preTeraRule != null) {
 					rules.add(preTeraRule);
 				}
-				BattleFormat format = singles.copy(singles.getMod(), singles.getBattleType(), rules, singles.getGen(),
-						adjustLevel > 0 ? adjustLevel : singles.getAdjustLevel());
+				BattleFormat format = base.copy(base.getMod(), base.getBattleType(), rules, base.getGen(),
+						adjustLevel > 0 ? adjustLevel : base.getAdjustLevel());
 				BattleStartResult result = BattleRegistry.startBattle(format,
 						new BattleSide(host), new BattleSide(guest), false);
 				if (!(result instanceof SuccessfulBattleStart success)) {
@@ -475,12 +491,24 @@ public final class GhostBattles {
 			if (targets == null || targets.isEmpty()) {
 				return;
 			}
+			// Doubles: the first foe still standing, the one the add-on AIs think against.
 			com.cobblemon.mod.common.battles.Targetable chosen = targets.get(0);
+			com.cobblemon.mod.common.battles.Targetable firstFoe = null;
 			for (com.cobblemon.mod.common.battles.Targetable target : targets) {
-				if (!target.isAllied(active)) {
-					chosen = target;
+				if (target.isAllied(active)) {
+					continue;
+				}
+				if (firstFoe == null) {
+					firstFoe = target;
+				}
+				if (target instanceof com.cobblemon.mod.common.battles.ActiveBattlePokemon slot && slot.getBattlePokemon() != null
+						&& slot.getBattlePokemon().getHealth() > 0) {
+					firstFoe = target;
 					break;
 				}
+			}
+			if (firstFoe != null) {
+				chosen = firstFoe;
 			}
 			move.setTargetPnx(chosen.getPNX());
 			return;
