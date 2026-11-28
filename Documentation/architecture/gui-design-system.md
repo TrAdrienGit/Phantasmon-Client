@@ -78,6 +78,17 @@ l'éditeur), 4 attaques avec leur type, tableau IV/EV et total EV.
   le 1er de l'équipe et inversement), par les déplacements habituels du backend (D-04) envoyés l'un après l'autre.
   Le type de chaque boîte n'est gardé que côté client (`pokemon/PcBoxTypes`, `config/phantasmon-pc-boxes.json`, par
   propriétaire du PC) : rien sur le backend.
+- Lignes d'équipe (2026-11-28) : chaque bandeau (136 px, pas de 142 px à partir de y = 120) porte un bandeau de
+  20 px au-dessus de ses cases (112 px, `TEAM_GRID_SLOT`) : nom de l'équipe (clic = champ de saisie comme le nom de
+  boîte), puce de format (clic = `PhantasmonFormatPickerScreen` avec une `Source` du PC, clic droit = aucun format),
+  état de la vérification à droite. Nom et format gardés dans `config/phantasmon-pc-boxes.json` (`rows`,
+  `"boîte:ligne"`). Vérification par `POST /battles/validate` (même validateur que le lobby), relancée quand les
+  Pokémon ou le format de la ligne changent ; un Pokémon fautif est entouré en rouge (`renderRuleBreak`, partagé
+  avec le lobby) et la raison s'affiche sur la vue 3D de la fiche (`renderViewMessage`, partagé aussi). Pas de
+  vérification sur le PC d'un autre joueur (admin).
+- Animations d'ambiance du PC (2026-11-28) : modèles animés (`beginAnimated("pc")`, le Pokémon cliqué joue son cri
+  sans son, dans sa case et sur la fiche), reflets qui courent sur les lignes de titre et les bandeaux d'équipe,
+  poussière dans la vue 3D de la fiche (`renderViewportFx`), contour de la case sélectionnée qui respire.
 - Recherche (TODO-38, 2026-11-11) : champ dans le bandeau droit de l'en-tête (clic ou Ctrl+F ; ✕ l'efface ; Échap /
   Entrée rendent le clavier). Chaque mot doit se retrouver parmi les noms (surnom, espèce en français et en anglais),
   les types et le type Téra, « shiny » / « chromatique », l'objet, le talent, la nature et les attaques, sans tenir

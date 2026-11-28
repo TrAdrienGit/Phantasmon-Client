@@ -70,7 +70,7 @@ public final class PokemonGuiRendering {
 		}
 	};
 	private static String animationScope;
-	private static String pendingCry;
+	private static final Set<String> pendingCries = new HashSet<>();
 
 	/**
 	 * From here to {@link #endAnimated()}, the models drawn play their idle animation (one state per spot on screen,
@@ -82,11 +82,14 @@ public final class PokemonGuiRendering {
 
 	public static void endAnimated() {
 		animationScope = null;
+		pendingCries.clear(); // cries for models not drawn this frame are dropped
 	}
 
 	/** The animated model of {@code speciesId} drawn at {@code centerX} plays its cry animation once, next frame. */
 	public static void playCry(String speciesId, float centerX) {
-		pendingCry = speciesId == null ? null : speciesId.toLowerCase(Locale.ROOT) + "@" + Math.round(centerX);
+		if (speciesId != null) {
+			pendingCries.add(speciesId.toLowerCase(Locale.ROOT) + "@" + Math.round(centerX));
+		}
 	}
 
 	/** The live state of the model about to be drawn, advanced by the time since its last frame (null when not animating). */
@@ -98,8 +101,7 @@ public final class PokemonGuiRendering {
 				+ new java.util.TreeSet<>(aspects);
 		Animated anim = ANIMATED.computeIfAbsent(key, Animated::new);
 		String cry = speciesId.toLowerCase(Locale.ROOT) + "@" + Math.round(centerX);
-		if (cry.equals(pendingCry)) {
-			pendingCry = null;
+		if (pendingCries.remove(cry)) {
 			anim.state.getActiveAnimations().clear();
 			anim.state.addFirstAnimation(Set.of("cry"));
 		}

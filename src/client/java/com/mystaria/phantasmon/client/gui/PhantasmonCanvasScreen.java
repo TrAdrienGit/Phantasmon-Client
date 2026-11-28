@@ -375,6 +375,100 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 		raisedEdge(g, x, y, w, h);
 	}
 
+	/** Seconds on a looping clock, for the menus' idle animations. */
+	protected static float clockSeconds() {
+		return (System.currentTimeMillis() % 3_600_000L) / 1000f;
+	}
+
+	// ---- Idle animations (2026-11-28): small movements that keep the menus alive (lobby, PC) ----
+
+	/** A short light running along a horizontal line ({@code x}..{@code x + w} at {@code y}), every {@code period} s. */
+	protected void renderGlint(GuiGraphics g, int x, int y, int w, int thickness, float period, float delay, int color) {
+		float phase = ((clockSeconds() + delay) % period) / period;
+		float travel = phase * 1.6f - 0.3f; // part of the period with no light
+		if (travel < 0f || travel > 1f) {
+			return;
+		}
+		int center = x + Math.round(travel * w);
+		for (int i = -30; i <= 30; i += 3) {
+			float alpha = 0.6f * (1f - Math.abs(i) / 31f);
+			int l = Math.max(x, center + i);
+			int r = Math.min(x + w, center + i + 3);
+			if (r > l) {
+				g.fill(l, y, r, y + thickness, withAlpha(color | 0xFF000000, alpha));
+			}
+		}
+	}
+
+	/** Dust motes drifting up through a model window, behind the model. */
+	protected void renderDust(GuiGraphics g, int x, int y, int w, int h, int seed, int color) {
+		float t = clockSeconds();
+		for (int i = 0; i < 16; i++) {
+			int hash = (i * 73856093) ^ (seed * 19349663);
+			float fx = ((hash >>> 3) & 1023) / 1023f;
+			float speed = 8f + ((hash >>> 13) & 15);
+			float start = ((hash >>> 17) & 1023) / 1023f;
+			float rise = ((t * speed / h) + start) % 1f;
+			float px = x + 6 + fx * (w - 12) + (float) Math.sin(t * 0.7f + i) * 6f;
+			float py = y + h - 6 - rise * (h - 12);
+			float alpha = (float) Math.sin(rise * Math.PI) * 0.35f;
+			int size = 1 + ((hash >>> 23) & 1);
+			g.fill(Math.round(px), Math.round(py), Math.round(px) + size, Math.round(py) + size, withAlpha(color | 0xFF000000, alpha));
+		}
+	}
+
+	/** {@code text} cut into lines at most {@code width} wide (2× text), {@code maxLines} at most (the last one cut short). */
+	protected java.util.List<String> wrap(String text, float width, int maxLines) {
+		java.util.List<String> lines = new java.util.ArrayList<>();
+		StringBuilder line = new StringBuilder();
+		for (String word : text.split(" ")) {
+			String next = line.isEmpty() ? word : line + " " + word;
+			if (textWidth(next, 2f, false, 0f) <= width || line.isEmpty()) {
+				line = new StringBuilder(next);
+			} else {
+				lines.add(line.toString());
+				line = new StringBuilder(word);
+			}
+		}
+		if (!line.isEmpty()) {
+			lines.add(line.toString());
+		}
+		if (lines.size() > maxLines) {
+			java.util.List<String> cut = new java.util.ArrayList<>(lines.subList(0, maxLines));
+			cut.set(maxLines - 1, fitText(cut.get(maxLines - 1) + " " + lines.get(maxLines), width, 2f, false, 0f));
+			return cut;
+		}
+		return lines;
+	}
+
+	/** Over the card's 3D view background, under its badges and model: a screen's idle effects (the PC: dust). */
+	protected void renderViewportFx(GuiGraphics g, int dx) {
+	}
+
+	/** A Pokémon breaking a battle format: its case circled in red, a "!" in its corner (lobby, PC team rows). */
+	protected void renderRuleBreak(GuiGraphics g, int x, int y, int w, int h) {
+		glowInside(g, x, y, w, h, 0xFF5078, 0.35f, 8);
+		outline(g, x - 2, y - 2, w + 4, h + 4, DANGER_BORDER);
+		outline(g, x - 1, y - 1, w + 2, h + 2, DANGER_BORDER);
+		outline(g, x, y, w, h, DANGER_BORDER);
+		drawText(g, "!", x + 8, y + h - 24, 2f, DANGER_BORDER, true, 0f);
+	}
+
+	/** A message box in the middle of a model window ({@code viewX, viewY, viewW, viewH}), its border and bar in {@code border}. */
+	protected void renderViewMessage(GuiGraphics g, int viewX, int viewY, int viewW, int viewH, String text, int border, int color) {
+		int boxW = Math.min(460, viewW - 40);
+		int x = viewX + (viewW - boxW) / 2;
+		java.util.List<String> lines = wrap(text, boxW - 28, 4);
+		int boxH = 14 + lines.size() * 22;
+		int y = viewY + (viewH - boxH) / 2;
+		g.fill(x, y, x + boxW, y + boxH, PhantasmonTheme.cobblemon() ? 0xFF2F2F2F : 0xFF081422);
+		outline(g, x, y, boxW, boxH, border);
+		g.fill(x, y, x + 4, y + boxH, border);
+		for (int i = 0; i < lines.size(); i++) {
+			drawText(g, lines.get(i), x + 16, y + 10 + i * 22, 2f, color, false, 0f);
+		}
+	}
+
 	/** Rail frame (Z05): gradient, border, spaced uppercase title with its separator, and the 2-line hint box at the bottom (Z11). */
 	protected void renderRailFrame(GuiGraphics g, int x, int y, int w, int h, String title, Component hint) {
 		renderRailFrame(g, x, y, w, h, title, hint, false);
@@ -553,6 +647,7 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 	/** Z14-Z16: halo/grid background, type badges, shiny star, floating 3D model with its shadow. */
 	private void renderViewport(GuiGraphics g, PokemonDto pokemon, Look info, int dx) {
 		blitTexture(g, TEX_VIEWPORT, 220 + dx, 117, 575, 235);
+		renderViewportFx(g, dx);
 
 		int badgeX = 229 + dx;
 		for (ElementalType type : info.types()) {

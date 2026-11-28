@@ -24,6 +24,12 @@ Automatique en entrant dans un monde si le service Phantasmon est disponible. Si
   part dans le premier emplacement libre du PC (boîte 1 d'abord). Équipe ou PC plein : message en bas, rien ne bouge.
 - **Changer de boîte** : molette, flèches ← →, ou ◀ ▶. Fonctionne aussi pendant un glisser, pour déposer dans une
   autre boîte.
+- **Boîte équipes** (bouton BOÎTE VRAC / BOÎTE ÉQUIPES en haut de la boîte) : une équipe par ligne. Double-clic sur
+  un Pokémon de la ligne : la ligne et votre équipe s'échangent. Au-dessus de chaque ligne :
+  - son **nom** : cliquez dessus pour le changer (Entrée garde, Échap annule, vide = « Équipe n ») ;
+  - son **format** (« + Format ») : cliquez pour en choisir un dans la même liste que le lobby, clic droit pour
+    l'enlever. La ligne est alors vérifiée : « ✔ Valide », ou « ✕ n invalide(s) » avec les Pokémon fautifs entourés
+    en rouge ; survolez-en un (ou sélectionnez-le) pour lire pourquoi, par-dessus le modèle de la fiche.
 - **IMPORTER** : copiez un ou plusieurs Pokémon au format Pokémon Showdown (depuis Showdown, un calculateur de
   dégâts…), puis cliquez. Ils arrivent dans les premières cases libres.
 - **ÉDITER** ouvre l'éditeur. **SUPPRIMER** (ou Suppr) demande confirmation : la suppression est définitive.

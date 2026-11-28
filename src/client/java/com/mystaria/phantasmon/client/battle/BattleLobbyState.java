@@ -143,18 +143,7 @@ public final class BattleLobbyState {
 		fieldFixed = Boolean.TRUE.equals(data.get("field_fixed"));
 		fields = data.get("fields") instanceof List<?> ids ? ids.stream().map(String::valueOf).toList() : List.of();
 		if (data.get("formats") instanceof List<?> list) {
-			List<FormatOption> options = new ArrayList<>();
-			for (Object entry : list) {
-				if (entry instanceof Map<?, ?> map && map.get("id") != null) {
-					boolean twin = "doubles".equals(map.get("game_type"));
-					options.add(new FormatOption(map.get("id").toString(), String.valueOf(map.get("name")), twin,
-							map.get("column") == null ? (twin ? "DOUBLES" : "SINGLES") : map.get("column").toString(),
-							Boolean.TRUE.equals(map.get("natdex")), Boolean.TRUE.equals(map.get("champions")),
-							Boolean.TRUE.equals(map.get("random_team")), number(map.get("adjust_level"), 0),
-							number(map.get("picked_team_size"), 0), number(map.get("max_team_size"), 6)));
-				}
-			}
-			formats = options;
+			formats = parseFormats(list);
 		}
 		List<List<Issue>> issues = new ArrayList<>();
 		if (data.get("own_team_issues") instanceof List<?> perMember) {
@@ -310,6 +299,22 @@ public final class BattleLobbyState {
 
 	public boolean randomTeam() {
 		return randomTeam;
+	}
+
+	/** The backend's format entries (lobby update, {@code GET /battles/formats}) as picker options. */
+	public static List<FormatOption> parseFormats(List<?> list) {
+		List<FormatOption> options = new ArrayList<>();
+		for (Object entry : list) {
+			if (entry instanceof Map<?, ?> map && map.get("id") != null) {
+				boolean twin = "doubles".equals(map.get("game_type"));
+				options.add(new FormatOption(map.get("id").toString(), String.valueOf(map.get("name")), twin,
+						map.get("column") == null ? (twin ? "DOUBLES" : "SINGLES") : map.get("column").toString(),
+						Boolean.TRUE.equals(map.get("natdex")), Boolean.TRUE.equals(map.get("champions")),
+						Boolean.TRUE.equals(map.get("random_team")), number(map.get("adjust_level"), 0),
+						number(map.get("picked_team_size"), 0), number(map.get("max_team_size"), 6)));
+			}
+		}
+		return options;
 	}
 
 	private static int number(Object value, int fallback) {

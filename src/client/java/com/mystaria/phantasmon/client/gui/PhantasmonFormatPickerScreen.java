@@ -16,7 +16,8 @@ import com.mystaria.phantasmon.client.battle.LiveBattleController;
  * first, then by popularity), split into sub-groups (National Dex, Gen 9, Champions; random ones by singles /
  * doubles). A card shows the format's name and its tags (National Dex, level, Pokémon sent out, doubles, random
  * teams); a click picks it and goes back to the lobby. Each column scrolls on its own, with the wheel or by dragging
- * its scroll bar.
+ * its scroll bar. The PC uses it too (2026-11-28), to give a team row its format: a {@link Source} says where the
+ * formats come from and what a pick does.
  */
 public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 
@@ -46,8 +47,25 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 	private static final int TAG_PICK = 0xFF8E44AD;
 	private static final int TAG_LEVEL = 0xFF6C7A89;
 
-	private final PhantasmonBattleLobbyScreen lobbyScreen;
-	private final LiveBattleController controller;
+	/** Where the formats come from, which one is current, what a pick does and where the window goes back to. */
+	public interface Source {
+		List<BattleLobbyState.FormatOption> formats();
+
+		/** The current format's id, or null for none. */
+		String formatId();
+
+		/** The current format's name, for the header. */
+		String currentName();
+
+		void pick(BattleLobbyState.FormatOption format);
+
+		void back();
+
+		/** False once the window has nothing left to do (the lobby ended, its format got locked): it goes back. */
+		boolean alive();
+	}
+
+	private final Source source;
 	private final int[] scroll = new int[COLUMNS.length];
 	private boolean scrolledToSelection;
 	/** The column whose scroll bar is being dragged (-1: none), and where in its thumb it was grabbed. */
@@ -55,17 +73,55 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 	private double dragOffset;
 
 	public PhantasmonFormatPickerScreen(PhantasmonBattleLobbyScreen lobbyScreen, LiveBattleController controller) {
+		this(lobbySource(lobbyScreen, controller));
+	}
+
+	public PhantasmonFormatPickerScreen(Source source) {
 		super(Component.translatable("phantasmon.battle.format_picker.title"));
-		this.lobbyScreen = lobbyScreen;
-		this.controller = controller;
+		this.source = source;
+	}
+
+	/** The battle lobby's format: a pick changes it (if it is another one), then back to the lobby. */
+	private static Source lobbySource(PhantasmonBattleLobbyScreen lobbyScreen, LiveBattleController controller) {
+		return new Source() {
+			@Override
+			public List<BattleLobbyState.FormatOption> formats() {
+				return controller.lobby() == null ? List.of() : controller.lobby().formats();
+			}
+
+			@Override
+			public String formatId() {
+				return controller.lobby() == null ? null : controller.lobby().formatId();
+			}
+
+			@Override
+			public String currentName() {
+				return controller.lobby() == null ? "" : formatName(controller.lobby().format());
+			}
+
+			@Override
+			public void pick(BattleLobbyState.FormatOption format) {
+				if (controller.lobby() != null && !format.id().equals(controller.lobby().formatId())) {
+					controller.lobbySetFormat(format.id());
+				}
+			}
+
+			@Override
+			public void back() {
+				// The lobby ended (battle started, cancelled): nothing to go back to.
+				net.minecraft.client.Minecraft.getInstance().setScreen(controller.lobby() != null ? lobbyScreen : null);
+			}
+
+			@Override
+			public boolean alive() {
+				return controller.lobby() != null && !controller.lobby().formatFixed();
+			}
+		};
 	}
 
 	@Override
 	public void tick() {
-		BattleLobbyState state = controller.lobby();
-		if (state == null) {
-			minecraft.setScreen(null); // the lobby ended (battle started, cancelled): nothing to go back to
-		} else if (state.formatFixed()) {
+		if (!source.alive()) {
 			back();
 		}
 	}
@@ -85,7 +141,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void back() {
-		minecraft.setScreen(controller.lobby() != null ? lobbyScreen : null);
+		source.back();
 	}
 
 	// =====================================================================
@@ -94,8 +150,8 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
-		BattleLobbyState state = controller.lobby();
-		if (button != 0 || state == null) {
+		Source state = source;
+		if (button != 0) {
 			return super.mouseClicked(mouseX, mouseY, button);
 		}
 		double x = toCanvasX(mouseX);
@@ -118,9 +174,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		}
 		BattleLobbyState.FormatOption format = formatAt(state, x, y);
 		if (format != null) {
-			if (!format.id().equals(state.formatId())) {
-				controller.lobbySetFormat(format.id());
-			}
+			source.pick(format);
 			back();
 		}
 		return true;
@@ -128,8 +182,8 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-		BattleLobbyState state = controller.lobby();
-		if (dragColumn < 0 || state == null) {
+		Source state = source;
+		if (dragColumn < 0) {
 			return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
 		}
 		scrollThumbTo(state, dragColumn, toCanvasY(mouseY) - dragOffset);
@@ -144,9 +198,9 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-		BattleLobbyState state = controller.lobby();
+		Source state = source;
 		int column = columnAt(toCanvasX(mouseX), toCanvasY(mouseY));
-		if (state == null || column < 0) {
+		if (column < 0) {
 			return false;
 		}
 		scroll[column] = clampScroll(state, column, scroll[column] - (int) Math.round(scrollY * (CARD_H + CARD_GAP)));
@@ -154,7 +208,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 	}
 
 	/** Puts the thumb's top at {@code thumbTop} (canvas y): the column scrolls in proportion. */
-	private void scrollThumbTo(BattleLobbyState state, int column, double thumbTop) {
+	private void scrollThumbTo(Source state, int column, double thumbTop) {
 		int[] thumb = thumb(state, column);
 		int range = LIST_H - thumb[1];
 		double ratio = range <= 0 ? 0 : (thumbTop - LIST_TOP) / range;
@@ -163,7 +217,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 	}
 
 	/** The scroll thumb of a column: {top, height}. */
-	private int[] thumb(BattleLobbyState state, int column) {
+	private int[] thumb(Source state, int column) {
 		int content = contentHeight(layout(state, column));
 		int thumbH = Math.max(30, LIST_H * LIST_H / Math.max(1, content));
 		int thumbY = LIST_TOP + (LIST_H - thumbH) * scroll[column] / Math.max(1, content - LIST_H);
@@ -187,7 +241,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		return -1;
 	}
 
-	private BattleLobbyState.FormatOption formatAt(BattleLobbyState state, double x, double y) {
+	private BattleLobbyState.FormatOption formatAt(Source state, double x, double y) {
 		int column = columnAt(x, y);
 		if (column < 0 || y < LIST_TOP || y >= LIST_BOTTOM) {
 			return null;
@@ -224,7 +278,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		return format.champions() ? "champions" : format.natDex() ? "natdex" : "gen9";
 	}
 
-	private static List<Row> layout(BattleLobbyState state, int column) {
+	private static List<Row> layout(Source state, int column) {
 		List<BattleLobbyState.FormatOption> formats = column(state, column);
 		List<Row> rows = new ArrayList<>();
 		int y = 0;
@@ -257,15 +311,15 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		return last.y() + (last.format() != null ? CARD_H : HEADER_H);
 	}
 
-	private boolean overflows(BattleLobbyState state, int column) {
+	private boolean overflows(Source state, int column) {
 		return contentHeight(layout(state, column)) > LIST_H;
 	}
 
-	private int clampScroll(BattleLobbyState state, int column, int value) {
+	private int clampScroll(Source state, int column, int value) {
 		return Math.max(0, Math.min(value, Math.max(0, contentHeight(layout(state, column)) - LIST_H)));
 	}
 
-	private static List<BattleLobbyState.FormatOption> column(BattleLobbyState state, int column) {
+	private static List<BattleLobbyState.FormatOption> column(Source state, int column) {
 		List<BattleLobbyState.FormatOption> formats = new ArrayList<>();
 		for (BattleLobbyState.FormatOption format : state.formats()) {
 			if (COLUMNS[column].equals(format.column())) {
@@ -281,11 +335,8 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-		BattleLobbyState state = controller.lobby();
+		Source state = source;
 		renderWorldBackdrop(graphics, mouseX, mouseY, partialTick);
-		if (state == null) {
-			return;
-		}
 		if (!scrolledToSelection) {
 			// Opened on a format far down a column: that column starts on it.
 			scrolledToSelection = true;
@@ -303,7 +354,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		renderRootPanel(graphics);
 		renderHeaderPlates(graphics);
 		drawText(graphics, upper(Component.translatable("phantasmon.battle.format_picker.title").getString()), 31, 32, 2f, WHITE, true, 1.5f);
-		String current = Component.translatable("phantasmon.battle.format_picker.current", formatName(state.format())).getString();
+		String current = Component.translatable("phantasmon.battle.format_picker.current", state.currentName()).getString();
 		float currentWidth = Math.min(textWidth(current, 2f, false, 0f), 600);
 		drawText(graphics, fitText(current, 600, 2f, false, 0f), CLOSE_X - 16 - currentWidth, 32, 2f, CYAN, false, 0f);
 		renderCloseButton(graphics, CLOSE_X, CLOSE_Y, CLOSE_SIZE, inside(mx, my, CLOSE_X, CLOSE_Y, CLOSE_SIZE, CLOSE_SIZE));
@@ -315,7 +366,7 @@ public final class PhantasmonFormatPickerScreen extends PhantasmonCanvasScreen {
 		endCanvas(graphics);
 	}
 
-	private void renderColumn(GuiGraphics g, BattleLobbyState state, int column, BattleLobbyState.FormatOption hovered,
+	private void renderColumn(GuiGraphics g, Source state, int column, BattleLobbyState.FormatOption hovered,
 			double mx, double my) {
 		int x = columnX(column);
 		List<Row> rows = layout(state, column);

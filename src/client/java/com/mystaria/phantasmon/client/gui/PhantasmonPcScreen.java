@@ -14,8 +14,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 
 import com.mystaria.phantasmon.client.auth.AuthSession;
+import com.mystaria.phantasmon.client.battle.BattleLobbyState;
 import com.mystaria.phantasmon.client.network.BackendApiException;
 import com.mystaria.phantasmon.client.network.BackendErrorMessages;
+import com.mystaria.phantasmon.client.pokemon.PcBoxTypes;
 import com.mystaria.phantasmon.client.pokemon.PokemonClient;
 import com.mystaria.phantasmon.client.pokemon.PokemonCreateRequestDto;
 import com.mystaria.phantasmon.client.pokemon.PokemonDto;
@@ -75,8 +77,19 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final int GRID_SLOT_H = 132;
 	private static final int GRID_GAP = 8;
 	/** Team boxes (TODO-36): shorter slots, wider gaps between the rows, the same overall height. */
-	private static final int TEAM_SLOT_H = 124;
-	private static final int TEAM_ROW_GAP = 18;
+	/** Team box (2026-11-28): one band per team row, a strip on top (name, format, check), then its six cases. */
+	private static final int TEAM_BAND_TOP = 120;
+	private static final int TEAM_BAND_H = 136;
+	private static final int TEAM_BAND_PITCH = 142;
+	private static final int ROW_HEADER_Y = 2;
+	private static final int ROW_HEADER_H = 20;
+	private static final int TEAM_SLOT_TOP = 23;
+	private static final int TEAM_SLOT_H = 112;
+	private static final int ROW_NAME_X = 822;
+	private static final int ROW_NAME_W = 338;
+	private static final int ROW_FORMAT_X = 1168;
+	private static final int ROW_FORMAT_W = 220;
+	private static final int ROW_STATUS_RIGHT = 1572;
 	/** The box type switch, in the box header, left of ▶. */
 	private static final int TYPE_W = 170;
 	private static final int TYPE_X = NEXT_X - 10 - TYPE_W;
@@ -93,6 +106,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private static final int[] TEAM_COLORS = { 0xFF38C4BC, 0xFF9B7BFF, 0xFFFFB347, 0xFFFF6B8B, 0xFF7BD86B };
 	/** Grid slots are shorter than the rail's: same layout logic; model ×2 after Adrien's capture (2026-10-02, too small). */
 	private static final SlotLayout GRID_SLOT = new SlotLayout(16, 92, SLOT_MODEL_SCALE * 88 / 142f * 2f, 112, GRID_SLOT_W - 24, 84, 18);
+	/** A team row's case: a little shorter, under the row's strip. */
+	private static final SlotLayout TEAM_GRID_SLOT = new SlotLayout(14, 80, GRID_SLOT.modelScale() * 80 / 92f, 99, GRID_SLOT_W - 24, 76, 16);
 
 	// ---- Header / footer buttons ----
 	/** Red ✕ closing the PC, at the right end of the right header plate (Adrien 2026-10-03). */
@@ -155,6 +170,18 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	private final java.util.Map<UUID, String> searchText = new java.util.HashMap<>();
 	/** The box name being typed (click on the box title), or null. */
 	private String renaming;
+	/** The team row whose name {@link #renaming} is, -1 for the box's name. */
+	private int renamingRow = -1;
+
+	/** The formats a team row may take (fetched once per game; Showdown's random teams left out), null until known. */
+	private static List<BattleLobbyState.FormatOption> rowFormats;
+	private static boolean rowFormatsAsked;
+	/** Per team row of the current box: what its check depends on (format, Pokémon), null for no check. */
+	private final String[] rowKeys = new String[BOX_ROWS];
+	/** Team row checks, by key: per case, the rules its Pokémon breaks; {@link #CHECK_FAILED} if the backend could not tell. */
+	private final java.util.Map<String, List<List<BattleLobbyState.Issue>>> rowChecks = new java.util.HashMap<>();
+	private final java.util.Set<String> rowChecksRunning = new java.util.HashSet<>();
+	private static final List<List<BattleLobbyState.Issue>> CHECK_FAILED = java.util.Collections.unmodifiableList(new ArrayList<>());
 
 	private boolean loading;
 	private String statusMessage;
@@ -202,6 +229,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PC_LOGIN);
 		}
 		refresh();
+		loadRowFormats();
 	}
 
 	/** Closed by the player (Escape, the close button) — opening the editor doesn't come here. */
@@ -229,6 +257,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			return;
 		}
 		loading = true;
+		rowChecks.values().removeIf(check -> check == CHECK_FAILED); // asked again
 		pokemonClient.listForOwner(session.accessToken(), someoneElses() ? ownerUuid : session.playerUuid())
 				.thenAccept(pokemons -> Minecraft.getInstance().execute(() -> {
 					this.allPokemon = List.of(pokemons);
@@ -264,6 +293,172 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		if (selectedUuid != null && selectedPokemon() == null) {
 			selectedUuid = null;
 		}
+		checkRows();
+	}
+
+	// ---- Team rows (2026-11-28): a name, a format, the row checked against it ----
+
+	/** The formats list, once per game: the team rows' format picker and chips. */
+	private void loadRowFormats() {
+		if (rowFormatsAsked || !session.isAuthenticated()) {
+			return;
+		}
+		rowFormatsAsked = true;
+		pokemonClient.battleFormats(session.accessToken())
+				.thenAccept(list -> Minecraft.getInstance().execute(() -> rowFormats = BattleLobbyState.parseFormats(Arrays.asList(list))
+						.stream().filter(format -> !format.randomTeam()).toList()))
+				.exceptionally(ex -> {
+					Minecraft.getInstance().execute(() -> rowFormatsAsked = false); // asked again next time the PC opens
+					return null;
+				});
+	}
+
+	/** Team box: each row with a format and Pokémon is checked against it, again whenever its Pokémon or format change. */
+	private void checkRows() {
+		boolean check = teamBox() && !someoneElses() && session.isAuthenticated();
+		if (rowChecks.size() > 300) {
+			rowChecks.clear();
+		}
+		for (int row = 0; row < BOX_ROWS; row++) {
+			String format = check ? PcBoxTypes.row(pcOwner(), currentBox, row).format() : null;
+			List<UUID> uuids = new ArrayList<>();
+			StringBuilder key = new StringBuilder(String.valueOf(format));
+			boolean any = false;
+			for (int column = 0; column < BOX_COLUMNS; column++) {
+				PokemonDto pokemon = boxSlots[row * BOX_COLUMNS + column];
+				uuids.add(pokemon == null ? null : pokemon.uuid());
+				key.append('|').append(pokemon == null ? "-" : pokemon.uuid() + ":" + pokemon.hashCode());
+				any |= pokemon != null;
+			}
+			String rowKey = format == null || !any ? null : key.toString();
+			rowKeys[row] = rowKey;
+			if (rowKey != null && !rowChecks.containsKey(rowKey) && rowChecksRunning.add(rowKey)) {
+				pokemonClient.validateTeam(session.accessToken(), format, uuids)
+						.thenAccept(json -> Minecraft.getInstance().execute(() -> {
+							rowChecksRunning.remove(rowKey);
+							rowChecks.put(rowKey, parseChecks(json));
+						}))
+						.exceptionally(ex -> {
+							Minecraft.getInstance().execute(() -> {
+								rowChecksRunning.remove(rowKey);
+								rowChecks.put(rowKey, CHECK_FAILED);
+							});
+							return null;
+						});
+			}
+		}
+	}
+
+	private static List<List<BattleLobbyState.Issue>> parseChecks(com.google.gson.JsonObject json) {
+		if (json == null || !json.has("issues") || !json.get("issues").isJsonArray()) {
+			return CHECK_FAILED;
+		}
+		List<List<BattleLobbyState.Issue>> result = new ArrayList<>();
+		for (com.google.gson.JsonElement entry : json.getAsJsonArray("issues")) {
+			List<BattleLobbyState.Issue> own = new ArrayList<>();
+			if (entry.isJsonArray()) {
+				for (com.google.gson.JsonElement issue : entry.getAsJsonArray()) {
+					com.google.gson.JsonObject object = issue.getAsJsonObject();
+					own.add(new BattleLobbyState.Issue(jsonText(object, "code"), jsonText(object, "subject")));
+				}
+			}
+			result.add(own);
+		}
+		return result;
+	}
+
+	private static String jsonText(com.google.gson.JsonObject object, String key) {
+		return object.has(key) && !object.get(key).isJsonNull() ? object.get(key).getAsString() : "";
+	}
+
+	/** Row {@code row}'s check: per case, the rules broken; null while unknown (no format, not answered yet). */
+	private List<List<BattleLobbyState.Issue>> rowCheck(int row) {
+		String key = teamBox() ? rowKeys[row] : null;
+		return key == null ? null : rowChecks.get(key);
+	}
+
+	/** The rules the Pokémon in case {@code index} of the current team box breaks in its row's format (empty: none, or unknown). */
+	private List<BattleLobbyState.Issue> issuesAt(int index) {
+		List<List<BattleLobbyState.Issue>> check = rowCheck(index / BOX_COLUMNS);
+		int column = index % BOX_COLUMNS;
+		return check == null || column >= check.size() ? List.of() : check.get(column);
+	}
+
+	private String rowName(int row) {
+		String name = PcBoxTypes.row(pcOwner(), currentBox, row).name();
+		return name != null ? name : Component.translatable("phantasmon.pc.screen.row_default_name", row + 1).getString();
+	}
+
+	private static String formatLabel(String formatId) {
+		if (rowFormats != null) {
+			for (BattleLobbyState.FormatOption format : rowFormats) {
+				if (format.id().equals(formatId)) {
+					return PhantasmonFormatPickerScreen.formatName(format);
+				}
+			}
+		}
+		return "free".equals(formatId) ? Component.translatable("phantasmon.battle.lobby.format.free").getString() : formatId;
+	}
+
+	/** The lobby's format window, picking for row {@code row} of this box; then back here. */
+	private void openFormatPicker(int row) {
+		PhantasmonPcScreen pc = this;
+		UUID owner = pcOwner();
+		int box = currentBox;
+		minecraft.setScreen(new PhantasmonFormatPickerScreen(new PhantasmonFormatPickerScreen.Source() {
+			@Override
+			public List<BattleLobbyState.FormatOption> formats() {
+				return rowFormats == null ? List.of() : rowFormats;
+			}
+
+			@Override
+			public String formatId() {
+				return PcBoxTypes.row(owner, box, row).format();
+			}
+
+			@Override
+			public String currentName() {
+				String id = formatId();
+				return id == null ? Component.translatable("phantasmon.pc.screen.row_no_format").getString() : formatLabel(id);
+			}
+
+			@Override
+			public void pick(BattleLobbyState.FormatOption format) {
+				PcBoxTypes.setRowFormat(owner, box, row, format.id());
+			}
+
+			@Override
+			public void back() {
+				Minecraft.getInstance().setScreen(pc); // init() reloads, then the row is checked
+			}
+
+			@Override
+			public boolean alive() {
+				return true;
+			}
+		}));
+	}
+
+	private static int bandTop(int row) {
+		return TEAM_BAND_TOP + row * TEAM_BAND_PITCH;
+	}
+
+	/** The team row whose name is under the cursor, or -1. */
+	private int rowNameAt(double x, double y) {
+		int row = teamRowAt(x, y);
+		return row >= 0 && inside(x, y, ROW_NAME_X, bandTop(row) + ROW_HEADER_Y, ROW_NAME_W, ROW_HEADER_H) ? row : -1;
+	}
+
+	/** The team row whose format chip is under the cursor, or -1. */
+	private int formatChipAt(double x, double y) {
+		int row = teamRowAt(x, y);
+		return row >= 0 && inside(x, y, ROW_FORMAT_X, bandTop(row) + ROW_HEADER_Y, ROW_FORMAT_W, ROW_HEADER_H) ? row : -1;
+	}
+
+	/** The name field being typed in: the box title, or a team row's name. */
+	private boolean onRenameField(double x, double y) {
+		return renamingRow < 0 ? inside(x, y, TITLE_X, NAV_Y, TITLE_W, NAV_H)
+				: inside(x, y, ROW_NAME_X, bandTop(renamingRow) + ROW_HEADER_Y, ROW_NAME_W, ROW_HEADER_H);
 	}
 
 	private PokemonDto selectedPokemon() {
@@ -782,6 +977,16 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	@Override
 	public boolean mouseClicked(double mouseX, double mouseY, int button) {
+		if (button == 1 && !importOpen && !deleteConfirmOpen) {
+			// Right click on a team row's format: the row has none any more.
+			int row = formatChipAt(toCanvasX(mouseX), toCanvasY(mouseY));
+			if (row >= 0 && PcBoxTypes.row(pcOwner(), currentBox, row).format() != null) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+				PcBoxTypes.setRowFormat(pcOwner(), currentBox, row, null);
+				checkRows();
+				return true;
+			}
+		}
 		if (button != 0) {
 			return super.mouseClicked(mouseX, mouseY, button);
 		}
@@ -834,17 +1039,35 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			renaming = null;
 			return true;
 		}
+		if (renaming != null && !onRenameField(x, y)) {
+			saveBoxName();
+		}
 		if (renaming == null && inside(x, y, TITLE_X, NAV_Y, TITLE_W, NAV_H)) {
-			String name = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.name(pcOwner(), currentBox);
+			String name = PcBoxTypes.name(pcOwner(), currentBox);
 			renaming = name == null ? "" : name;
+			renamingRow = -1;
 			return true;
 		}
-		if (renaming != null && !inside(x, y, TITLE_X, NAV_Y, TITLE_W, NAV_H)) {
-			saveBoxName();
+		int nameRow = rowNameAt(x, y);
+		if (renaming == null && nameRow >= 0) {
+			String name = PcBoxTypes.row(pcOwner(), currentBox, nameRow).name();
+			renaming = name == null ? "" : name;
+			renamingRow = nameRow;
+			return true;
+		}
+		if (renaming != null) {
+			return true; // a click in the field being typed in
+		}
+		int formatRow = formatChipAt(x, y);
+		if (formatRow >= 0) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
+			openFormatPicker(formatRow);
+			return true;
 		}
 		if (inside(x, y, TYPE_X, NAV_Y, TYPE_W, NAV_H)) {
 			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			boolean team = com.mystaria.phantasmon.client.pokemon.PcBoxTypes.toggle(pcOwner(), currentBox);
+			checkRows();
 			setStatus(Component.translatable(team ? "phantasmon.pc.screen.box_now_team" : "phantasmon.pc.screen.box_now_loose",
 					currentBox).getString(), false);
 			return true;
@@ -900,6 +1123,12 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			lastClickUuid = pokemon == null ? null : pokemon.uuid();
 			lastClickTime = now;
 			selectedUuid = pokemon == null ? null : pokemon.uuid();
+			if (pokemon != null) {
+				// The clicked Pokémon cries (its animation, no sound), in its case and on the card.
+				PokemonGuiRendering.playCry(pokemon.species(), ref.kind() == SlotRef.Kind.TEAM ? teamSlotX(ref.index()) + 85 / 2f
+						: gridSlotX(ref.index()) + GRID_SLOT_W / 2f);
+				PokemonGuiRendering.playCry(pokemon.species(), 0);
+			}
 			Component unrecognized = pokemon == null ? null : com.mystaria.phantasmon.client.pokemon.PokemonRecognition.problem(pokemon);
 			if (unrecognized != null) {
 				setStatus(unrecognized.getString(), true);
@@ -984,8 +1213,13 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private void saveBoxName() {
-		com.mystaria.phantasmon.client.pokemon.PcBoxTypes.rename(pcOwner(), currentBox, renaming);
+		if (renamingRow >= 0) {
+			PcBoxTypes.renameRow(pcOwner(), currentBox, renamingRow, renaming);
+		} else {
+			PcBoxTypes.rename(pcOwner(), currentBox, renaming);
+		}
 		renaming = null;
+		renamingRow = -1;
 	}
 
 	@Override
@@ -1116,7 +1350,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 	}
 
 	private int gridSlotY(int index) {
-		return teamBox() ? GRID_Y + (index / BOX_COLUMNS) * (TEAM_SLOT_H + TEAM_ROW_GAP)
+		return teamBox() ? bandTop(index / BOX_COLUMNS) + TEAM_SLOT_TOP
 				: GRID_Y + (index / BOX_COLUMNS) * (GRID_SLOT_H + GRID_GAP);
 	}
 
@@ -1140,8 +1374,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			return -1;
 		}
 		for (int row = 0; row < BOX_ROWS; row++) {
-			int top = gridSlotY(row * BOX_COLUMNS) - 5;
-			if (inside(x, y, GRID_PANEL_X + 4, top, GRID_PANEL_W - 8, TEAM_SLOT_H + 10)) {
+			if (inside(x, y, GRID_PANEL_X + 4, bandTop(row), GRID_PANEL_W - 8, TEAM_BAND_H)) {
 				return row;
 			}
 		}
@@ -1163,13 +1396,22 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 		beginCanvas(graphics);
 		renderRootPanel(graphics);
 		renderHeader(graphics, mx, my);
-		renderTeamRail(graphics, mx, my);
-		renderPokemonCard(graphics, selectedPokemon(), null, 0, ACCENT_LEFT,
-				Component.translatable("phantasmon.pc.no_selection").getString(), true);
-		renderGridPanel(graphics, mx, my);
+		// The Pokémon play their idle animation here (a slight bob for those without one); not the dragged one.
+		PokemonGuiRendering.beginAnimated("pc");
+		try {
+			renderTeamRail(graphics, mx, my);
+			renderPokemonCard(graphics, selectedPokemon(), null, 0, ACCENT_LEFT,
+					Component.translatable("phantasmon.pc.no_selection").getString(), true);
+			renderGridPanel(graphics, mx, my);
+		} finally {
+			PokemonGuiRendering.endAnimated();
+		}
 		renderFooter(graphics, mx, my);
 		renderDraggedModel(graphics);
 		endCanvas(graphics);
+		if (!deleteConfirmOpen && !importOpen) {
+			renderIssuePopup(graphics, mx, my);
+		}
 
 		if (deleteConfirmOpen) {
 			renderDeleteModal(graphics, mouseX, mouseY);
@@ -1238,10 +1480,14 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 	private void renderTeamRail(GuiGraphics g, double mx, double my) {
 		renderRailFrame(g, 15, 72, 194, 758, Component.translatable("phantasmon.pc.team_label").getString(), null);
+		renderGlint(g, 24, 106, 176, 2, 8f, 0f, CYAN);
 		for (int i = 0; i < TEAM_SIZE; i++) {
 			SlotRef ref = new SlotRef(SlotRef.Kind.TEAM, i);
-			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H, teamSlots[i],
-					lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H), TEAM_RAIL_SLOT);
+			SlotLook look = lookOf(ref, teamSlots[i], mx, my, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H);
+			renderSlot(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H, teamSlots[i], look, TEAM_RAIL_SLOT);
+			if (look == SlotLook.SELECTED) {
+				renderBreathingRim(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H);
+			}
 			if (teamSlots[i] == null) {
 				emptyMark(g, teamSlotX(i), teamSlotY(i), 85, TEAM_RAIL_SLOT_H, i + 1);
 			}
@@ -1258,7 +1504,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 
 		renderArrowButton(g, PREV_X, NAV_Y, "◀", inside(mx, my, PREV_X, NAV_Y, NAV_W, NAV_H));
 		renderArrowButton(g, NEXT_X, NAV_Y, "▶", inside(mx, my, NEXT_X, NAV_Y, NAV_W, NAV_H));
-		if (renaming != null) {
+		if (renaming != null && renamingRow < 0) {
 			// Naming the box: a field in the title's place; Enter keeps it, Escape gives up, empty removes the name.
 			blackBorder(g, TITLE_X, NAV_Y, TITLE_W, NAV_H, CYAN);
 			g.fill(TITLE_X, NAV_Y, TITLE_X + TITLE_W, NAV_Y + NAV_H, INFO_BOX_BG);
@@ -1289,6 +1535,7 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			}
 		}
 		g.fill(GRID_PANEL_X + 9, 117, GRID_PANEL_X + GRID_PANEL_W - 9, 117 + hairline(), LINE_25);
+		renderGlint(g, GRID_PANEL_X + 9, 117, GRID_PANEL_W - 18, 2, 11f, 4f, CYAN);
 
 		boolean team = teamBox();
 		boolean typeHovered = inside(mx, my, TYPE_X, NAV_Y, TYPE_W, NAV_H);
@@ -1299,8 +1546,8 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			// One band per team row, the hovered one lit: a double click there swaps it with the team.
 			int hoveredRow = loading ? -1 : teamRowAt(mx, my);
 			for (int row = 0; row < BOX_ROWS; row++) {
-				int top = gridSlotY(row * BOX_COLUMNS) - 5;
-				int h = TEAM_SLOT_H + 10;
+				int top = bandTop(row);
+				int h = TEAM_BAND_H;
 				int left = GRID_PANEL_X + 6;
 				int w = GRID_PANEL_W - 12;
 				// Each team its own colour (Adrien 2026-11-11: the rows must stand apart): a tinted band, a coloured rim
@@ -1313,6 +1560,9 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 						lerpColor(MOVE_BG, hue, lit ? 0.18f : 0.08f) | 0xFF000000);
 				raisedEdge(g, left, top, w, h);
 				g.fill(left, top, left + 7, top + h, hue);
+				// Idle: now and then a light runs along the band's top, each row in turn.
+				renderGlint(g, left + 7, top, w - 7, 2, 9f, row * 1.7f, hue);
+				renderRowHeader(g, row, mx, my);
 			}
 		}
 		for (int i = 0; i < SLOTS_PER_BOX; i++) {
@@ -1320,7 +1570,14 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			int x = gridSlotX(i);
 			int y = gridSlotY(i);
 			int h = gridSlotH();
-			renderSlot(g, x, y, GRID_SLOT_W, h, boxSlots[i], lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, h), GRID_SLOT);
+			SlotLook look = lookOf(ref, boxSlots[i], mx, my, x, y, GRID_SLOT_W, h);
+			renderSlot(g, x, y, GRID_SLOT_W, h, boxSlots[i], look, team ? TEAM_GRID_SLOT : GRID_SLOT);
+			if (look == SlotLook.SELECTED) {
+				renderBreathingRim(g, x, y, GRID_SLOT_W, h);
+			}
+			if (team && boxSlots[i] != null && look != SlotLook.DRAG_SOURCE && !issuesAt(i).isEmpty()) {
+				renderRuleBreak(g, x, y, GRID_SLOT_W, h); // breaks its row's format: circled in red, as in the lobby
+			}
 			if (boxSlots[i] == null && !team) {
 				emptyMark(g, x, y, GRID_SLOT_W, h, i + 1);
 			}
@@ -1328,6 +1585,101 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				greyOut(g, x, y, GRID_SLOT_W, h);
 			}
 		}
+	}
+
+	/** A team row's strip: its name (click: rename), its format (click: pick one, right click: none), then its check. */
+	private void renderRowHeader(GuiGraphics g, int row, double mx, double my) {
+		int y = bandTop(row) + ROW_HEADER_Y;
+		float textY = y + (ROW_HEADER_H - 14) / 2f;
+		PcBoxTypes.Row settings = PcBoxTypes.row(pcOwner(), currentBox, row);
+		int hue = TEAM_COLORS[row % TEAM_COLORS.length];
+		if (renaming != null && renamingRow == row) {
+			blackBorder(g, ROW_NAME_X, y, ROW_NAME_W, ROW_HEADER_H, CYAN);
+			g.fill(ROW_NAME_X, y, ROW_NAME_X + ROW_NAME_W, y + ROW_HEADER_H, INFO_BOX_BG);
+			String shown = renaming.isEmpty() ? Component.translatable("phantasmon.pc.screen.row_name_field").getString() : renaming;
+			float end = drawText(g, fitText(shown, ROW_NAME_W - 24, 2f, false, 0f), ROW_NAME_X + 6, textY, 2f, renaming.isEmpty() ? DIM : WHITE,
+					false, 0f);
+			if (!renaming.isEmpty() && (System.currentTimeMillis() / 500) % 2 == 0) {
+				drawText(g, "_", end + 2, textY, 2f, CYAN, false, 0f);
+			}
+		} else {
+			boolean hovered = inside(mx, my, ROW_NAME_X, y, ROW_NAME_W, ROW_HEADER_H);
+			String name = fitText(rowName(row), ROW_NAME_W - 12, 2f, true, 0f);
+			float end = drawText(g, name, ROW_NAME_X + 4, textY, 2f, settings.name() != null || hovered ? WHITE : MUTED, true, 0f);
+			if (hovered) {
+				g.fill(ROW_NAME_X + 4, y + ROW_HEADER_H - 2, Math.round(end), y + ROW_HEADER_H, hue);
+			}
+		}
+
+		boolean chipHovered = inside(mx, my, ROW_FORMAT_X, y, ROW_FORMAT_W, ROW_HEADER_H);
+		renderPrimaryButtonFrame(g, ROW_FORMAT_X, y, ROW_FORMAT_W, ROW_HEADER_H, chipHovered, false);
+		String label = settings.format() == null ? Component.translatable("phantasmon.pc.screen.row_pick_format").getString()
+				: formatLabel(settings.format());
+		drawText(g, fitText(label + "  ▸", ROW_FORMAT_W - 14, 2f, false, 0f), ROW_FORMAT_X + 7, textY, 2f,
+				settings.format() == null ? DIM : CYAN, false, 0f);
+
+		if (settings.format() == null || rowKeys[row] == null) {
+			return;
+		}
+		List<List<BattleLobbyState.Issue>> check = rowChecks.get(rowKeys[row]);
+		String status;
+		int color;
+		if (check == null) {
+			status = ".".repeat(1 + (int) (clockSeconds() * 3) % 3); // being checked
+			color = MUTED;
+		} else if (check == CHECK_FAILED) {
+			status = "?";
+			color = DIM;
+		} else {
+			long broken = check.stream().filter(issues -> !issues.isEmpty()).count();
+			status = broken == 0 ? Component.translatable("phantasmon.pc.screen.row_valid").getString()
+					: Component.translatable("phantasmon.pc.screen.row_invalid", broken).getString();
+			color = broken == 0 ? READY_TEXT : ERROR_TEXT;
+		}
+		drawText(g, status, ROW_STATUS_RIGHT - textWidth(status, 2f, false, 0f), textY, 2f, color, false, 0f);
+	}
+
+	/** The selected case breathes: the light of its rim comes and goes. */
+	private void renderBreathingRim(GuiGraphics g, int x, int y, int w, int h) {
+		float pulse = (float) (0.5 + 0.5 * Math.sin(clockSeconds() * 2.4));
+		outline(g, x - 1, y - 1, w + 2, h + 2, withAlpha(palette().accent() | 0xFF000000, 0.2f + 0.5f * pulse));
+	}
+
+	@Override
+	protected void renderViewportFx(GuiGraphics g, int dx) {
+		renderDust(g, 220 + dx, 117, 575, 235, 11, CYAN);
+	}
+
+	/**
+	 * A Pokémon breaking its team row's format: why, over the card's model, as the lobby does over the player's skin (the
+	 * hovered one, else the selected one).
+	 */
+	private void renderIssuePopup(GuiGraphics graphics, double mx, double my) {
+		if (!teamBox() || dragging) {
+			return;
+		}
+		List<BattleLobbyState.Issue> issues = List.of();
+		SlotRef hovered = slotAt(mx, my);
+		if (hovered != null && hovered.kind() == SlotRef.Kind.PC) {
+			issues = issuesAt(hovered.index());
+		}
+		if (issues.isEmpty() && selectedUuid != null) {
+			for (int i = 0; i < SLOTS_PER_BOX; i++) {
+				if (boxSlots[i] != null && selectedUuid.equals(boxSlots[i].uuid())) {
+					issues = issuesAt(i);
+					break;
+				}
+			}
+		}
+		if (issues.isEmpty()) {
+			return;
+		}
+		String text = issues.stream()
+				.map(issue -> Component.translatable("phantasmon.battle.lobby.issue." + issue.code(), issue.subject()).getString())
+				.distinct().collect(java.util.stream.Collectors.joining(" · "));
+		beginModalLayer(graphics, 0f);
+		renderViewMessage(graphics, CARD_X + 1, 117, 575, 235, text, DANGER_BORDER, ERROR_TEXT);
+		endModalLayer(graphics);
 	}
 
 	/** An empty case's mark: its number, faint, in its middle (2026-11-21: empty and dark cases looked alike). */
@@ -1377,8 +1729,15 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 			color = CYAN;
 		} else if (teamBox()) {
 			int row = teamRowAt(mx, my);
-			status = row < 0 ? Component.translatable("phantasmon.pc.screen.team_box_hint").getString()
-					: Component.translatable("phantasmon.pc.screen.team_row_hint", row + 1).getString();
+			if (row < 0) {
+				status = Component.translatable("phantasmon.pc.screen.team_box_hint").getString();
+			} else if (formatChipAt(mx, my) >= 0) {
+				status = Component.translatable("phantasmon.pc.screen.row_format_hint").getString();
+			} else if (rowNameAt(mx, my) >= 0) {
+				status = Component.translatable("phantasmon.pc.screen.row_name_hint").getString();
+			} else {
+				status = Component.translatable("phantasmon.pc.screen.team_row_hint", rowName(row)).getString();
+			}
 			color = row < 0 ? DIM : CYAN;
 		} else {
 			status = null;

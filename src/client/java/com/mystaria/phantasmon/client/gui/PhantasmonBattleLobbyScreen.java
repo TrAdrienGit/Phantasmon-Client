@@ -324,48 +324,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		drawText(g, label, x + (w - width) / 2f, y + 17, 2f, ready ? READY_TEXT : waiting ? DIM : CYAN, true, 1f);
 	}
 
-	/** Seconds on a looping clock, for the lobby's idle animations. */
-	private static float clockSeconds() {
-		return (System.currentTimeMillis() % 3_600_000L) / 1000f;
-	}
-
-	// ---- Idle animations (2026-11-28): small movements that keep the lobby alive ----
-
-	/** A short light running along a horizontal line ({@code x}..{@code x + w} at {@code y}), every {@code period} s. */
-	private void renderGlint(GuiGraphics g, int x, int y, int w, int thickness, float period, float delay, int color) {
-		float phase = ((clockSeconds() + delay) % period) / period;
-		float travel = phase * 1.6f - 0.3f; // part of the period with no light
-		if (travel < 0f || travel > 1f) {
-			return;
-		}
-		int center = x + Math.round(travel * w);
-		for (int i = -30; i <= 30; i += 3) {
-			float alpha = 0.6f * (1f - Math.abs(i) / 31f);
-			int l = Math.max(x, center + i);
-			int r = Math.min(x + w, center + i + 3);
-			if (r > l) {
-				g.fill(l, y, r, y + thickness, withAlpha(color | 0xFF000000, alpha));
-			}
-		}
-	}
-
-	/** Dust motes drifting up through a player's model window, behind the model. */
-	private void renderDust(GuiGraphics g, int x, int y, int w, int h, int seed, int color) {
-		float t = clockSeconds();
-		for (int i = 0; i < 16; i++) {
-			int hash = (i * 73856093) ^ (seed * 19349663);
-			float fx = ((hash >>> 3) & 1023) / 1023f;
-			float speed = 8f + ((hash >>> 13) & 15);
-			float start = ((hash >>> 17) & 1023) / 1023f;
-			float rise = ((t * speed / h) + start) % 1f;
-			float px = x + 6 + fx * (w - 12) + (float) Math.sin(t * 0.7f + i) * 6f;
-			float py = y + h - 6 - rise * (h - 12);
-			float alpha = (float) Math.sin(rise * Math.PI) * 0.35f;
-			int size = 1 + ((hash >>> 23) & 1);
-			g.fill(Math.round(px), Math.round(py), Math.round(px) + size, Math.round(py) + size, withAlpha(color | 0xFF000000, alpha));
-		}
-	}
-
 	// ---- Rails ----
 
 	private void renderOwnRail(GuiGraphics g, BattleLobbyState state, double mx, double my) {
@@ -390,7 +348,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 						withAlpha(CYAN, 0.25f + 0.25f * (float) Math.sin(clockSeconds() * 2.4f + i)));
 			}
 			if (pokemon != null && !state.ownIssues(i).isEmpty()) {
-				renderRuleBreak(g, slotX(i), slotY(i));
+				renderRuleBreak(g, slotX(i), slotY(i), SLOT_W, SLOT_H); // TODO-24
 			}
 			if (pokemon != null && pick > 0) {
 				// The pick order: in doubles 1 and 2 lead, on the left and on the right; in singles 1 leads.
@@ -415,7 +373,7 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 			}
 			renderSlot(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i), SLOT_W, SLOT_H, state.opponentSlot(i), SlotLook.NORMAL, LOBBY_SLOT, false);
 			if (state.opponentSlot(i) != null && state.opponentFlagged(i)) {
-				renderRuleBreak(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i));
+				renderRuleBreak(g, slotX(i) + RIGHT_RAIL_OFFSET, slotY(i), SLOT_W, SLOT_H);
 			}
 		}
 	}
@@ -759,15 +717,6 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 
 	// ---- Footer ----
 
-	/** A Pokémon breaking the battle format: circled in red (TODO-24). */
-	private void renderRuleBreak(GuiGraphics g, int x, int y) {
-		glowInside(g, x, y, SLOT_W, SLOT_H, 0xFF5078, 0.35f, 8);
-		outline(g, x - 2, y - 2, SLOT_W + 4, SLOT_H + 4, DANGER_BORDER);
-		outline(g, x - 1, y - 1, SLOT_W + 2, SLOT_H + 2, DANGER_BORDER);
-		outline(g, x, y, SLOT_W, SLOT_H, DANGER_BORDER);
-		drawText(g, "!", x + 8, y + SLOT_H - 24, 2f, DANGER_BORDER, true, 0f);
-	}
-
 	private void renderFooter(GuiGraphics g, BattleLobbyState state, double mx, double my) {
 		renderFooterBar(g, null, MUTED, 0);
 		// The battle's rules: format and field.
@@ -843,47 +792,13 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		if (message == null) {
 			return;
 		}
-		int boxW = 460;
-		int x = CARD_X + (577 - boxW) / 2;
-		List<String> lines = wrap(message.text(), boxW - 28, 4);
-		int boxH = 14 + lines.size() * 22;
-		int y = VIEW_Y + (VIEW_H - boxH) / 2;
 		int border = switch (message.level()) {
 			case ERROR -> DANGER_BORDER;
 			case WARNING -> 0xFFD4A017;
 			case INFO -> CYAN;
 		};
-		g.fill(x, y, x + boxW, y + boxH, PhantasmonTheme.cobblemon() ? 0xFF2F2F2F : 0xFF081422);
-		outline(g, x, y, boxW, boxH, border);
-		g.fill(x, y, x + 4, y + boxH, border);
 		int color = message.level() == Level.INFO ? WHITE : message.level() == Level.ERROR ? ERROR_TEXT : 0xFFF5D76E;
-		for (int i = 0; i < lines.size(); i++) {
-			drawText(g, lines.get(i), x + 16, y + 10 + i * 22, 2f, color, false, 0f);
-		}
-	}
-
-	/** {@code text} cut into lines at most {@code width} wide (2× text), {@code maxLines} at most (the last one cut short). */
-	private List<String> wrap(String text, float width, int maxLines) {
-		List<String> lines = new java.util.ArrayList<>();
-		StringBuilder line = new StringBuilder();
-		for (String word : text.split(" ")) {
-			String next = line.isEmpty() ? word : line + " " + word;
-			if (textWidth(next, 2f, false, 0f) <= width || line.isEmpty()) {
-				line = new StringBuilder(next);
-			} else {
-				lines.add(line.toString());
-				line = new StringBuilder(word);
-			}
-		}
-		if (!line.isEmpty()) {
-			lines.add(line.toString());
-		}
-		if (lines.size() > maxLines) {
-			List<String> cut = new java.util.ArrayList<>(lines.subList(0, maxLines));
-			cut.set(maxLines - 1, fitText(cut.get(maxLines - 1) + " " + lines.get(maxLines), width, 2f, false, 0f));
-			return cut;
-		}
-		return lines;
+		renderViewMessage(g, CARD_X, VIEW_Y, 577, VIEW_H, message.text(), border, color);
 	}
 
 	private static String clock(long seconds) {
