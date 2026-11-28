@@ -377,8 +377,18 @@ public abstract class PhantasmonCanvasScreen extends Screen {
 
 	/** Rail frame (Z05): gradient, border, spaced uppercase title with its separator, and the 2-line hint box at the bottom (Z11). */
 	protected void renderRailFrame(GuiGraphics g, int x, int y, int w, int h, String title, Component hint) {
+		renderRailFrame(g, x, y, w, h, title, hint, false);
+	}
+
+	/** {@code centered}: the title in the middle of the rail instead of on its left. */
+	protected void renderRailFrame(GuiGraphics g, int x, int y, int w, int h, String title, Component hint, boolean centered) {
 		blitTexture(g, TEX_RAIL, x, y, w, h);
-		drawText(g, fitText(upper(title), w - 22, 1f, true, 2f), x + 13, y + 17, 1f, WHITE, true, 2f);
+		String shown = fitText(upper(title), w - 22, 1f, true, 2f);
+		if (centered) {
+			drawCentered(g, shown, x + w / 2f, y + 17, 1f, WHITE, true, 2f);
+		} else {
+			drawText(g, shown, x + 13, y + 17, 1f, WHITE, true, 2f);
+		}
 		g.fill(x + 9, y + 34, x + w - 9, y + 34 + Math.max(line, 2), CYAN);
 		g.fill(x + 9, y + 34 + Math.max(line, 2), x + w - 9, y + 34 + 2 * Math.max(line, 2), palette().black());
 		if (hint == null) {

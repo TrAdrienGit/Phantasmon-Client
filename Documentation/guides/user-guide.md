@@ -111,6 +111,30 @@ aléatoires en Simple / Double), du plus joué au moins joué. Chaque carte mont
 étiquettes : NatDex, Champions, niveau imposé, « 3 sur 6 » (Pokémon envoyés au combat), équipes aléatoires. Molette
 sur une colonne (ou sa barre, attrapée à la souris) pour la faire défiler, clic pour choisir, Échap pour revenir.
 
+**Barre du bas du lobby** : à gauche les règles du combat, **Format** et **Terrain** (League Reborn) ; puis son
+apparence, **Scène** (scènes complètes stade + ambiance, ou un stade seul), **Ambiance** et **Intro** ; à droite
+Musiques, Timer, Quitter. Chaque bouton ouvre sa fenêtre : des cartes avec, en fond, une image d'aperçu du choix
+(sans image, un fond coloré à son nom). Un bouton grisé est imposé (PNJ d'événement, ou vous êtes prêt). Les
+erreurs et avertissements (Pokémon hors format, refus du serveur, génération d'une équipe aléatoire) s'affichent
+dans un encadré au milieu de votre fenêtre de joueur.
+
+**Cadre du lead** : en simple, le modèle, le nom, le niveau, l'objet, le talent et la nature à gauche, les quatre
+attaques (couleur de leur type) et la répartition des EV (stat montée par la nature en rouge, baissée en bleu) à
+droite ; en double, chaque lead avec ses attaques et ses EV sur une ligne. **Badges** : à côté de chaque joueur,
+3 colonnes de 6 emplacements pour ses badges de ligue (ils viendront de Leagueway ; pour tester, le fichier
+`phantasmon/badges-mock.json` du dossier du jeu, `{"pseudo": ["phantasmon:textures/gui/badges/mock_flame.png", …]}`,
+relu toutes les 5 secondes ; chaque badge : `texture`, `name`, `leader`, `type`). Survoler un badge l'affiche en grand avec
+son nom, son champion d'arène et son type. Le bouton PRÊT (au centre de l'en-tête, rectangulaire, liseré bleu qui respire tant qu'il est cliquable, vert une fois
+prêt) s'illumine et crépite au survol, et éclate au clic. Les Pokémon du lobby jouent leur animation de repos (ceux qui
+n'en ont pas flottent doucement de haut en bas) et jouent leur animation de cri (sans le son) quand la souris entre sur leur case ou la clique.
+
+**Images d'aperçu** : mettez en place ce que vous voulez photographier (un combat avec ce terrain, ce stade, cette
+ambiance, une intro qui joue), puis tapez `/phantasmon preview <field|preset|stadium|ambiance|intro> <id>` : le chat
+se ferme, l'interface se cache un instant et l'image (640×360, le milieu de l'écran) est enregistrée dans
+`phantasmon/previews/<type>/<id>.png` du dossier du jeu. Les fenêtres l'affichent aussitôt. Pour la livrer avec le
+mod, copiez-la dans `src/main/resources/assets/phantasmon/textures/gui/previews/<type>/` (un id `ns:nom` devient
+le dossier `ns/nom`).
+
 **Formats aléatoires** (Random Battle, Random Doubles, Monotype Random, Hackmons Cup, Doubles Hackmons Cup) : vos
 équipes ne servent pas : dès que le format est choisi, Showdown vous génère six Pokémon (sets et niveaux de Showdown, comme
 sur Showdown), que vous voyez dans le lobby et dont vous choisissez le lead (ou les Pokémon, en double). L'équipe adverse reste

@@ -43,6 +43,33 @@ public final class PhantasmonCommands {
 							}
 							authService.login();
 							return Command.SINGLE_SUCCESS;
-						}))));
+						}))
+						// Preview pictures of the lobby's choice windows (2026-11-27): what is on screen, without the HUD.
+						.then(ClientCommandManager.literal("preview")
+								.then(ClientCommandManager.argument("kind", com.mojang.brigadier.arguments.StringArgumentType.word())
+										.suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+												java.util.List.of("field", "preset", "stadium", "ambiance", "intro"), builder))
+										.then(ClientCommandManager.argument("id", com.mojang.brigadier.arguments.StringArgumentType.greedyString())
+												.suggests((context, builder) -> net.minecraft.commands.SharedSuggestionProvider.suggest(
+														previewIds(com.mojang.brigadier.arguments.StringArgumentType.getString(context, "kind"), liveBattle), builder))
+												.executes(context -> {
+													com.mystaria.phantasmon.client.gui.PreviewCapture.request(
+															com.mojang.brigadier.arguments.StringArgumentType.getString(context, "kind"),
+															com.mojang.brigadier.arguments.StringArgumentType.getString(context, "id").trim());
+													return Command.SINGLE_SUCCESS;
+												}))))));
+		com.mystaria.phantasmon.client.gui.PreviewCapture.register();
+	}
+
+	/** The ids a preview may be taken of, for the command's suggestions. */
+	private static java.util.List<String> previewIds(String kind, LiveBattleController liveBattle) {
+		return switch (kind) {
+			case "preset" -> com.mystaria.showtime.ambiance.Ambiances.scenePresetIds();
+			case "stadium" -> com.mystaria.showtime.ambiance.Ambiances.stadiumIds();
+			case "ambiance" -> com.mystaria.showtime.ambiance.Ambiances.plainAmbianceIds();
+			case "intro" -> com.mystaria.showtime.battle.BattleCinematic.introNames();
+			case "field" -> liveBattle.lobby() != null ? liveBattle.lobby().fields() : java.util.List.of();
+			default -> java.util.List.of();
+		};
 	}
 }

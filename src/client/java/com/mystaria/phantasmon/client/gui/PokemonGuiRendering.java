@@ -1,7 +1,9 @@
 package com.mystaria.phantasmon.client.gui;
 
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.joml.Quaternionf;
@@ -12,6 +14,10 @@ import org.slf4j.LoggerFactory;
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies;
 import com.cobblemon.mod.common.client.gui.PokemonGuiUtilsKt;
 import com.cobblemon.mod.common.client.render.models.blockbench.FloatingState;
+import com.cobblemon.mod.common.client.render.models.blockbench.PosableModel;
+import com.cobblemon.mod.common.client.render.models.blockbench.animation.PoseAnimation;
+import com.cobblemon.mod.common.client.render.models.blockbench.bedrock.animation.BedrockPoseAnimation;
+import com.cobblemon.mod.common.client.render.models.blockbench.pose.Pose;
 import com.cobblemon.mod.common.pokemon.RenderablePokemon;
 import com.cobblemon.mod.common.pokemon.Species;
 import com.cobblemon.mod.common.util.math.QuaternionUtilsKt;
@@ -40,6 +46,95 @@ public final class PokemonGuiRendering {
 	private static final float ICON_INNER_SCALE = 4.5f;
 
 	private PokemonGuiRendering() {
+	}
+
+	// ---- Idle animation (2026-11-28) ----
+
+	/** A model drawn alive: Cobblemon's animation state kept from frame to frame, and whether it has an idle animation. */
+	private static final class Animated {
+		final SilentGuiState state = new SilentGuiState();
+		final float phase;
+		long lastNanos;
+		Boolean hasIdle;
+
+		Animated(String key) {
+			this.phase = (key.hashCode() & 1023) / 1023f * (float) (Math.PI * 2);
+		}
+	}
+
+	private static final int MAX_ANIMATED = 64;
+	private static final Map<String, Animated> ANIMATED = new LinkedHashMap<>(MAX_ANIMATED, 0.75f, true) {
+		@Override
+		protected boolean removeEldestEntry(Map.Entry<String, Animated> eldest) {
+			return size() > MAX_ANIMATED;
+		}
+	};
+	private static String animationScope;
+	private static String pendingCry;
+
+	/**
+	 * From here to {@link #endAnimated()}, the models drawn play their idle animation (one state per spot on screen,
+	 * {@code scope} telling screens apart); those without one bob gently up and down instead.
+	 */
+	public static void beginAnimated(String scope) {
+		animationScope = scope;
+	}
+
+	public static void endAnimated() {
+		animationScope = null;
+	}
+
+	/** The animated model of {@code speciesId} drawn at {@code centerX} plays its cry animation once, next frame. */
+	public static void playCry(String speciesId, float centerX) {
+		pendingCry = speciesId == null ? null : speciesId.toLowerCase(Locale.ROOT) + "@" + Math.round(centerX);
+	}
+
+	/** The live state of the model about to be drawn, advanced by the time since its last frame (null when not animating). */
+	private static Animated animated(String speciesId, Set<String> aspects, float centerX, float anchorY) {
+		if (animationScope == null) {
+			return null;
+		}
+		String key = animationScope + "|" + Math.round(centerX) + "|" + Math.round(anchorY) + "|" + speciesId + "|"
+				+ new java.util.TreeSet<>(aspects);
+		Animated anim = ANIMATED.computeIfAbsent(key, Animated::new);
+		String cry = speciesId.toLowerCase(Locale.ROOT) + "@" + Math.round(centerX);
+		if (cry.equals(pendingCry)) {
+			pendingCry = null;
+			anim.state.getActiveAnimations().clear();
+			anim.state.addFirstAnimation(Set.of("cry"));
+		}
+		return anim;
+	}
+
+	/** Ticks elapsed since this model's last frame (FloatingState adds them up: call once per frame). */
+	private static float advance(Animated anim) {
+		long now = System.nanoTime();
+		float ticks = anim.lastNanos == 0 ? 0f : Math.min(5f, (now - anim.lastNanos) / 50_000_000f);
+		anim.lastNanos = now;
+		return ticks;
+	}
+
+	/** After the first frame: does the pose Cobblemon picked play a real (Bedrock) animation? */
+	private static void learnIdle(Animated anim) {
+		if (anim.hasIdle != null) {
+			return;
+		}
+		PosableModel model = anim.state.getCurrentModel();
+		String poseName = anim.state.getCurrentPose();
+		if (model == null || poseName == null) {
+			return;
+		}
+		Pose pose = model.getPose(poseName);
+		boolean idle = false;
+		if (pose != null) {
+			for (PoseAnimation animation : pose.getAnimations()) {
+				if (animation instanceof BedrockPoseAnimation) {
+					idle = true;
+					break;
+				}
+			}
+		}
+		anim.hasIdle = idle;
 	}
 
 	/**
@@ -84,6 +179,13 @@ public final class PokemonGuiRendering {
 			aspects.addAll(look.aspects());
 		}
 		RenderablePokemon renderable = new RenderablePokemon(species, aspects, ItemStack.EMPTY);
+		Animated anim = animated(speciesId, aspects, centerX, anchorY);
+		com.cobblemon.mod.common.client.render.models.blockbench.PosableState state = anim == null ? new FloatingState() : anim.state;
+		float ticks = anim == null ? 0f : advance(anim);
+		if (anim != null && Boolean.FALSE.equals(anim.hasIdle)) {
+			// No idle animation: a slow, slight breathing bob instead.
+			anchorY += (float) Math.sin(System.nanoTime() / 1e9 * (Math.PI * 2 / 2.8) + anim.phase) * 1.5f;
+		}
 
 		PoseStack poseStack = graphics.pose();
 		poseStack.pushPose();
@@ -96,8 +198,8 @@ public final class PokemonGuiRendering {
 					poseStack,
 					rotation,
 					null,
-					new FloatingState(),
-					0f,
+					state,
+					ticks,
 					ICON_INNER_SCALE,
 					null,
 					false,
@@ -105,12 +207,15 @@ public final class PokemonGuiRendering {
 					0,
 					65416,
 					null);
+			if (anim != null) {
+				learnIdle(anim);
+			}
 			// The look's glowing shell (TODO-37): the model once more, in the shell's moving additive light.
 			com.mystaria.phantasmon.client.pokemon.LookShells.Shell shell = com.mystaria.phantasmon.client.pokemon.LookShells.of(look);
 			if (shell != null) {
 				com.mystaria.phantasmon.client.pokemon.LookTextures.guiShell(shell);
 				try {
-					drawProfilePokemonDefault().invoke(null, renderable, poseStack, rotation, null, new FloatingState(), 0f,
+					drawProfilePokemonDefault().invoke(null, renderable, poseStack, rotation, null, anim == null ? new FloatingState() : state, 0f,
 							ICON_INNER_SCALE, null, false, 0f, 0f, 0f, 0f, 0f, 0f, 0, 65416, null);
 					graphics.flush();
 				} finally {
