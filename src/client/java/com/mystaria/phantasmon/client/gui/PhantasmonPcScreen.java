@@ -1317,6 +1317,10 @@ public final class PhantasmonPcScreen extends PhantasmonCanvasScreen {
 				return true;
 			}
 			default -> {
+				if (com.mystaria.phantasmon.client.PhantasmonKeybinds.isPcKey(keyCode, scanCode)) {
+					onClose(); // the PC's key closes it, as it opened it (nothing being typed: handled above)
+					return true;
+				}
 				return super.keyPressed(keyCode, scanCode, modifiers);
 			}
 		}

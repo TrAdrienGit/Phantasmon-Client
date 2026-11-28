@@ -914,6 +914,15 @@ public final class PhantasmonPcEditScreen extends PhantasmonCanvasScreen {
 			}
 			return true;
 		}
+		if (com.mystaria.phantasmon.client.PhantasmonKeybinds.isPcKey(keyCode, scanCode)) {
+			// The PC's key closes the PC from here too (nothing being typed); unsaved changes ask first.
+			if (dirty) {
+				quitConfirmOpen = true;
+			} else {
+				parent.onClose();
+			}
+			return true;
+		}
 		return super.keyPressed(keyCode, scanCode, modifiers);
 	}
 

@@ -16,6 +16,9 @@ Automatique en entrant dans un monde si le service Phantasmon est disponible. Si
 
 ## 2. Le PC (touche P, ou U si LeagueWay est installé)
 
+La même touche referme le PC (aussi depuis l'éditeur, quand aucun champ n'est en cours de saisie).
+
+
 - **À gauche**, votre équipe (6 emplacements) ; **au centre**, la fiche du Pokémon sélectionné ; **à droite**, la
   boîte affichée (16 boîtes de 30 cases).
 - **Cliquer** sélectionne un Pokémon. **Glisser-déposer** le déplace ; si la case est occupée, les deux Pokémon
@@ -140,6 +143,12 @@ se ferme, l'interface se cache un instant et l'image (640×360, le milieu de l'�
 `phantasmon/previews/<type>/<id>.png` du dossier du jeu. Les fenêtres l'affichent aussitôt. Pour la livrer avec le
 mod, copiez-la dans `src/main/resources/assets/phantasmon/textures/gui/previews/<type>/` (un id `ns:nom` devient
 le dossier `ns/nom`).
+
+Les images livrées avec le mod (2026-11-28) se refont sans jouer : `python tools/lobby_previews.py` lance l'outil de
+capture de Showtime (un jeu de développement qui photographie chaque préréglage, stade, ambiance et terrain Reborn,
+une quinzaine de minutes), puis les met au format des cartes (480×270, 256 couleurs) dans
+`textures/gui/previews/` ; les intros viennent des captures d'écran de Showtime (`art/intros/screenshots`).
+`--skip-capture` refait seulement la mise au format.
 
 **Formats aléatoires** (Random Battle, Random Doubles, Monotype Random, Hackmons Cup, Doubles Hackmons Cup) : vos
 équipes ne servent pas : dès que le format est choisi, Showdown vous génère six Pokémon (sets et niveaux de Showdown, comme

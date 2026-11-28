@@ -39,6 +39,11 @@ public final class PhantasmonKeybinds {
 		return OPEN_HUB_MANAGER.matches(keyCode, scanCode);
 	}
 
+	/** Whether a key pressed in a screen is the PC's: pressed again, it closes the PC (2026-11-28, every menu key toggles). */
+	public static boolean isPcKey(int keyCode, int scanCode) {
+		return OPEN_PC.matches(keyCode, scanCode);
+	}
+
 	public static void register() {
 		KeyBindingHelper.registerKeyBinding(OPEN_PC);
 		KeyBindingHelper.registerKeyBinding(OPEN_HUB_MANAGER);
