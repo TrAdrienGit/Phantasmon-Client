@@ -178,11 +178,13 @@ public final class PhantasmonBattleLobbyScreen extends PhantasmonCanvasScreen {
 		} else if (inside(x, y, TIMER_X, BAR_Y, TIMER_W, BAR_H)) {
 			controller.lobbyEnableTimer();
 		} else if (inside(x, y, CARD_X + 9, SWITCH_Y, 559, 48)) {
+			com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 			controller.lobbySwitchTeam();
 		} else {
 			int slot = slotAt(x, y);
 			PokemonDto clicked = slot >= 0 ? state.ownSlot(slot) : null;
 			if (clicked != null) {
+				com.mystaria.phantasmon.client.audio.PhantasmonSounds.play(com.mystaria.phantasmon.client.audio.PhantasmonSounds.Sfx.PRESSING_A);
 				PokemonGuiRendering.playCry(clicked.species(), slotX(slot) + SLOT_W / 2f);
 			}
 			if (slot >= 0 && state.pickMode()) {
